@@ -1,0 +1,233 @@
+/*
+ * Design tokens — one set, four combinations: light/dark × nursery/plain.
+ *
+ * Two independent attributes on <html>, set orthogonally per the spec:
+ *   data-mode="light" | "dark"   — follows prefers-color-scheme by default,
+ *                                   overridden by a localStorage choice
+ *                                   (see src/components/theme/ThemeToggle.tsx)
+ *   data-skin="nursery" | "plain" — from the THEME env var, baked in
+ *                                    server-side at render time (layout.tsx)
+ *
+ * Every color pair below was checked against WCAG 2.2 AA before being
+ * committed here (4.5:1 body text, 3:1 UI boundaries/large text) — see the
+ * contrast script referenced in PLAN.md. Gold-on-cream and
+ * dusty-pastel-on-indigo were the flagged risk pairs and are the ones
+ * that got iterated on.
+ *
+ * `--star-gold` is deliberately kept text-safe (not just decoratively
+ * gold) since placements/star counts render as gold text, not just icons.
+ * `--star-gold-fill` is a brighter, purely-decorative gold for icon fills
+ * where WCAG text contrast doesn't apply.
+ */
+
+:root {
+  /* ── nursery, light (daytime nursery) — the default ── */
+  --bg: #fff8f0;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #f3e9dc;
+  --fg: #3a2e3f;
+  --fg-muted: #6b5b6e;
+  --border: #b87d97;
+  --focus-ring: #a6408d;
+
+  --accent-pink: #f6c6d9;
+  --accent-blue: #bfe1f0;
+  --accent-mint: #c3edd1;
+  --accent-yellow: #fce8a8;
+  /* Text/icon color for anything rendered *on top of* an accent surface
+     (pill buttons, highlighted rows) — accent colors are pastel in every
+     mode including dark, so --fg (light in dark mode) fails badly on
+     them; this stays dark across all nursery combinations. Verified at
+     4.5:1 against all four accent colors, both modes (see PLAN.md
+     Phase 8 — axe-core caught this as a real bug, not hypothetical). */
+  --on-accent: #3a2e3f;
+
+  --star-gold: #8a5a00;
+  --star-gold-fill: #ffc93c;
+  --success: #276749;
+  --danger: #b3261e;
+  /* Text/icon color for anything on top of --danger — separate from
+     --on-accent because danger and the accent colors invert oppositely
+     between light/dark (danger is dark here, light in dark mode; accents
+     are light in both). Dark red here needs light text. */
+  --on-danger: #ffffff;
+  --active: #8a4b00;
+  --active-fill: #ffc24d;
+
+  --font-display: var(--next-font-display, "Fredoka", ui-rounded, sans-serif);
+  --font-body: var(--next-font-body, "Nunito", ui-sans-serif, sans-serif);
+  --radius-pill: 999px;
+  --radius-card: 1.5rem;
+  --shadow-soft: 0 8px 24px -8px rgb(0 0 0 / 0.15);
+
+  /* Decorative motifs, swapped per mode via the same token mechanism as
+     everything else — see src/lib/theme/motifs.ts for the matching
+     typed registry used where an actual <Image> element is needed
+     instead of a CSS background. */
+  --motif-primary: url("/motifs/light/cloud.svg");
+  --motif-secondary: url("/motifs/light/building-block.svg");
+
+  color-scheme: light;
+}
+
+/* ── nursery, dark (sleepytime nursery) ──────────────────────────────
+   Applies via system preference unless an explicit light/plain choice
+   overrides it, and via the manual `data-mode="dark"` toggle either way. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]):not([data-skin="plain"]) {
+    --bg: #171935;
+    --bg-elevated: #20234a;
+    --bg-sunken: #12142a;
+    --fg: #edeaf7;
+    --fg-muted: #b8b3d9;
+    --border: #6560a8;
+    --focus-ring: #ffc24d;
+
+    --accent-pink: #e3b8c9;
+    --accent-blue: #a8b8f0;
+    --accent-mint: #b9d9c0;
+    --accent-yellow: #c9b8e8;
+    /* Same dark on-accent color as light mode — dark-mode accents are
+       pastel too, so light --fg text on them fails just as badly. */
+    --on-accent: #3a2e3f;
+
+    --star-gold: #ffd84d;
+    --star-gold-fill: #ffd84d;
+    --success: #8fe3b3;
+    --danger: #ff9b8f;
+    --on-danger: #3a2e3f;
+    --active: #ffc24d;
+    --active-fill: #ffc24d;
+
+    --motif-primary: url("/motifs/dark/moon.svg");
+    --motif-secondary: url("/motifs/dark/sleepy-star.svg");
+
+    color-scheme: dark;
+  }
+}
+:root[data-mode="dark"]:not([data-skin="plain"]) {
+  --bg: #171935;
+  --bg-elevated: #20234a;
+  --bg-sunken: #12142a;
+  --fg: #edeaf7;
+  --fg-muted: #b8b3d9;
+  --border: #6560a8;
+  --focus-ring: #ffc24d;
+
+  --accent-pink: #e3b8c9;
+  --accent-blue: #a8b8f0;
+  --accent-mint: #b9d9c0;
+  --accent-yellow: #c9b8e8;
+  --on-accent: #3a2e3f;
+
+  --star-gold: #ffd84d;
+  --star-gold-fill: #ffd84d;
+  --success: #8fe3b3;
+  --danger: #ff9b8f;
+  --on-danger: #3a2e3f;
+  --active: #ffc24d;
+  --active-fill: #ffc24d;
+
+  --motif-primary: url("/motifs/dark/moon.svg");
+  --motif-secondary: url("/motifs/dark/sleepy-star.svg");
+
+  color-scheme: dark;
+}
+
+/* ── plain skin (THEME=plain): neutral, for screenshots/testing ───── */
+:root[data-skin="plain"] {
+  --bg: #ffffff;
+  --bg-elevated: #fafafa;
+  --bg-sunken: #f0f0f0;
+  --fg: #1a1a1a;
+  --fg-muted: #595959;
+  --border: #949494;
+  --focus-ring: #2563eb;
+
+  --accent-pink: #dbeafe;
+  --accent-blue: #dbeafe;
+  --accent-mint: #dbeafe;
+  --accent-yellow: #dbeafe;
+  --on-accent: #3a2e3f;
+
+  --star-gold: #8a5a00;
+  --star-gold-fill: #8a5a00;
+  --success: #15803d;
+  --danger: #b3261e;
+  --on-danger: #ffffff;
+  --active: #92400e;
+  --active-fill: #92400e;
+
+  --font-display: var(--next-font-body, ui-sans-serif, sans-serif);
+
+  /* No motifs in the plain skin — that's the point of "neutral for
+     screenshots/testing". */
+  --motif-primary: none;
+  --motif-secondary: none;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-skin="plain"]:not([data-mode="light"]) {
+    --bg: #121212;
+    --bg-elevated: #1e1e1e;
+    --bg-sunken: #0a0a0a;
+    --fg: #f0f0f0;
+    --fg-muted: #b0b0b0;
+    --border: #7a7a7a;
+    --focus-ring: #60a5fa;
+
+    --accent-pink: #1e3a5f;
+    --accent-blue: #1e3a5f;
+    --accent-mint: #1e3a5f;
+    --accent-yellow: #1e3a5f;
+    /* Plain dark's accent is a dark navy (unlike nursery's pastel
+       accents), so this needs light text, not dark. */
+    --on-accent: #f0f0f0;
+
+    --star-gold: #ffd84d;
+    --star-gold-fill: #ffd84d;
+    --success: #8fe3b3;
+    --danger: #ff9b8f;
+    --on-danger: #3a2e3f;
+    --active: #ffc24d;
+    --active-fill: #ffc24d;
+
+    --motif-primary: none;
+    --motif-secondary: none;
+
+    color-scheme: dark;
+  }
+}
+:root[data-skin="plain"][data-mode="dark"] {
+  --bg: #121212;
+  --bg-elevated: #1e1e1e;
+  --bg-sunken: #0a0a0a;
+  --fg: #f0f0f0;
+  --fg-muted: #b0b0b0;
+  --border: #7a7a7a;
+  --focus-ring: #60a5fa;
+
+  --accent-pink: #1e3a5f;
+  --accent-blue: #1e3a5f;
+  --accent-mint: #1e3a5f;
+  --accent-yellow: #1e3a5f;
+  --on-accent: #f0f0f0;
+
+  --star-gold: #ffd84d;
+  --star-gold-fill: #ffd84d;
+  --success: #8fe3b3;
+  --danger: #ff9b8f;
+  --on-danger: #3a2e3f;
+  --active: #ffc24d;
+  --active-fill: #ffc24d;
+
+  --motif-primary: none;
+  --motif-secondary: none;
+
+  color-scheme: dark;
+}
+
+/* prefers-reduced-motion is read directly by components/animations, not
+   tokenized here — see src/lib/theme/motion.ts in later phases. */

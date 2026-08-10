@@ -1,0 +1,294 @@
+// Playtime — data model
+//
+// Design notes (see PLAN.md for the full rationale):
+//
+// - `Match` is unified across playpens (3-4 participants, one reported
+//   finishing order) and Phase 2 1v1s (2 participants, a winner/loser),
+//   via `MatchParticipant`. This is what gives result reporting "one code
+//   path for both cases" per spec, instead of a separate Pen vs Match model.
+// - `MatchEvent` is append-only: it powers admin undo (replay minus the
+//   last event) AND doubles as a cheap polling cursor for the spectator
+//   and baby screens (`?since=<lastEventId>`).
+// - Timers (auto-confirm, forfeit clock) are represented as a stored
+//   `deadlineAt` timestamp on `Match` / `HelpRequest`, not a scheduled
+//   job — there is no worker process. Anything that reads a row past its
+//   deadline lazily finalizes it first, in the same transaction.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Games ──────────────────────────────────────────────────────────────
+
+enum Game {
+  MARIO_KART
+  SUPER_SMASH
+}
+
+// ── Admins ("Daddies") ────────────────────────────────────────────────
+
+model Admin {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String
+  telegramChatId String?  @unique
+  // Personal deep-link token so this admin can link Telegram via
+  // t.me/<bot>?start=admin_<adminLinkToken>. Rotatable from the admin panel
+  // if it leaks. Not part of the original spec — see PLAN.md "Gaps &
+  // gotchas #1": the spec defines baby onboarding but never admin onboarding.
+  adminLinkToken String   @unique @default(cuid())
+  createdAt      DateTime @default(now())
+
+  helpRequestsResolved HelpRequest[] @relation("HelpRequestResolvedBy")
+  matchEvents          MatchEvent[]  @relation("MatchEventAdmin")
+
+  @@map("admins")
+}
+
+// ── Playtimes (tournaments) ──────────────────────────────────────────
+
+enum PlaytimeStatus {
+  DRAFT // being configured, not yet visible for check-in
+  NURSERY_OPEN // check-in open, babies can join, bracket not started
+  IN_PROGRESS // bracket running
+  COMPLETE // Best Baby crowned
+}
+
+model Playtime {
+  id     String         @id @default(cuid())
+  slug   String         @unique
+  game   Game
+  name   String
+  status PlaytimeStatus @default(DRAFT)
+
+  // Concurrency + ETA configuration.
+  stationCount               Int  @default(1)
+  // Seeded default (ms) for ETA math; updated from a rolling average of
+  // real completed match durations for this playtime as the night goes on.
+  defaultMatchDurationSec    Int
+  rollingAvgMatchDurationSec Int?
+
+  // Optional tonight-only free-text note rendered above the game's house
+  // rules, clearly marked as a tonight-only change. Blank by default.
+  rulesOverrideNote String?
+
+  // QR/deep-link join token: t.me/<bot>?start=<joinToken>
+  joinToken String @unique @default(cuid())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  babies       Baby[]
+  matches      Match[]
+  helpRequests HelpRequest[]
+
+  @@map("playtimes")
+}
+
+// ── Babies (players) ─────────────────────────────────────────────────
+
+enum BabyStatus {
+  ACTIVE
+  NAPPED // eliminated — finalPlacement is set
+  CHAMPION // Best Baby
+}
+
+model Baby {
+  id         String   @id @default(cuid())
+  playtimeId String
+  playtime   Playtime @relation(fields: [playtimeId], references: [id], onDelete: Cascade)
+
+  // Null until the Telegram onboarding "what's your name" step completes.
+  // A Baby row can exist in this half-registered state briefly during
+  // /start <joinToken> handling.
+  displayName String?
+
+  // Null for admin-added babies with no Telegram (spec's manual fallback)
+  // — they simply receive no pings. Unique *per playtime*, not globally:
+  // this is a one-off bar-night app, and the same Telegram account will
+  // reasonably join a different playtime on a different night — a bare
+  // global unique here would make that a constraint violation.
+  telegramChatId String?
+
+  registrationOrder Int // used as the seed source before any match history exists
+  seed              Int? // seed 1-4 once Phase 2 seeding is computed
+
+  status         BabyStatus @default(ACTIVE)
+  finalPlacement Int? // set when napped or crowned — unique per playtime, nulls don't conflict
+
+  // 60s help-request cooldown, tracked durably (not in-memory) so it
+  // survives a dyno restart.
+  lastHelpRequestAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  participations MatchParticipant[]
+  helpRequests   HelpRequest[]
+  matchEvents    MatchEvent[]       @relation("MatchEventBaby")
+
+  @@unique([playtimeId, registrationOrder])
+  @@unique([playtimeId, finalPlacement])
+  @@unique([playtimeId, telegramChatId])
+  @@map("babies")
+}
+
+// ── Matches (playpens AND Phase 2 1v1s — one unified model) ─────────
+
+// Matches src/lib/bracket-engine's Phase2MatchId values exactly (QF1/QF2
+// etc, not a generic QF) so DB rows map 1:1 onto engine concepts with no
+// translation layer — Match.kind is passed straight into
+// getPlayablePhase2Matches()/computePhase2Placements() as a Phase2MatchId.
+enum MatchKind {
+  PLAYPEN
+  ROUND_ROBIN // N=3 start-only special case: single round-robin decides the whole tournament
+  QF1
+  QF2
+  LOSERS_R1
+  WINNERS_FINAL
+  LOSERS_FINAL
+  GRAND_FINAL
+}
+
+enum MatchStatus {
+  PENDING // not yet playable (waiting on a station or a prior match's result)
+  READY // assigned a station, players notified, not yet started
+  IN_PROGRESS // underway
+  REPORTED // one participant has submitted a result, confirmation window open
+  CONFIRMED // final — either explicitly confirmed, admin-overridden, or auto-confirmed
+}
+
+model Match {
+  id         String   @id @default(cuid())
+  playtimeId String
+  playtime   Playtime @relation(fields: [playtimeId], references: [id], onDelete: Cascade)
+
+  kind MatchKind
+
+  // Playpen matches: `round` counts playpen rounds (1, 2, 3, ...).
+  // Phase 2 matches: `round` is always the fixed Phase 2 stage; ordering
+  // between them is implied by `kind` per the fixed 6-match DAG, not by
+  // this field.
+  round    Int
+  penIndex Int? // which playpen within the round, for PLAYPEN kind only
+
+  status        MatchStatus @default(PENDING)
+  stationNumber Int?
+
+  // Lazily-evaluated timers. See file header — nothing "fires" these,
+  // any read past `deadlineAt` finalizes the row first.
+  deadlineAt DateTime?
+
+  reportedById String? // which Baby submitted the result
+  forfeited    Boolean @default(false)
+  // Set true by disputeMatch(); freezes the match — the lazy auto-confirm
+  // check in playtime-lifecycle.ts explicitly skips disputed matches.
+  // Cleared when an admin override resolves it.
+  disputed     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants MatchParticipant[]
+  events       MatchEvent[]
+  helpRequests HelpRequest[]
+
+  @@map("matches")
+}
+
+model MatchParticipant {
+  id      String @id @default(cuid())
+  matchId String
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  babyId  String
+  baby    Baby   @relation(fields: [babyId], references: [id], onDelete: Cascade)
+
+  seedInMatch Int? // e.g. QF1 = seed 1 vs seed 4
+
+  // 1..N once reported. For 1v1 matches this is simply 1 (winner) / 2
+  // (loser) — same field, same code path as a playpen's finishing order.
+  finishPosition Int?
+
+  @@unique([matchId, babyId])
+  @@map("match_participants")
+}
+
+// ── Append-only event log (undo + polling cursor) ────────────────────
+
+enum MatchEventType {
+  CREATED
+  READY
+  STARTED
+  REPORTED
+  CONFIRMED
+  AUTO_CONFIRMED
+  DISPUTED
+  FORFEITED
+  OVERRIDDEN
+  UNDONE
+}
+
+enum ActorType {
+  BABY
+  ADMIN
+  SYSTEM
+}
+
+model MatchEvent {
+  id      Int    @id @default(autoincrement())
+  matchId String
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  type    MatchEventType
+  payload Json // structured details (reported order, override reason, etc.)
+
+  actorType    ActorType
+  actorBabyId  String?
+  actorBaby    Baby?     @relation("MatchEventBaby", fields: [actorBabyId], references: [id])
+  actorAdminId String?
+  actorAdmin   Admin?    @relation("MatchEventAdmin", fields: [actorAdminId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([matchId, id])
+  @@map("match_events")
+}
+
+// ── Help requests ("Request help from Daddy") ────────────────────────
+
+enum HelpStatus {
+  OPEN
+  ACKNOWLEDGED // a Daddy tapped "On my way"
+  RESOLVED
+}
+
+model HelpRequest {
+  id         String   @id @default(cuid())
+  playtimeId String
+  playtime   Playtime @relation(fields: [playtimeId], references: [id], onDelete: Cascade)
+  babyId     String
+  baby       Baby     @relation(fields: [babyId], references: [id], onDelete: Cascade)
+  matchId    String?
+  match      Match?   @relation(fields: [matchId], references: [id], onDelete: SetNull)
+
+  reason String // controller trouble | can't find my opponent | score dispute | something else
+  note   String? // free text for "something else"
+
+  status HelpStatus @default(OPEN)
+
+  // Collapses repeat requests for the same match into one admin-facing
+  // thread instead of flooding the chat.
+  threadKey String
+
+  resolvedById String?
+  resolvedBy   Admin?  @relation("HelpRequestResolvedBy", fields: [resolvedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("help_requests")
+}

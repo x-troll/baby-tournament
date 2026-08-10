@@ -1,0 +1,109 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+@plugin "@tailwindcss/typography";
+
+/* Maps our CSS-variable tokens into Tailwind v4's theme so utilities like
+   bg-background, text-foreground, border-border, font-display work
+   app-wide, driven by the same token set tokens.css defines per
+   light/dark x nursery/plain — no forked components, no duplicated values. */
+@theme inline {
+  --color-background: var(--bg);
+  --color-background-elevated: var(--bg-elevated);
+  --color-background-sunken: var(--bg-sunken);
+  --color-foreground: var(--fg);
+  --color-foreground-muted: var(--fg-muted);
+  --color-border: var(--border);
+  --color-focus-ring: var(--focus-ring);
+
+  --color-accent-pink: var(--accent-pink);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-mint: var(--accent-mint);
+  --color-accent-yellow: var(--accent-yellow);
+
+  --color-star-gold: var(--star-gold);
+  --color-star-gold-fill: var(--star-gold-fill);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-active: var(--active);
+  --color-active-fill: var(--active-fill);
+  --color-on-accent: var(--on-accent);
+  --color-on-danger: var(--on-danger);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --radius-pill: var(--radius-pill);
+  --radius-card: var(--radius-card);
+  --shadow-soft: var(--shadow-soft);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+}
+
+/* Visible focus indicator everywhere — never outline: none (WCAG 2.4.11). */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@keyframes soft-wobble {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-1.5deg);
+  }
+  75% {
+    transform: rotate(1.5deg);
+  }
+}
+
+.animate-wobble {
+  /* A few gentle wobbles to catch the eye, then settle — not forever:
+     an infinitely-rocking card makes its own buttons annoying to tap. */
+  animation: soft-wobble 1.2s ease-in-out 3;
+}
+
+@keyframes star-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-star-pop {
+  animation: star-pop 0.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

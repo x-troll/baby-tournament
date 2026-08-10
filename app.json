@@ -1,0 +1,43 @@
+{
+  "name": "Playtime",
+  "description": "A self-serve tournament bracket manager for a one-night bar event.",
+  "repository": "https://github.com/x-troll/baby-tournament",
+  "keywords": ["nextjs", "prisma", "telegram-bot", "tournament"],
+  "env": {
+    "AUTH_SECRET": {
+      "description": "Signs admin and baby session cookies.",
+      "generator": "secret"
+    },
+    "ADMIN_EMAIL": {
+      "description": "Seeds the first Daddy account on the very first deploy only — the seed script is idempotent and won't touch it again."
+    },
+    "ADMIN_PASSWORD": {
+      "description": "Seeds the first Daddy account on the very first deploy only. Change it from the admin panel afterwards."
+    },
+    "NEXT_PUBLIC_APP_URL": {
+      "description": "This app's own public URL, no trailing slash (e.g. https://your-app.herokuapp.com) — used to build Telegram deep links and register the webhook. Not known until after the first deploy; set it once you have the real Heroku URL, then redeploy."
+    },
+    "TELEGRAM_BOT_TOKEN": {
+      "description": "From @BotFather. Optional — without it the bot no-ops (logs instead of sending).",
+      "required": false
+    },
+    "TELEGRAM_BOT_USERNAME": {
+      "description": "The bot's @username, without the @. Optional, same as above.",
+      "required": false
+    },
+    "TELEGRAM_WEBHOOK_SECRET": {
+      "description": "Verifies incoming webhook requests are really from Telegram.",
+      "generator": "secret"
+    },
+    "THEME": {
+      "description": "nursery (default, ABDL-coded) or plain (neutral skin for screenshots/testing).",
+      "value": "nursery",
+      "required": false
+    }
+  },
+  "addons": ["heroku-postgresql:essential-0"],
+  "buildpacks": [{ "url": "heroku/nodejs" }],
+  "formation": {
+    "web": { "quantity": 1, "size": "eco" }
+  }
+}

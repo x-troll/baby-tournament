@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <path
+    d="M62 18a34 34 0 1 0 20 62 28 28 0 0 1-20-62z"
+    fill="#C9B8E8"
+    opacity="0.75"
+  />
+  <text x="78" y="30" font-family="ui-rounded, sans-serif" font-size="16" font-weight="700" fill="#C9B8E8" opacity="0.6">z</text>
+  <text x="88" y="18" font-family="ui-rounded, sans-serif" font-size="11" font-weight="700" fill="#C9B8E8" opacity="0.5">z</text>
+</svg>
