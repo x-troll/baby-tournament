@@ -38,7 +38,7 @@ createdb playtime                    # or point DATABASE_URL at an existing db
 cp .env.example .env                 # then edit .env — see below
 npx prisma migrate deploy            # applies all committed migrations
 
-npm run db:seed                      # creates the first Daddy from ADMIN_EMAIL/ADMIN_PASSWORD
+npm run db:seed                      # creates the first Daddy from ADMIN_USERNAME/ADMIN_PASSWORD
 npm run dev                          # http://localhost:3000
 ```
 
@@ -49,7 +49,7 @@ Copy `.env.example` and fill in at minimum:
 - `DATABASE_URL` — your local Postgres connection string
 - `AUTH_SECRET` — any random string (`openssl rand -base64 32`); signs
   both admin and baby session cookies
-- `ADMIN_EMAIL` / `ADMIN_PASSWORD` — used once by `npm run db:seed` to
+- `ADMIN_USERNAME` / `ADMIN_PASSWORD` — used once by `npm run db:seed` to
   create the first Daddy account (change the password from the admin
   panel afterwards — the seed script is idempotent and won't touch it again)
 - `NEXT_PUBLIC_APP_URL` — `http://localhost:3000` for local dev
@@ -62,7 +62,7 @@ from a real bot, which is fine for testing everything else.
 
 ## Using it locally
 
-1. Sign in at **`/admin/login`** with the seeded `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
+1. Sign in at **`/admin/login`** with the seeded `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
 2. Create a playtime, add a few babies manually (no Telegram needed —
    that's the spec's own fallback for babies without it).
 3. Open the nursery, then start the playtime once you have at least 3 babies.
