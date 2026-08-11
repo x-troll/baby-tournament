@@ -19,6 +19,7 @@ import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/lib/auth";
 import { startPlaytime, confirmMatchResult } from "../src/lib/playtime-lifecycle";
 import { Game } from "../src/generated/prisma/enums";
+import { shortId } from "../src/lib/short-id";
 
 function parseDelayMs(): number {
   const arg = process.argv.find((a) => a.startsWith("--delay="));
@@ -53,9 +54,10 @@ async function ensureRehearsalAdmin() {
   if (existing) return existing;
   return prisma.admin.create({
     data: {
-      email: "rehearsal-daddy@example.com",
+      username: "rehearsal-daddy",
       passwordHash: await hashPassword("rehearsal-only"),
       name: "Rehearsal Daddy",
+      adminLinkToken: shortId(),
     },
   });
 }
@@ -75,13 +77,13 @@ async function main() {
     data: {
       name: REHEARSAL_NAME,
       game,
-      slug: `rehearsal-${Date.now()}`,
+      joinToken: shortId(),
       stationCount: 2, // exercises the multi-station scheduler, not just the N=1 default
       defaultMatchDurationSec: game === Game.MARIO_KART ? 480 : 360,
       status: "NURSERY_OPEN",
     },
   });
-  console.log(`Created "${REHEARSAL_NAME}" (${game}) — /live/${playtime.slug}`);
+  console.log(`Created "${REHEARSAL_NAME}" (${game}) — /live/${playtime.slugNumber}`);
 
   for (let i = 0; i < BABY_NAMES.length; i++) {
     await prisma.baby.create({
@@ -91,7 +93,9 @@ async function main() {
   console.log(`Registered ${BABY_NAMES.length} babies: ${BABY_NAMES.join(", ")}`);
 
   if (delayMs > 0) {
-    console.log(`\n⏸  Pacing this out at ${delayMs}ms/match — open /live/${playtime.slug} now if you want to watch.`);
+    console.log(
+      `\n⏸  Pacing this out at ${delayMs}ms/match — open /live/${playtime.slugNumber} now if you want to watch.`,
+    );
     await sleep(delayMs);
   }
 
@@ -145,7 +149,9 @@ async function main() {
   for (const b of finalBabies) {
     console.log(`  ${b.finalPlacement ?? "?"}. ${b.displayName}${b.status === "CHAMPION" ? " 🌟" : ""}`);
   }
-  console.log(`\nLook at it: /admin/playtimes/${playtime.id} (admin panel) or /live/${playtime.slug} (spectator).`);
+  console.log(
+    `\nLook at it: /admin/playtimes/${playtime.id} (admin panel) or /live/${playtime.slugNumber} (spectator).`,
+  );
 }
 
 main()

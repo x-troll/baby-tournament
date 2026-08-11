@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireBaby } from "@/lib/baby-auth";
+import { parseSlugNumber } from "@/lib/slug-number";
 import { computeBabyStatus } from "@/lib/baby-status";
 import { getTerminology } from "@/lib/terminology";
 import { loadRules } from "@/lib/rules-content";
@@ -13,7 +14,9 @@ import type { ReportableParticipant } from "@/components/baby/ResultReportForm";
 export default async function PlayPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const baby = await requireBaby(slug);
-  const playtime = await prisma.playtime.findUniqueOrThrow({ where: { slug } });
+  // requireBaby already redirected away if `slug` weren't a valid, existing
+  // playtime — safe to assert non-null here.
+  const playtime = await prisma.playtime.findUniqueOrThrow({ where: { slugNumber: parseSlugNumber(slug)! } });
   const t = getTerminology();
 
   const state = await computeBabyStatus(baby.id);

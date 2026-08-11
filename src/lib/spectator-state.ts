@@ -8,6 +8,7 @@ import { ensureMatchNotExpired, sortMatchesByPriority } from "@/lib/playtime-lif
 import { buildPhase2Bracket, type Phase2BracketData } from "@/lib/bracket-view";
 import { buildPlaypenSection, type PlaypenSection } from "@/lib/playpen-view";
 import { getTerminology } from "@/lib/terminology";
+import { parseSlugNumber } from "@/lib/slug-number";
 import { MatchKind } from "@/generated/prisma/enums";
 import type { Game, MatchStatus, PlaytimeStatus } from "@/generated/prisma/enums";
 
@@ -64,7 +65,9 @@ const PHASE2_LABELS: Partial<Record<MatchKind, string>> = {
 };
 
 export async function computeSpectatorState(slug: string): Promise<SpectatorState | null> {
-  const playtime = await prisma.playtime.findUnique({ where: { slug } });
+  const slugNumber = parseSlugNumber(slug);
+  if (slugNumber === null) return null;
+  const playtime = await prisma.playtime.findUnique({ where: { slugNumber } });
   if (!playtime) return null;
 
   // Lazily settle any expired-but-unconfirmed matches before rendering —

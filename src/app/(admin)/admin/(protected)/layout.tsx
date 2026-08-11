@@ -20,7 +20,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
           <Link href="/admin/profile">My profile</Link>
         </nav>
         <div className="flex items-center gap-3 text-sm">
-          <span className="text-foreground-muted">{admin.name} · {admin.email}</span>
+          <span className="text-foreground-muted">{admin.name}</span>
           <form action={logoutAction}>
             <Button type="submit" variant="ghost" size="sm">
               Sign out

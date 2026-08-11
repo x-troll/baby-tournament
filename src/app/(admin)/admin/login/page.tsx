@@ -20,10 +20,10 @@ export default function AdminLoginPage() {
         <CardContent>
           <form action={formAction} className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
-              <label htmlFor="email" className="text-sm font-semibold">
-                Email
+              <label htmlFor="username" className="text-sm font-semibold">
+                Username
               </label>
-              <Input id="email" name="email" type="email" autoComplete="username" required />
+              <Input id="username" name="username" type="text" autoComplete="username" required />
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="password" className="text-sm font-semibold">

@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { parseSlugNumber } from "@/lib/slug-number";
 import type { Baby } from "@/generated/prisma/client";
 
 const COOKIE_NAME = "playtime_baby_session";
@@ -90,7 +91,8 @@ export async function requireBaby(playtimeSlug: string): Promise<Baby> {
   if (!baby) {
     redirect(`/play/${playtimeSlug}/not-signed-in`);
   }
-  const playtime = await prisma.playtime.findUnique({ where: { slug: playtimeSlug } });
+  const slugNumber = parseSlugNumber(playtimeSlug);
+  const playtime = slugNumber === null ? null : await prisma.playtime.findUnique({ where: { slugNumber } });
   if (!playtime || baby.playtimeId !== playtime.id) {
     redirect(`/play/${playtimeSlug}/not-signed-in`);
   }

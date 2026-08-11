@@ -17,6 +17,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/prisma";
 import { startPlaytime, confirmMatchResult } from "../src/lib/playtime-lifecycle";
 import { Game } from "../src/generated/prisma/enums";
+import { shortId } from "../src/lib/short-id";
 
 function parseDelayMs(): number {
   const arg = process.argv.find((a) => a.startsWith("--delay="));
@@ -88,12 +89,12 @@ async function main() {
   // ── Step 1: link yourself as Daddy ──
   let admin = await prisma.admin.findFirst();
   if (!admin) {
-    const email = requireEnv("ADMIN_EMAIL");
+    const username = requireEnv("ADMIN_USERNAME");
     const password = requireEnv("ADMIN_PASSWORD");
     admin = await prisma.admin.create({
-      data: { email, passwordHash: await bcrypt.hash(password, 12), name: "Daddy" },
+      data: { username, passwordHash: await bcrypt.hash(password, 12), name: "Daddy", adminLinkToken: shortId() },
     });
-    console.log(`Created admin ${email} (no admin existed yet).`);
+    console.log(`Created admin ${username} (no admin existed yet).`);
   }
 
   if (admin.telegramChatId) {
@@ -119,8 +120,7 @@ async function main() {
     data: {
       name: REHEARSAL_NAME,
       game,
-      slug: `rehearsal-telegram-${Date.now()}`,
-      joinToken: `rehearsal-telegram-join-${Date.now()}`,
+      joinToken: shortId(),
       stationCount: 2,
       defaultMatchDurationSec: game === Game.MARIO_KART ? 480 : 360,
       status: "NURSERY_OPEN",
@@ -156,7 +156,7 @@ async function main() {
 
   // ── Step 4: start, then play everything except your own matches ──
   if (delayMs > 0) {
-    console.log(`\n⏸  Pacing fake babies at ${delayMs}ms/match — open /live/${playtime.slug} now if you want to watch.`);
+    console.log(`\n⏸  Pacing fake babies at ${delayMs}ms/match — open /live/${playtime.slugNumber} now if you want to watch.`);
     await sleep(delayMs);
   }
   await startPlaytime(playtime.id);
@@ -238,7 +238,7 @@ async function main() {
     const marker = b.id === realBabyId ? "  ← you" : "";
     console.log(`  ${b.finalPlacement ?? "?"}. ${b.displayName}${b.status === "CHAMPION" ? " 🌟" : ""}${marker}`);
   }
-  console.log(`\n/admin/playtimes/${playtime.id} · /live/${playtime.slug}`);
+  console.log(`\n/admin/playtimes/${playtime.id} · /live/${playtime.slugNumber}`);
 }
 
 main()

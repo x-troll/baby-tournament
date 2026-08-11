@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { parseSlugNumber } from "@/lib/slug-number";
 import { computeSpectatorState } from "@/lib/spectator-state";
 import { loadRules } from "@/lib/rules-content";
 import { SpectatorPoller } from "@/components/spectator/SpectatorPoller";
@@ -15,8 +16,10 @@ const FORCE_DARK_SCRIPT = `document.documentElement.setAttribute("data-mode", "d
 
 export default async function SpectatorPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const slugNumber = parseSlugNumber(slug);
+  if (slugNumber === null) notFound();
 
-  const playtime = await prisma.playtime.findUnique({ where: { slug } });
+  const playtime = await prisma.playtime.findUnique({ where: { slugNumber } });
   if (!playtime) notFound();
 
   const [state, rules] = await Promise.all([computeSpectatorState(slug), loadRules(playtime.game)]);

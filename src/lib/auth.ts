@@ -37,11 +37,11 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 interface AdminSessionPayload {
   adminId: string;
-  email: string;
+  username: string;
 }
 
 export async function createAdminSession(payload: AdminSessionPayload): Promise<void> {
-  const token = await new SignJWT({ adminId: payload.adminId, email: payload.email })
+  const token = await new SignJWT({ adminId: payload.adminId, username: payload.username })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
@@ -69,8 +69,8 @@ async function getAdminSessionPayload(): Promise<AdminSessionPayload | null> {
 
   try {
     const { payload } = await jwtVerify(token, getSecretKey());
-    if (typeof payload.adminId !== "string" || typeof payload.email !== "string") return null;
-    return { adminId: payload.adminId, email: payload.email };
+    if (typeof payload.adminId !== "string" || typeof payload.username !== "string") return null;
+    return { adminId: payload.adminId, username: payload.username };
   } catch {
     return null; // expired, tampered, or signed with an old secret
   }

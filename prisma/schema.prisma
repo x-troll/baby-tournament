@@ -34,7 +34,10 @@ enum Game {
 
 model Admin {
   id             String   @id @default(cuid())
-  email          String   @unique
+  // Sole login credential — a single organizer identity per deployment,
+  // seeded from ADMIN_USERNAME (see scripts/ensure-admin-seed.ts). Not an
+  // email; nothing in this app ever emails an admin.
+  username       String   @unique
   passwordHash   String
   name           String
   telegramChatId String?  @unique
@@ -42,7 +45,9 @@ model Admin {
   // t.me/<bot>?start=admin_<adminLinkToken>. Rotatable from the admin panel
   // if it leaks. Not part of the original spec — see PLAN.md "Gaps &
   // gotchas #1": the spec defines baby onboarding but never admin onboarding.
-  adminLinkToken String   @unique @default(cuid())
+  // Generated in application code (src/lib/short-id.ts), not a Prisma
+  // schema default — see Playtime.joinToken below for why.
+  adminLinkToken String   @unique
   createdAt      DateTime @default(now())
 
   helpRequestsResolved HelpRequest[] @relation("HelpRequestResolvedBy")
@@ -61,11 +66,18 @@ enum PlaytimeStatus {
 }
 
 model Playtime {
-  id     String         @id @default(cuid())
-  slug   String         @unique
-  game   Game
-  name   String
-  status PlaytimeStatus @default(DRAFT)
+  id String @id @default(cuid())
+  // Short, sequential, and what every baby/spectator-facing URL actually
+  // uses (/live/<slugNumber>, /play/<slugNumber>) — Postgres autoincrement
+  // is race-safe under concurrent creates, unlike a hand-rolled "count + 1".
+  // Deliberately guessable across playtimes (e.g. /live/2 after /live/1) —
+  // fine, since /live is public/unauthenticated by design and shows
+  // nothing sensitive; not worth trading away brevity for a private
+  // one-night event.
+  slugNumber Int            @unique @default(autoincrement())
+  game       Game
+  name       String
+  status     PlaytimeStatus @default(DRAFT)
 
   // Concurrency + ETA configuration.
   stationCount               Int  @default(1)
@@ -78,8 +90,12 @@ model Playtime {
   // rules, clearly marked as a tonight-only change. Blank by default.
   rulesOverrideNote String?
 
-  // QR/deep-link join token: t.me/<bot>?start=<joinToken>
-  joinToken String @unique @default(cuid())
+  // QR/deep-link join token: t.me/<bot>?start=<joinToken>. Generated in
+  // application code (src/lib/short-id.ts) rather than a Prisma schema
+  // default — Prisma's built-in generators (cuid()/uuid()) can't be swapped
+  // for a custom shorter alphabet, and a 25-char cuid makes for an
+  // unnecessarily long link to type/scan for what's just a join code.
+  joinToken String @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

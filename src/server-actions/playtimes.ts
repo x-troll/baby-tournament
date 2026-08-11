@@ -1,26 +1,17 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { startPlaytime as startPlaytimeLifecycle } from "@/lib/playtime-lifecycle";
+import { shortId } from "@/lib/short-id";
 import { Game } from "@/generated/prisma/enums";
 
 const DEFAULT_MATCH_DURATION_SEC: Record<Game, number> = {
   [Game.MARIO_KART]: 8 * 60,
   [Game.SUPER_SMASH]: 6 * 60,
 };
-
-function slugify(name: string): string {
-  const base = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-  const suffix = randomUUID().slice(0, 6);
-  return `${base || "playtime"}-${suffix}`;
-}
 
 export async function createPlaytimeAction(formData: FormData): Promise<void> {
   await requireAdmin();
@@ -41,7 +32,7 @@ export async function createPlaytimeAction(formData: FormData): Promise<void> {
     data: {
       name,
       game,
-      slug: slugify(name),
+      joinToken: shortId(),
       stationCount,
       defaultMatchDurationSec: DEFAULT_MATCH_DURATION_SEC[game],
       rulesOverrideNote: rulesOverrideNote || null,

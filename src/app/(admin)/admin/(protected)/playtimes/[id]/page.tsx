@@ -233,7 +233,7 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
           </p>
         </div>
         <Link
-          href={`/live/${playtime.slug}`}
+          href={`/live/${playtime.slugNumber}`}
           target="_blank"
           rel="noopener noreferrer"
           className={buttonVariants({ variant: "secondary", className: "shrink-0" })}

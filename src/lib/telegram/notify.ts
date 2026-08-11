@@ -27,7 +27,7 @@ export async function notifyBabyUpNext(babyId: string): Promise<void> {
   const summary = await rulesSummaryFor(baby.playtimeId);
   await sendMessage(
     baby.telegramChatId,
-    copy.upNext(baby.displayName ?? "baby", appUrl(`/play/${baby.playtime.slug}`), summary),
+    copy.upNext(baby.displayName ?? "baby", appUrl(`/play/${baby.playtime.slugNumber}`), summary),
   );
 }
 

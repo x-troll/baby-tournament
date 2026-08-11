@@ -19,7 +19,7 @@ export default async function AdminProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>{admin.name}</CardTitle>
-          <CardDescription>{admin.email}</CardDescription>
+          <CardDescription>{admin.username}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-sm">Telegram: {admin.telegramChatId ? "linked ✓" : "not linked yet"}</p>

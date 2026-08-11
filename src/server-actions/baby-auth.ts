@@ -10,7 +10,7 @@ export async function previewAsBabyAction(babyId: string): Promise<void> {
   await requireAdmin();
   const baby = await prisma.baby.findUniqueOrThrow({ where: { id: babyId }, include: { playtime: true } });
   await createBabySession(baby.id);
-  redirect(`/play/${baby.playtime.slug}`);
+  redirect(`/play/${baby.playtime.slugNumber}`);
 }
 
 export async function babyLogoutAction(slug: string): Promise<void> {
