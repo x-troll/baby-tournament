@@ -2,16 +2,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { requireBaby } from "@/lib/baby-auth";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
-import { ORGANIZER_ROLE_OPTIONS, SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
+import { SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
 import { getTerminology } from "@/lib/terminology";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { updateBabyProfileAction } from "@/server-actions/baby-profile";
 
 // Web counterpart to the Telegram /profile command (src/lib/telegram/
-// commands.ts) — same three fields, same optional/nullable semantics.
-// Nothing before this page lets a baby set any of this from the web, so
-// it's a brand new route, linked from the main play screen.
+// commands.ts) — same fields (avatar, self role, explicit-messages
+// toggle), same optional/nullable semantics. Nothing before this page
+// lets a baby set any of this from the web, so it's a brand new route,
+// linked from the main play screen.
 export default async function BabySettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const baby = await requireBaby(slug);
@@ -53,30 +54,6 @@ export default async function BabySettingsPage({ params }: { params: Promise<{ s
 
         <Card>
           <CardHeader>
-            <CardTitle>Organizer role</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-1">
-            <label htmlFor="organizerRoleLabel" className="text-sm text-foreground-muted">
-              What should we call the grown-up running tonight?
-            </label>
-            <select
-              id="organizerRoleLabel"
-              name="organizerRoleLabel"
-              defaultValue={baby.organizerRoleLabel ?? ""}
-              className="min-h-11 rounded-card border border-border bg-background-elevated px-3 py-2 text-sm text-foreground"
-            >
-              <option value="">Default ({t.admin})</option>
-              {ORGANIZER_ROLE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle>Your role</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-1">
@@ -96,6 +73,26 @@ export default async function BabySettingsPage({ params }: { params: Promise<{ s
                 </option>
               ))}
             </select>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>🌶️ Allow explicit messages</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="allowExplicitMessages"
+                defaultChecked={baby.allowExplicitMessages}
+                className="h-5 w-5"
+              />
+              Yes, allow it
+            </label>
+            <p className="text-xs text-foreground-muted">
+              Messages and texts you receive will be slightly more explicit and teasing, instead of playful.
+            </p>
           </CardContent>
         </Card>
 

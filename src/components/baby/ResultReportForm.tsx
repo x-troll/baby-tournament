@@ -24,6 +24,14 @@ import { babyReportResultAction } from "@/server-actions/baby-matches";
 export interface ReportableParticipant {
   babyId: string;
   displayName: string | null;
+  /** Pre-resolved server-side (src/lib/player-copy.ts, from the viewing baby's own prefs) — "🌟 {name} got the gold star" and its 3 other variants. */
+  goldStarLabel: string;
+}
+
+/** The two flavor strings this form needs, resolved server-side (functions can't cross the server/client boundary). */
+export interface ResultReportFormCopy {
+  goldStarPrompt: string;
+  dragInstruction: string;
 }
 
 /**
@@ -40,25 +48,29 @@ export function ResultReportForm({
   slug,
   matchId,
   participants,
+  copy,
 }: {
   slug: string;
   matchId: string;
   participants: ReportableParticipant[];
+  copy: ResultReportFormCopy;
 }) {
   if (participants.length === 2) {
-    return <HeadToHeadButtons slug={slug} matchId={matchId} participants={participants} />;
+    return <HeadToHeadButtons slug={slug} matchId={matchId} participants={participants} copy={copy} />;
   }
-  return <PenReorderForm slug={slug} matchId={matchId} participants={participants} />;
+  return <PenReorderForm slug={slug} matchId={matchId} participants={participants} copy={copy} />;
 }
 
 function HeadToHeadButtons({
   slug,
   matchId,
   participants,
+  copy,
 }: {
   slug: string;
   matchId: string;
   participants: ReportableParticipant[];
+  copy: ResultReportFormCopy;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -71,10 +83,10 @@ function HeadToHeadButtons({
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm text-foreground-muted">Who got the gold star?</p>
+      <p className="text-sm text-foreground-muted">{copy.goldStarPrompt}</p>
       {participants.map((p) => (
         <Button key={p.babyId} onClick={() => report(p.babyId)} disabled={isPending} className="min-h-12">
-          🌟 {p.displayName ?? "Unnamed baby"} got the gold star
+          {p.goldStarLabel}
         </Button>
       ))}
     </div>
@@ -85,10 +97,12 @@ function PenReorderForm({
   slug,
   matchId,
   participants,
+  copy,
 }: {
   slug: string;
   matchId: string;
   participants: ReportableParticipant[];
+  copy: ResultReportFormCopy;
 }) {
   const [order, setOrder] = useState(participants.map((p) => p.babyId));
   const [isPending, startTransition] = useTransition();
@@ -116,7 +130,7 @@ function PenReorderForm({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-foreground-muted">Drag to put everyone in finishing order — 1st at the top.</p>
+      <p className="text-sm text-foreground-muted">{copy.dragInstruction}</p>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={order} strategy={verticalListSortingStrategy}>
           <ol className="flex flex-col gap-2">

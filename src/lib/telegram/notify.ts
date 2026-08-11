@@ -7,7 +7,7 @@
 // source of truth).
 import { prisma } from "@/lib/prisma";
 import { loadRules } from "@/lib/rules-content";
-import { resolveOrganizerTerm } from "@/lib/baby-terminology";
+import * as playerCopy from "@/lib/player-copy";
 import { sendMessage, type InlineKeyboard } from "./client";
 import * as copy from "./copy";
 
@@ -33,9 +33,9 @@ export async function notifyBabyUpNext(babyId: string, matchId: string): Promise
   const summary = await rulesSummaryFor(baby.playtimeId);
   const keyboard: InlineKeyboard = [
     [{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/play/${baby.playtime.slugNumber}`) }],
-    [{ text: copy.readyCheckButtonLabel(resolveOrganizerTerm(baby)), callback_data: `start:${matchId}` }],
+    [{ text: playerCopy.readyCheckButtonLabel(baby), callback_data: `start:${matchId}` }],
   ];
-  await sendMessage(baby.telegramChatId, copy.upNext(baby.displayName ?? "baby", summary), {
+  await sendMessage(baby.telegramChatId, playerCopy.upNext(baby, baby.displayName ?? "baby", summary), {
     replyMarkup: keyboard,
   });
 }
@@ -55,7 +55,7 @@ export async function notifyBabyUpSoon(babyId: string): Promise<void> {
   if (!baby?.telegramChatId) return;
   const etaMinutes = Math.max(1, Math.round(baby.playtime.defaultMatchDurationSec / 60));
   const keyboard: InlineKeyboard = [[{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/play/${baby.playtime.slugNumber}`) }]];
-  await sendMessage(baby.telegramChatId, copy.upSoon(baby.displayName ?? "baby", etaMinutes), {
+  await sendMessage(baby.telegramChatId, playerCopy.upSoon(baby, baby.displayName ?? "baby", etaMinutes), {
     replyMarkup: keyboard,
   });
 }
@@ -81,7 +81,7 @@ export async function notifyMatchReported(matchId: string, reporterBabyId: strin
     if (!p.baby.telegramChatId) continue;
     await sendMessage(
       p.baby.telegramChatId,
-      copy.needsYourConfirmation(reporter?.baby.displayName ?? "Someone", summary),
+      playerCopy.needsYourConfirmation(p.baby, reporter?.baby.displayName ?? "Someone", summary),
       { replyMarkup: keyboard },
     );
   }
@@ -90,25 +90,25 @@ export async function notifyMatchReported(matchId: string, reporterBabyId: strin
 export async function notifyBabyResultConfirmed(babyId: string): Promise<void> {
   const baby = await prisma.baby.findUnique({ where: { id: babyId } });
   if (!baby?.telegramChatId) return;
-  await sendMessage(baby.telegramChatId, copy.resultConfirmed());
+  await sendMessage(baby.telegramChatId, playerCopy.resultConfirmed(baby));
 }
 
 export async function notifyBabyNapped(babyId: string, placement: number): Promise<void> {
   const baby = await prisma.baby.findUnique({ where: { id: babyId } });
   if (!baby?.telegramChatId) return;
-  await sendMessage(baby.telegramChatId, copy.napped(placement));
+  await sendMessage(baby.telegramChatId, playerCopy.napped(baby, placement));
 }
 
 export async function notifyBabyCrowned(babyId: string): Promise<void> {
   const baby = await prisma.baby.findUnique({ where: { id: babyId } });
   if (!baby?.telegramChatId) return;
-  await sendMessage(baby.telegramChatId, copy.crowned());
+  await sendMessage(baby.telegramChatId, playerCopy.crowned(baby));
 }
 
 export async function notifyBabyDaddyIsComing(babyId: string): Promise<void> {
   const baby = await prisma.baby.findUnique({ where: { id: babyId } });
   if (!baby?.telegramChatId) return;
-  await sendMessage(baby.telegramChatId, copy.daddyIsComing(resolveOrganizerTerm(baby)));
+  await sendMessage(baby.telegramChatId, playerCopy.organizerIsComing(baby));
 }
 
 async function matchLabel(matchId: string | null): Promise<string> {
@@ -131,13 +131,9 @@ export async function notifyAdminsHelpRequest(helpRequestId: string): Promise<vo
   const label = await matchLabel(req.matchId);
   const deepLink = appUrl(`/admin/playtimes/${req.baby.playtimeId}`);
   const isDispute = req.reason === "score dispute";
-  // Only worth telling the admin what they're called when the baby
-  // actually customized it — otherwise it's just repeating back
-  // terminology.ts's own default, which the admin already knows.
-  const organizerTerm = req.baby.organizerRoleLabel;
   const text = isDispute
-    ? copy.adminDisputeAlert(req.baby.displayName ?? "A baby", label, organizerTerm)
-    : copy.adminHelpRequestAlert(req.baby.displayName ?? "A baby", label, req.reason, req.note, organizerTerm);
+    ? copy.adminDisputeAlert(req.baby.displayName ?? "A baby", label)
+    : copy.adminHelpRequestAlert(req.baby.displayName ?? "A baby", label, req.reason, req.note);
 
   const keyboard: InlineKeyboard = [
     [

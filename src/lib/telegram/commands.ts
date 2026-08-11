@@ -8,7 +8,8 @@ import { loadRules } from "@/lib/rules-content";
 import { computeBabyStatus } from "@/lib/baby-status";
 import { confirmReportedMatch, disputeMatch, markMatchInProgress } from "@/lib/playtime-lifecycle";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
-import { ORGANIZER_ROLE_OPTIONS, SELF_ROLE_OPTIONS, resolveOrganizerTerm } from "@/lib/baby-terminology";
+import { SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
+import * as playerCopy from "@/lib/player-copy";
 import { answerCallbackQuery, sendMessage, type InlineKeyboard } from "./client";
 import * as copy from "./copy";
 
@@ -140,30 +141,7 @@ async function handleStatusCommand(chatId: string): Promise<void> {
     return;
   }
   const state = await computeBabyStatus(baby.id);
-  await sendMessage(chatId, copy.statusReply(baby.displayName, describeState(state, resolveOrganizerTerm(baby))));
-}
-
-function describeState(state: Awaited<ReturnType<typeof computeBabyStatus>>, organizerTerm: string): string {
-  switch (state.kind) {
-    case "DADDY_COMING":
-      return `${organizerTerm} is on the way to help you.`;
-    case "CHAMPION":
-      return "You're the Best Baby! 🌟";
-    case "NAPPED":
-      return `Naptime — you finished ${state.placement ?? "?"}.`;
-    case "NOT_STARTED":
-      return "The playtime hasn't started yet.";
-    case "QUIET_TIME":
-      return `Quiet time — your turn in about ${state.etaMinutes ?? "a few"} minutes.`;
-    case "UP_NEXT":
-      return "You're up next! Head over to the console.";
-    case "PLAYING":
-      return "You're playing now — report your result when you're done.";
-    case "WAITING_ON_PLAYMATES":
-      return "Waiting on your playmates to confirm your result.";
-    case "AWAITING_YOUR_CONFIRMATION":
-      return "Someone reported a result — confirm or dispute it on your screen.";
-  }
+  await sendMessage(chatId, copy.statusReply(baby.displayName, playerCopy.describeState(baby, state)));
 }
 
 async function handleRulesCommand(chatId: string): Promise<void> {
@@ -182,10 +160,10 @@ async function handleRulesCommand(chatId: string): Promise<void> {
 
 // Entry point for both first-time setup ("during registering") and later
 // edits ("afterwards") — the same command either way, per the spec. Kicks
-// off a short chained wizard: avatar -> organizer term -> self term, each
-// step's callback sending the next step's keyboard (see handleCallbackQuery
-// below), all optional in the sense that a baby who never runs /profile at
-// all just keeps the deployment defaults everywhere.
+// off a short chained wizard: avatar -> self term -> explicit-messages
+// toggle, each step's callback sending the next step's keyboard (see
+// handleCallbackQuery below), all optional in the sense that a baby who
+// never runs /profile at all just keeps the deployment defaults everywhere.
 async function handleProfileCommand(chatId: string): Promise<void> {
   const baby = await prisma.baby.findFirst({ where: { telegramChatId: chatId }, orderBy: { createdAt: "desc" } });
   if (!baby?.displayName) {
@@ -231,7 +209,7 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
         await answerCallbackQuery(query.id, "Confirmed ✅");
       } else {
         await disputeMatch(id, baby.id);
-        await answerCallbackQuery(query.id, `Dispute sent — a ${resolveOrganizerTerm(baby)} will sort it out.`);
+        await answerCallbackQuery(query.id, playerCopy.disputeSentReply(baby));
       }
     } catch (err) {
       await answerCallbackQuery(query.id, err instanceof Error ? err.message : "Something went wrong.");
@@ -250,7 +228,7 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
       // only, no-ops if already IN_PROGRESS) — safe however many times
       // this gets tapped, from here or the web "We're playing" button.
       await markMatchInProgress(id, baby.id);
-      await answerCallbackQuery(query.id, copy.readyCheckReply(baby.displayName ?? "baby"));
+      await answerCallbackQuery(query.id, playerCopy.readyCheckReply(baby, baby.displayName ?? "baby"));
     } catch (err) {
       await answerCallbackQuery(query.id, err instanceof Error ? err.message : "Something went wrong.");
     }
@@ -267,22 +245,6 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
     await prisma.baby.update({ where: { id: baby.id }, data: { avatarId: avatar?.id ?? null } });
     await answerCallbackQuery(query.id);
     await sendMessage(chatId!, copy.avatarSetPrompt(avatar?.label ?? id));
-    await sendMessage(chatId!, copy.pickOrganizerRolePrompt(), {
-      replyMarkup: chunkedKeyboard(ORGANIZER_ROLE_OPTIONS, "orgrole"),
-    });
-    return;
-  }
-
-  if (action === "orgrole") {
-    const baby = chatId ? await prisma.baby.findFirst({ where: { telegramChatId: chatId }, orderBy: { createdAt: "desc" } }) : null;
-    if (!baby) {
-      await answerCallbackQuery(query.id, "Couldn't find your registration.");
-      return;
-    }
-    const label = ORGANIZER_ROLE_OPTIONS[Number(id)];
-    await prisma.baby.update({ where: { id: baby.id }, data: { organizerRoleLabel: label ?? null } });
-    await answerCallbackQuery(query.id);
-    if (label) await sendMessage(chatId!, copy.organizerRoleSetPrompt(label));
     await sendMessage(chatId!, copy.pickSelfRolePrompt(), { replyMarkup: chunkedKeyboard(SELF_ROLE_OPTIONS, "selfrole") });
     return;
   }
@@ -296,6 +258,28 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
     const label = SELF_ROLE_OPTIONS[Number(id)];
     await prisma.baby.update({ where: { id: baby.id }, data: { selfRoleLabel: label ?? null } });
     await answerCallbackQuery(query.id);
+    if (label) await sendMessage(chatId!, copy.selfRoleSetPrompt(label));
+    await sendMessage(chatId!, copy.pickExplicitPrompt(), {
+      replyMarkup: [
+        [
+          { text: "Yes, spicy 🌶️", callback_data: "explicit:1" },
+          { text: "No, keep it playful", callback_data: "explicit:0" },
+        ],
+      ],
+    });
+    return;
+  }
+
+  if (action === "explicit") {
+    const baby = chatId ? await prisma.baby.findFirst({ where: { telegramChatId: chatId }, orderBy: { createdAt: "desc" } }) : null;
+    if (!baby) {
+      await answerCallbackQuery(query.id, "Couldn't find your registration.");
+      return;
+    }
+    const allowExplicitMessages = id === "1";
+    await prisma.baby.update({ where: { id: baby.id }, data: { allowExplicitMessages } });
+    await answerCallbackQuery(query.id);
+    await sendMessage(chatId!, copy.explicitSetPrompt(allowExplicitMessages));
     await sendMessage(chatId!, copy.profileSetupComplete());
     return;
   }
@@ -313,9 +297,8 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
 
     if (action === "help-ack") {
       await prisma.helpRequest.update({ where: { id }, data: { status: "ACKNOWLEDGED" } });
-      const organizerTerm = resolveOrganizerTerm(req.baby);
-      if (req.baby.telegramChatId) await sendMessage(req.baby.telegramChatId, copy.daddyIsComing(organizerTerm));
-      await answerCallbackQuery(query.id, copy.adminOnMyWaySent(organizerTerm));
+      if (req.baby.telegramChatId) await sendMessage(req.baby.telegramChatId, playerCopy.organizerIsComing(req.baby));
+      await answerCallbackQuery(query.id, copy.adminOnMyWaySent());
     } else {
       // Deliberately does *not* touch Match.disputed — that only clears
       // via an actual admin-panel override (confirmMatchResult), which

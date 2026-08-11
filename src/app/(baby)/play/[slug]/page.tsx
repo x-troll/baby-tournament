@@ -5,12 +5,12 @@ import { requireBaby } from "@/lib/baby-auth";
 import { parseSlugNumber } from "@/lib/slug-number";
 import { computeBabyStatus } from "@/lib/baby-status";
 import { getTerminology } from "@/lib/terminology";
-import { resolveOrganizerTerm } from "@/lib/baby-terminology";
 import { resolveAvatarSrc } from "@/lib/avatars";
 import { loadRules } from "@/lib/rules-content";
+import * as playerCopy from "@/lib/player-copy";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { RulesBar } from "@/components/rules/RulesBar";
-import { StatusCard } from "@/components/baby/StatusCard";
+import { StatusCard, type StatusCardCopy } from "@/components/baby/StatusCard";
 import { StarChart, type StarChartRow } from "@/components/baby/StarChart";
 import { RequestHelpButton } from "@/components/baby/RequestHelpButton";
 import type { ReportableParticipant } from "@/components/baby/ResultReportForm";
@@ -34,6 +34,7 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
     currentMatchParticipants = match.participants.map((p) => ({
       babyId: p.babyId,
       displayName: p.baby.displayName,
+      goldStarLabel: playerCopy.goldStarButtonLabel(baby, p.baby.displayName ?? "Unnamed baby"),
     }));
   }
 
@@ -57,17 +58,24 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
 
   const rules = await loadRules(playtime.game);
 
-  // Resolved to plain strings here, server-side — StatusCard is a client
-  // component and can't receive the Terminology object itself (it carries
-  // functions, which can't cross the server/client boundary).
-  const organizerTerm = resolveOrganizerTerm(baby);
-  const statusCardCopy = {
-    champion: t.champion,
-    matchWin: t.matchWin,
-    registration: t.registration,
-    waitingForMatchCapitalized: t.waitingForMatch[0]!.toUpperCase() + t.waitingForMatch.slice(1),
-    nappedMessage: state.kind === "NAPPED" ? t.eliminatedWithPlacement(state.placement ?? 0) : undefined,
-    organizerTerm,
+  // Every line resolved server-side, from this baby's own /profile
+  // choices (src/lib/player-copy.ts) — StatusCard/RequestHelpButton/
+  // ResultReportForm are client components and can't call these
+  // themselves (functions can't cross the server/client boundary).
+  const statusCardCopy: StatusCardCopy = {
+    organizerComing: playerCopy.cardOrganizerComing(baby),
+    championLine: playerCopy.cardChampion(baby),
+    nappedLine: state.kind === "NAPPED" ? playerCopy.cardNapped(baby, state.placement ?? 0) : undefined,
+    notStartedLine: playerCopy.cardNotStarted(baby),
+    waitingEtaLine: playerCopy.cardWaitingEta(baby, state.kind === "QUIET_TIME" ? state.etaMinutes : null),
+    upNextLine: playerCopy.cardUpNext(baby),
+    startMatchButtonLabel: playerCopy.cardStartMatchButtonLabel(baby),
+    playingLine: playerCopy.cardPlaying(baby),
+    waitingOnPlaymatesLine: playerCopy.cardWaitingOnPlaymates(baby),
+    confirmationAskLine: playerCopy.cardConfirmationAsk(
+      baby,
+      state.kind === "AWAITING_YOUR_CONFIRMATION" ? state.reporterName : null,
+    ),
   };
 
   return (
@@ -105,11 +113,21 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
         state={state}
         copy={statusCardCopy}
         currentMatchParticipants={currentMatchParticipants}
+        reportFormCopy={{
+          goldStarPrompt: playerCopy.goldStarPrompt(baby),
+          dragInstruction: playerCopy.dragInstruction(baby),
+        }}
       />
 
-      <StarChart rows={starChartRows} currentBabyId={baby.id} />
+      <StarChart rows={starChartRows} currentBabyId={baby.id} viewerBaby={baby} />
 
-      <RequestHelpButton slug={slug} adminLabel={organizerTerm} />
+      <RequestHelpButton
+        slug={slug}
+        copy={{
+          notifiedAck: playerCopy.helpNotifiedAck(baby),
+          requestButtonLabel: playerCopy.helpRequestButtonLabel(baby),
+        }}
+      />
     </main>
   );
 }

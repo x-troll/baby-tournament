@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTerminology } from "@/lib/terminology";
+import { starChartChampionLabel, starChartNappedLabel, type CopyBaby } from "@/lib/player-copy";
 
 export interface StarChartRow {
   babyId: string;
@@ -14,8 +15,21 @@ export interface StarChartRow {
  * navigable by row/column, each cell has full accessible text (e.g. "3
  * gold stars"), and status is never colour-only (paired with the word
  * "Napped"/"Active"/"Best Baby" every time).
+ *
+ * `viewerBaby` resolves the champion/napped status-label wording (see
+ * player-copy.ts) from the *viewing* baby's own prefs — this table is on
+ * their screen, read by them, regardless of whose row it is. Server
+ * component (no "use client"), so it can call player-copy.ts directly.
  */
-export function StarChart({ rows, currentBabyId }: { rows: StarChartRow[]; currentBabyId: string }) {
+export function StarChart({
+  rows,
+  currentBabyId,
+  viewerBaby,
+}: {
+  rows: StarChartRow[];
+  currentBabyId: string;
+  viewerBaby: CopyBaby;
+}) {
   const t = getTerminology();
 
   return (
@@ -46,9 +60,9 @@ export function StarChart({ rows, currentBabyId }: { rows: StarChartRow[]; curre
               const isYou = row.babyId === currentBabyId;
               const statusLabel =
                 row.status === "CHAMPION"
-                  ? `🌟 ${t.champion}`
+                  ? starChartChampionLabel(viewerBaby)
                   : row.status === "NAPPED"
-                    ? `Napped — ${row.finalPlacement ?? "?"}${ordinalSuffix(row.finalPlacement)}`
+                    ? starChartNappedLabel(viewerBaby, row.finalPlacement)
                     : "Active";
               return (
                 // Solid bg-accent-blue + text-on-accent, not a
@@ -83,20 +97,4 @@ export function StarChart({ rows, currentBabyId }: { rows: StarChartRow[]; curre
       </CardContent>
     </Card>
   );
-}
-
-function ordinalSuffix(n: number | null): string {
-  if (n == null) return "";
-  const rem100 = n % 100;
-  if (rem100 >= 11 && rem100 <= 13) return "th";
-  switch (n % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
 }

@@ -5,22 +5,25 @@ import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "./CountdownTimer";
-import { ResultReportForm, type ReportableParticipant } from "./ResultReportForm";
+import { ResultReportForm, type ReportableParticipant, type ResultReportFormCopy } from "./ResultReportForm";
 import { babyConfirmResultAction, babyDisputeResultAction, babyStartMatchAction } from "@/server-actions/baby-matches";
 import type { BabyStatusState } from "@/lib/baby-status";
 
-// Plain strings only — a client component can't receive the Terminology
-// object as a prop (it carries functions like eliminatedWithPlacement,
-// and functions can't cross the server/client boundary). The page
-// resolves whatever copy this state needs server-side instead.
+// Plain strings only — a client component can't receive functions across
+// the server/client boundary, so every line here is fully resolved
+// server-side (src/lib/player-copy.ts, from the viewing baby's own
+// /profile choices) before it ever reaches this component.
 export interface StatusCardCopy {
-  champion: string;
-  matchWin: string;
-  registration: string;
-  waitingForMatchCapitalized: string;
-  nappedMessage?: string;
-  /** This baby's own resolved organizer term (their /profile pick, or the deployment default) — see src/lib/baby-terminology.ts. */
-  organizerTerm: string;
+  organizerComing: string;
+  championLine: string;
+  nappedLine?: string;
+  notStartedLine: string;
+  waitingEtaLine: string;
+  upNextLine: string;
+  startMatchButtonLabel: string;
+  playingLine: string;
+  waitingOnPlaymatesLine: string;
+  confirmationAskLine: string;
 }
 
 export interface StatusCardProps {
@@ -29,6 +32,8 @@ export interface StatusCardProps {
   copy: StatusCardCopy;
   /** Only needed for the PLAYING state, to render the report form. */
   currentMatchParticipants?: ReportableParticipant[];
+  /** Only needed for the PLAYING state. */
+  reportFormCopy?: ResultReportFormCopy;
 }
 
 /**
@@ -36,13 +41,13 @@ export interface StatusCardProps {
  * these states, always the top of the baby screen. `aria-live="polite"`
  * on the message so state changes announce without stealing focus.
  */
-export function StatusCard({ slug, state, copy, currentMatchParticipants }: StatusCardProps) {
+export function StatusCard({ slug, state, copy, currentMatchParticipants, reportFormCopy }: StatusCardProps) {
   const wobble = state.kind === "UP_NEXT" ? "animate-wobble motion-reduce:animate-none" : "";
 
   return (
     <Card className={`border-2 ${wobble}`}>
       <div aria-live="polite" className="flex flex-col gap-3">
-        {renderBody(state, slug, copy, currentMatchParticipants)}
+        {renderBody(state, slug, copy, currentMatchParticipants, reportFormCopy)}
       </div>
     </Card>
   );
@@ -53,47 +58,48 @@ function renderBody(
   slug: string,
   copy: StatusCardCopy,
   currentMatchParticipants: ReportableParticipant[] | undefined,
+  reportFormCopy: ResultReportFormCopy | undefined,
 ) {
   switch (state.kind) {
     case "DADDY_COMING":
       return (
         <div className="flex items-center gap-3">
           <Image src="/admin-avatar.svg" alt="" width={40} height={40} className="rounded-full" />
-          <Headline>{copy.organizerTerm} is coming 💫</Headline>
+          <Headline>{copy.organizerComing}</Headline>
         </div>
       );
 
     case "CHAMPION":
-      return <Headline>You&apos;re the {copy.champion}! 🌟🌟🌟</Headline>;
+      return <Headline>{copy.championLine}</Headline>;
 
     case "NAPPED":
-      return <Headline>{copy.nappedMessage}</Headline>;
+      return <Headline>{copy.nappedLine}</Headline>;
 
     case "NOT_STARTED":
-      return <Headline>Hang tight — {copy.registration} is still getting ready.</Headline>;
+      return <Headline>{copy.notStartedLine}</Headline>;
 
     case "QUIET_TIME":
-      return (
-        <Headline>
-          {copy.waitingForMatchCapitalized} — your turn in about {state.etaMinutes ?? "a few"} minute
-          {state.etaMinutes === 1 ? "" : "s"}.
-        </Headline>
-      );
+      return <Headline>{copy.waitingEtaLine}</Headline>;
 
     case "UP_NEXT":
       return (
         <>
-          <Headline>You&apos;re up next! Head over to the console.</Headline>
-          <StartMatchButton slug={slug} matchId={state.matchId} />
+          <Headline>{copy.upNextLine}</Headline>
+          <StartMatchButton slug={slug} matchId={state.matchId} label={copy.startMatchButtonLabel} />
         </>
       );
 
     case "PLAYING":
       return (
         <>
-          <Headline>You&apos;re playing now — report your result when you&apos;re done.</Headline>
-          {currentMatchParticipants && (
-            <ResultReportForm slug={slug} matchId={state.matchId} participants={currentMatchParticipants} />
+          <Headline>{copy.playingLine}</Headline>
+          {currentMatchParticipants && reportFormCopy && (
+            <ResultReportForm
+              slug={slug}
+              matchId={state.matchId}
+              participants={currentMatchParticipants}
+              copy={reportFormCopy}
+            />
           )}
         </>
       );
@@ -101,7 +107,7 @@ function renderBody(
     case "WAITING_ON_PLAYMATES":
       return (
         <>
-          <Headline>Waiting on your playmates to confirm…</Headline>
+          <Headline>{copy.waitingOnPlaymatesLine}</Headline>
           <CountdownTimer deadline={state.deadlineAt} doneLabel="Confirming automatically now" />
         </>
       );
@@ -109,9 +115,7 @@ function renderBody(
     case "AWAITING_YOUR_CONFIRMATION":
       return (
         <>
-          <Headline>
-            {state.reporterName ?? "Someone"} says they got the {copy.matchWin} — do you agree?
-          </Headline>
+          <Headline>{copy.confirmationAskLine}</Headline>
           <CountdownTimer deadline={state.deadlineAt} doneLabel="Confirming automatically now" />
           <ConfirmDisputeButtons slug={slug} matchId={state.matchId} />
         </>
@@ -123,7 +127,7 @@ function Headline({ children }: { children: React.ReactNode }) {
   return <p className="text-xl font-bold">{children}</p>;
 }
 
-function StartMatchButton({ slug, matchId }: { slug: string; matchId: string }) {
+function StartMatchButton({ slug, matchId, label }: { slug: string; matchId: string; label: string }) {
   const [isPending, startTransition] = useTransition();
   return (
     <Button
@@ -131,7 +135,7 @@ function StartMatchButton({ slug, matchId }: { slug: string; matchId: string }) 
       disabled={isPending}
       className="self-start"
     >
-      We&apos;re playing
+      {label}
     </Button>
   );
 }

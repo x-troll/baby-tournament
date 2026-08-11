@@ -1,0 +1,385 @@
+// The single consolidated home for every baby-facing *flavor* message —
+// both the Telegram bot's pushes/replies and the web console's on-screen
+// text — per future_tods.md's "create a .ts file to contain all text to
+// be sent and used, both in UI and telegram." Mechanical text (form
+// labels, generic buttons like "Save"/"Cancel") stays where it already
+// lives; admin-facing and pre-role-selection onboarding copy stays in
+// telegram/copy.ts (nothing to vary by yet at that point).
+//
+// Every message here has 4 variants, keyed by two independent axes read
+// off the viewing baby's own /profile choices:
+//   - Little vs grown-up (baby-terminology.ts's isLittleRole, bucketed
+//     from the existing selfRoleLabel field)
+//   - playful vs explicit (Baby.allowExplicitMessages, off by default)
+// Telegram-toned functions keep the emoji-forward push voice; the
+// StatusCard-toned ("card*") ones stay in the calmer on-screen register
+// already established there — same moment, deliberately different
+// wording per surface, both living here so they're easy to keep in sync.
+//
+// Client components (StatusCard, RequestHelpButton, ResultReportForm)
+// can't call these directly or receive the Terminology object as a prop
+// (functions can't cross the server/client boundary) — their server
+// parent (play/[slug]/page.tsx) resolves the final strings here and
+// passes plain strings down, same pattern the file already used for
+// copy.champion/copy.matchWin before this change.
+import { getTerminology } from "@/lib/terminology";
+import { isLittleRole } from "@/lib/baby-terminology";
+import type { BabyStatusState } from "@/lib/baby-status";
+
+const t = getTerminology();
+
+export interface CopyBaby {
+  selfRoleLabel: string | null;
+  allowExplicitMessages: boolean;
+}
+
+interface Variants {
+  littlePlayful: string;
+  littleExplicit: string;
+  grownupPlayful: string;
+  grownupExplicit: string;
+}
+
+function pick(baby: CopyBaby, v: Variants): string {
+  const little = isLittleRole(baby.selfRoleLabel);
+  return little ? (baby.allowExplicitMessages ? v.littleExplicit : v.littlePlayful)
+                : (baby.allowExplicitMessages ? v.grownupExplicit : v.grownupPlayful);
+}
+
+function etaText(etaMinutes: number | null): string {
+  const n = etaMinutes ?? null;
+  return n === null ? "a few minutes" : `about ${n} minute${n === 1 ? "" : "s"}`;
+}
+
+function ordinalSuffix(n: number): string {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return "th";
+  switch (n % 10) {
+    case 1: return "st";
+    case 2: return "nd";
+    case 3: return "rd";
+    default: return "th";
+  }
+}
+
+// ── Telegram pushes/replies ──────────────────────────────────────────
+
+export function upNext(baby: CopyBaby, displayName: string, rulesSummary: string): string {
+  return pick(baby, {
+    littlePlayful: `It's your turn, ${displayName}! 🎮 Toddle on over to the console.\n\n📋 ${rulesSummary}`,
+    littleExplicit: `It's your turn, ${displayName}! 🎮 Waddle that diapered bottom over to the console before ${t.admin} comes looking. 😏\n\n📋 ${rulesSummary}`,
+    grownupPlayful: `You're up, ${displayName}! 🎮 Head over to the console — show the little ones how it's done.\n\n📋 ${rulesSummary}`,
+    grownupExplicit: `You're up, ${displayName}! 🎮 Time to prove a grown-up like you can still hang with the babies. Don't embarrass yourself. 😉\n\n📋 ${rulesSummary}`,
+  });
+}
+
+export function upSoon(baby: CopyBaby, displayName: string, etaMinutes: number): string {
+  const mins = `about ${etaMinutes} minute${etaMinutes === 1 ? "" : "s"}`;
+  return pick(baby, {
+    littlePlayful: `Heads up, ${displayName} — you're up in ${mins}! 👀`,
+    littleExplicit: `Heads up, ${displayName} — you're up in ${mins}! Better make sure that diaper's fresh before you play. 👀`,
+    grownupPlayful: `Just a heads up, ${displayName} — you're up in ${mins}.`,
+    grownupExplicit: `Tick tock, ${displayName} — you're up in ${mins}. Try not to lose to a baby.`,
+  });
+}
+
+/** Button label for the ready-check callback. */
+export function readyCheckButtonLabel(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `Everyone's here, we're playing, ${t.admin}!`,
+    littleExplicit: `Everyone's here, ${t.admin} — start us before I start whining! 🍼`,
+    grownupPlayful: `We're ready, ${t.admin} — let's go!`,
+    grownupExplicit: `We're ready, ${t.admin}. Don't keep us waiting.`,
+  });
+}
+
+export function readyCheckReply(baby: CopyBaby, displayName: string): string {
+  return pick(baby, {
+    littlePlayful: `Good ${displayName}! 🎉`,
+    littleExplicit: `Such a good little ${displayName}! 🎉 ${t.admin} is proud.`,
+    grownupPlayful: `Nice, ${displayName} — go get 'em!`,
+    grownupExplicit: `About time, ${displayName}. Now go show these babies who's boss.`,
+  });
+}
+
+export function needsYourConfirmation(baby: CopyBaby, reporterName: string, rulesSummary: string): string {
+  return pick(baby, {
+    littlePlayful: `${reporterName} says they got the ${t.matchWin} — do you agree, sweetie?\n\n📋 ${rulesSummary}`,
+    littleExplicit: `${reporterName} says they got the ${t.matchWin}. Fess up if it's true, little one — fibbing earns a time-out. 😏\n\n📋 ${rulesSummary}`,
+    grownupPlayful: `${reporterName} says they got the ${t.matchWin} — sound right to you?\n\n📋 ${rulesSummary}`,
+    grownupExplicit: `${reporterName} says they got the ${t.matchWin}. Confirm it, or admit you got outplayed by a toddler.\n\n📋 ${rulesSummary}`,
+  });
+}
+
+export function resultConfirmed(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `Result confirmed! ✅`,
+    littleExplicit: `Result confirmed! ✅ Good baby for playing along.`,
+    grownupPlayful: `Confirmed! ✅`,
+    grownupExplicit: `Confirmed ✅ — no take-backs, big shot.`,
+  });
+}
+
+export function napped(baby: CopyBaby, placement: number): string {
+  const base = t.eliminatedWithPlacement(placement);
+  return pick(baby, {
+    littlePlayful: base,
+    littleExplicit: `${base} Nap time and a fresh diaper, little one. 🍼`,
+    grownupPlayful: base,
+    grownupExplicit: `${base} Beaten by babies — how does that feel?`,
+  });
+}
+
+export function crowned(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `👑🌟 You did it — you're the ${t.champion}! 🌟👑`,
+    littleExplicit: `👑🌟 You did it, you precious little champion! ${t.admin} is SO proud of their good baby. 🌟👑`,
+    grownupPlayful: `👑🌟 You did it — you're the ${t.champion}! 🌟👑`,
+    grownupExplicit: `👑🌟 Look at you, beating a room full of babies to be the ${t.champion}. Color us impressed. 🌟👑`,
+  });
+}
+
+export function organizerIsComing(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `${t.admin} is coming 💫`,
+    littleExplicit: `${t.admin} is coming for you 💫 Better be a good little one.`,
+    grownupPlayful: `${t.admin} is on the way 💫`,
+    grownupExplicit: `${t.admin} is coming — act like a grown-up about it. 💫`,
+  });
+}
+
+export function disputeSentReply(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `Dispute sent — a ${t.admin} will sort it out.`,
+    littleExplicit: `Dispute sent, little one — ${t.admin} will sort it out. Hope you're not fibbing.`,
+    grownupPlayful: `Dispute sent — a ${t.admin} will sort it out.`,
+    grownupExplicit: `Dispute sent. ${t.admin} will decide who's actually right.`,
+  });
+}
+
+// ── /status command — one line per BabyStatusState kind ─────────────
+
+export function describeState(baby: CopyBaby, state: BabyStatusState): string {
+  switch (state.kind) {
+    case "DADDY_COMING":
+      return organizerIsComing(baby);
+    case "CHAMPION":
+      return crowned(baby);
+    case "NAPPED":
+      return napped(baby, state.placement ?? 0);
+    case "NOT_STARTED":
+      return pick(baby, {
+        littlePlayful: `The playtime hasn't started yet — sit tight!`,
+        littleExplicit: `The playtime hasn't started yet, little one. Sit still and wait like a good baby.`,
+        grownupPlayful: `The playtime hasn't started yet.`,
+        grownupExplicit: `Nothing's started yet — patience, big shot.`,
+      });
+    case "QUIET_TIME": {
+      const eta = etaText(state.etaMinutes);
+      return pick(baby, {
+        littlePlayful: `Quiet time — your turn in ${eta}.`,
+        littleExplicit: `Quiet time, little one — your turn in ${eta}. Use the potty now if you need to. 😏`,
+        grownupPlayful: `Still waiting — your turn in ${eta}.`,
+        grownupExplicit: `Cooling your heels — your turn in ${eta}. The babies are ahead of you.`,
+      });
+    }
+    case "UP_NEXT":
+      return pick(baby, {
+        littlePlayful: `You're up next! Head over to the console.`,
+        littleExplicit: `You're up next, little one! Waddle over to the console.`,
+        grownupPlayful: `You're up next — head over to the console.`,
+        grownupExplicit: `You're up next. Try to keep up.`,
+      });
+    case "PLAYING":
+      return pick(baby, {
+        littlePlayful: `You're playing now — report your result when you're done.`,
+        littleExplicit: `You're playing now, sweetie — report your result when you're done, and no fibbing.`,
+        grownupPlayful: `You're playing now — report your result when you're done.`,
+        grownupExplicit: `You're playing now. Report it honestly — the babies always tattle anyway.`,
+      });
+    case "WAITING_ON_PLAYMATES":
+      return pick(baby, {
+        littlePlayful: `Waiting on your playmates to confirm your result.`,
+        littleExplicit: `Waiting on your playmates to confirm, little one — patience.`,
+        grownupPlayful: `Waiting on the others to confirm your result.`,
+        grownupExplicit: `Waiting on everyone else to confirm. Try not to sulk.`,
+      });
+    case "AWAITING_YOUR_CONFIRMATION": {
+      const reporter = state.reporterName ?? "Someone";
+      return pick(baby, {
+        littlePlayful: `${reporter} says they got the ${t.matchWin} — do you agree?`,
+        littleExplicit: `${reporter} says they got the ${t.matchWin}. Be honest, little one — no pouting if it's true.`,
+        grownupPlayful: `${reporter} says they got the ${t.matchWin} — sound right?`,
+        grownupExplicit: `${reporter} says they got the ${t.matchWin}. Confirm it, or admit you lost to them.`,
+      });
+    }
+  }
+}
+
+// ── StatusCard (web console) — same moments, calmer on-screen tone ──
+
+export function cardOrganizerComing(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `${t.admin} is coming 💫`,
+    littleExplicit: `${t.admin} is coming for you 💫 Better be a good little one.`,
+    grownupPlayful: `${t.admin} is on the way 💫`,
+    grownupExplicit: `${t.admin} is coming — act like a grown-up about it. 💫`,
+  });
+}
+
+export function cardChampion(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `You're the ${t.champion}! 🌟🌟🌟`,
+    littleExplicit: `You're the ${t.champion}, you precious thing! 🌟🌟🌟 ${t.admin} is so proud.`,
+    grownupPlayful: `You're the ${t.champion}! 🌟🌟🌟`,
+    grownupExplicit: `You beat a room of babies to be the ${t.champion}. 🌟🌟🌟 Color us impressed.`,
+  });
+}
+
+export function cardNapped(baby: CopyBaby, placement: number): string {
+  const base = t.eliminatedWithPlacement(placement);
+  return pick(baby, {
+    littlePlayful: base,
+    littleExplicit: `${base} Nap time, little one.`,
+    grownupPlayful: base,
+    grownupExplicit: `${base} Outplayed by babies.`,
+  });
+}
+
+export function cardNotStarted(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `Hang tight — ${t.registration} is still getting ready.`,
+    littleExplicit: `Hang tight, little one — ${t.registration} is still getting ready.`,
+    grownupPlayful: `Hang tight — ${t.registration} is still getting ready.`,
+    grownupExplicit: `Hang tight — ${t.registration} isn't ready yet. Patience.`,
+  });
+}
+
+export function cardWaitingEta(baby: CopyBaby, etaMinutes: number | null): string {
+  const capWaiting = t.waitingForMatch[0]!.toUpperCase() + t.waitingForMatch.slice(1);
+  const eta = etaText(etaMinutes);
+  return pick(baby, {
+    littlePlayful: `${capWaiting} — your turn in ${eta}.`,
+    littleExplicit: `${capWaiting}, little one — your turn in ${eta}. Sit still.`,
+    grownupPlayful: `${capWaiting} — your turn in ${eta}.`,
+    grownupExplicit: `${capWaiting} — your turn in ${eta}. The babies are ahead of you.`,
+  });
+}
+
+export function cardUpNext(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `You're up next! Head over to the console.`,
+    littleExplicit: `You're up next, little one! Head over to the console.`,
+    grownupPlayful: `You're up next — head over to the console.`,
+    grownupExplicit: `You're up next. Don't keep everyone waiting.`,
+  });
+}
+
+export function cardStartMatchButtonLabel(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `We're playing`,
+    littleExplicit: `We're playing, ${t.admin}!`,
+    grownupPlayful: `We're playing`,
+    grownupExplicit: `Let's go already`,
+  });
+}
+
+export function cardPlaying(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `You're playing now — report your result when you're done.`,
+    littleExplicit: `You're playing now, sweetie — report your result when you're done.`,
+    grownupPlayful: `You're playing now — report your result when you're done.`,
+    grownupExplicit: `You're playing now. Report it honestly.`,
+  });
+}
+
+export function cardWaitingOnPlaymates(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `Waiting on your playmates to confirm…`,
+    littleExplicit: `Waiting on your playmates, little one — patience.`,
+    grownupPlayful: `Waiting on the others to confirm…`,
+    grownupExplicit: `Waiting on everyone else. Try not to sulk.`,
+  });
+}
+
+export function cardConfirmationAsk(baby: CopyBaby, reporterName: string | null): string {
+  const reporter = reporterName ?? "Someone";
+  return pick(baby, {
+    littlePlayful: `${reporter} says they got the ${t.matchWin} — do you agree?`,
+    littleExplicit: `${reporter} says they got the ${t.matchWin}. Be honest, little one.`,
+    grownupPlayful: `${reporter} says they got the ${t.matchWin} — sound right?`,
+    grownupExplicit: `${reporter} says they got the ${t.matchWin}. Confirm it or admit defeat.`,
+  });
+}
+
+// ── RequestHelpButton ─────────────────────────────────────────────
+
+export function helpNotifiedAck(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `A ${t.admin} has been notified. Hang tight.`,
+    littleExplicit: `${t.admin} has been notified and is coming for you. Hang tight, little one.`,
+    grownupPlayful: `A ${t.admin} has been notified. Hang tight.`,
+    grownupExplicit: `A ${t.admin} has been notified. Try to handle it like an adult until they arrive.`,
+  });
+}
+
+export function helpRequestButtonLabel(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `🆘 Request help from ${t.admin}`,
+    littleExplicit: `🆘 Cry for ${t.admin}`,
+    grownupPlayful: `🆘 Ask ${t.admin} for help`,
+    grownupExplicit: `🆘 Fine, ask ${t.admin} for help`,
+  });
+}
+
+// ── ResultReportForm ─────────────────────────────────────────────
+
+export function goldStarPrompt(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `Who got the gold star?`,
+    littleExplicit: `Who earned the gold star, little one?`,
+    grownupPlayful: `Who got the gold star?`,
+    grownupExplicit: `Who actually won, or do we need to ask the babies?`,
+  });
+}
+
+export function goldStarButtonLabel(baby: CopyBaby, participantName: string): string {
+  return pick(baby, {
+    littlePlayful: `🌟 ${participantName} got the gold star`,
+    littleExplicit: `🌟 ${participantName} was the best little one`,
+    grownupPlayful: `🌟 ${participantName} got the gold star`,
+    grownupExplicit: `🌟 ${participantName} actually won this one`,
+  });
+}
+
+export function dragInstruction(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `Drag to put everyone in finishing order — 1st at the top.`,
+    littleExplicit: `Drag everyone into order, little one — best baby at the top.`,
+    grownupPlayful: `Drag to put everyone in finishing order — 1st at the top.`,
+    grownupExplicit: `Drag them into order. Try to be honest about where you landed.`,
+  });
+}
+
+// ── StarChart — resolved once from the *viewing* baby's own prefs, ──
+// ── applied to every row (the text is being read by them, not the ──
+// ── row's own baby) ─────────────────────────────────────────────
+
+export function starChartChampionLabel(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `🌟 ${t.champion}`,
+    littleExplicit: `🌟 ${t.admin}'s favorite`,
+    grownupPlayful: `🌟 ${t.champion}`,
+    grownupExplicit: `🌟 Beat a room of babies`,
+  });
+}
+
+export function starChartNappedLabel(baby: CopyBaby, placement: number | null): string {
+  const place = placement == null ? "?" : `${placement}${ordinalSuffix(placement)}`;
+  return pick(baby, {
+    littlePlayful: `Napped — ${place}`,
+    littleExplicit: `Naptime — ${place}, little one`,
+    grownupPlayful: `Napped — ${place}`,
+    grownupExplicit: `Out — ${place}. Tough loss.`,
+  });
+}

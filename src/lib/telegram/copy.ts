@@ -1,6 +1,8 @@
-// All bot copy, in one place, in the nursery voice — warm and gentle,
-// matching the web UI. Pure functions over plain data (no DB/fetch here)
-// so they're easy to keep consistent and easy to test.
+// System/onboarding + admin-facing bot copy, in the nursery voice.
+// Player-facing *flavor* messages (anything that varies by Little-vs-
+// grown-up / explicit) live in src/lib/player-copy.ts instead — see that
+// file's header. What's left here is either pre-role-selection onboarding
+// (nothing to vary by yet) or addressed to the admin, not a baby.
 import { getTerminology } from "@/lib/terminology";
 
 const t = getTerminology();
@@ -10,7 +12,7 @@ export function askForDisplayName(): string {
 }
 
 export function registeredAndMagicLink(displayName: string, magicLink: string): string {
-  return `You're all checked in, ${displayName}! 🌟\n\nTap below to open your ${t.player} screen:\n${magicLink}\n\nKeep this chat open — I'll ping you here when it's your turn.\n\nWant to pick an avatar or change what we call each other? Send /profile anytime.`;
+  return `You're all checked in, ${displayName}! 🌟\n\nTap below to open your ${t.player} screen:\n${magicLink}\n\nKeep this chat open — I'll ping you here when it's your turn.\n\nWant to pick an avatar or change what we call you? Send /profile anytime.`;
 }
 
 export function alreadyRegistered(displayName: string, magicLink: string): string {
@@ -29,49 +31,7 @@ export function unknownAdminToken(): string {
   return "That admin link doesn't look right — check the QR code in your profile page.";
 }
 
-export function upNext(displayName: string, rulesSummary: string): string {
-  return `It's your turn, ${displayName}! 🎮 Head over to the console.\n\n📋 ${rulesSummary}`;
-}
-
-/** The pre-notice, ahead of upNext's real "you're up" push once the match actually goes READY. */
-export function upSoon(displayName: string, etaMinutes: number): string {
-  return `Heads up, ${displayName} — you're up in about ${etaMinutes} minute${etaMinutes === 1 ? "" : "s"}! 👀`;
-}
-
-/** Button label for the ready-check callback — "Everyone's here, we're playing, {organizer}!" per spec. */
-export function readyCheckButtonLabel(organizerTerm: string): string {
-  return `Everyone's here, we're playing, ${organizerTerm}!`;
-}
-
-export function readyCheckReply(displayName: string): string {
-  return `Good ${displayName}! 🎉`;
-}
-
-export function needsYourConfirmation(reporterName: string, rulesSummary: string): string {
-  return `${reporterName} says they got the ${t.matchWin} — do you agree?\n\n📋 ${rulesSummary}`;
-}
-
-export function resultConfirmed(): string {
-  return `Result confirmed! ✅`;
-}
-
-export function napped(placement: number): string {
-  return `${t.eliminatedWithPlacement(placement)}`;
-}
-
-export function crowned(): string {
-  return `👑🌟 You did it — you're the ${t.champion}! 🌟👑`;
-}
-
-export function daddyIsComing(organizerTerm: string): string {
-  return `${organizerTerm} is coming 💫`;
-}
-
-export function helpRequestCollapsedAcknowledgement(): string {
-  return `Got it — hang tight, a ${t.admin} is on the way.`;
-}
-
-// ── /profile — avatar + organizer/self term pickers ─────────────────
+// ── /profile — avatar + self term picker + explicit-messages toggle ──
 
 export function pickAvatarPrompt(): string {
   return "Pick a picture for yourself! 🎨";
@@ -81,16 +41,20 @@ export function avatarSetPrompt(label: string): string {
   return `You're a ${label} now! 🎉`;
 }
 
-export function pickOrganizerRolePrompt(): string {
-  return "What should we call the grown-up running tonight?";
-}
-
-export function organizerRoleSetPrompt(label: string): string {
-  return `Got it — you'll call them ${label}.`;
-}
-
 export function pickSelfRolePrompt(): string {
-  return "And what should we call you?";
+  return "What should we call you?";
+}
+
+export function selfRoleSetPrompt(label: string): string {
+  return `Got it — you're a ${label}.`;
+}
+
+export function pickExplicitPrompt(): string {
+  return "🌶️ Allow explicit messages? Messages you receive will be slightly more explicit and teasing, instead of playful.";
+}
+
+export function explicitSetPrompt(allowed: boolean): string {
+  return allowed ? "Spicy mode on. 🌶️" : "Keeping it playful. 🍼";
 }
 
 export function profileSetupComplete(): string {
@@ -112,30 +76,17 @@ export function rulesReply(gameSummary: string, overrideNote: string | null): st
 
 // ── Admin-facing copy ──────────────────────────────────────────────
 
-// `organizerTerm` is only appended when the baby actually customized it
-// (see notify.ts) — a baby who never touched /profile still calls the
-// organizer whatever terminology.ts's deployment default already is, so
-// repeating that back would just be noise. The deep link itself is a real
-// URL button now (see notify.ts), not embedded in the text.
-export function adminHelpRequestAlert(
-  babyName: string,
-  matchLabel: string,
-  reason: string,
-  note: string | null,
-  organizerTerm: string | null,
-): string {
+export function adminHelpRequestAlert(babyName: string, matchLabel: string, reason: string, note: string | null): string {
   const noteLine = note ? `\n"${note}"` : "";
-  const calledLine = organizerTerm ? ` (calls you "${organizerTerm}")` : "";
-  return `🆘 ${babyName}${calledLine} needs help (${matchLabel})\nReason: ${reason}${noteLine}`;
+  return `🆘 ${babyName} needs help (${matchLabel})\nReason: ${reason}${noteLine}`;
 }
 
-export function adminDisputeAlert(babyName: string, matchLabel: string, organizerTerm: string | null): string {
-  const calledLine = organizerTerm ? ` (calls you "${organizerTerm}")` : "";
-  return `⚠️ ${babyName}${calledLine} disputed a result (${matchLabel}) — the match is frozen until you resolve it.`;
+export function adminDisputeAlert(babyName: string, matchLabel: string): string {
+  return `⚠️ ${babyName} disputed a result (${matchLabel}) — the match is frozen until you resolve it.`;
 }
 
-export function adminOnMyWaySent(organizerTerm: string): string {
-  return `Sent — the baby now sees "${organizerTerm} is coming 💫".`;
+export function adminOnMyWaySent(): string {
+  return `Sent — the baby now sees "${t.admin} is coming 💫".`;
 }
 
 export function adminAlreadyResolved(): string {

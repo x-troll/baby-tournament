@@ -7,6 +7,11 @@ import { createHelpRequestAction } from "@/server-actions/help-requests";
 
 const REASONS = ["Controller trouble", "Can't find my opponent", "Score dispute", "Something else"] as const;
 
+export interface RequestHelpButtonCopy {
+  notifiedAck: string;
+  requestButtonLabel: string;
+}
+
 /**
  * Persistent on every baby-facing screen — big soft pill, always
  * reachable. Reason chips + free text for "something else"; 60s
@@ -14,12 +19,13 @@ const REASONS = ["Controller trouble", "Can't find my opponent", "Score dispute"
  * (src/server-actions/help-requests.ts), this just surfaces whatever it
  * reports back.
  *
- * `adminLabel` is passed in rather than calling getTerminology() here:
- * that reads `process.env.THEME`, which isn't NEXT_PUBLIC_-prefixed and
- * so isn't visible client-side — resolving it server-side avoids a
- * client/server terminology mismatch under THEME=plain.
+ * `copy` is passed in (src/lib/player-copy.ts, resolved server-side)
+ * rather than computed here: this is a client component, and both
+ * getTerminology() (reads process.env.THEME, not NEXT_PUBLIC_-prefixed,
+ * so invisible client-side) and the 4-variant picker need the viewing
+ * baby's own /profile prefs, which only the server parent has.
  */
-export function RequestHelpButton({ slug, adminLabel }: { slug: string; adminLabel: string }) {
+export function RequestHelpButton({ slug, copy }: { slug: string; copy: RequestHelpButtonCopy }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<(typeof REASONS)[number] | null>(null);
   const [note, setNote] = useState("");
@@ -33,7 +39,7 @@ export function RequestHelpButton({ slug, adminLabel }: { slug: string; adminLab
       if (result.error) {
         setFeedback(result.error);
       } else {
-        setFeedback(`A ${adminLabel} has been notified. Hang tight.`);
+        setFeedback(copy.notifiedAck);
         setOpen(false);
         setReason(null);
         setNote("");
@@ -95,7 +101,7 @@ export function RequestHelpButton({ slug, adminLabel }: { slug: string; adminLab
         className="min-h-12 px-6 shadow-soft"
         variant={open ? "secondary" : "default"}
       >
-        🆘 Request help from {adminLabel}
+        {copy.requestButtonLabel}
       </Button>
     </div>
   );
