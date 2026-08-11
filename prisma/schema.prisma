@@ -59,8 +59,7 @@ model Admin {
 // ── Playtimes (tournaments) ──────────────────────────────────────────
 
 enum PlaytimeStatus {
-  DRAFT // being configured, not yet visible for check-in
-  NURSERY_OPEN // check-in open, babies can join, bracket not started
+  NURSERY_OPEN // check-in open, babies can join, bracket not started — every playtime starts here now, no separate draft-staging step
   IN_PROGRESS // bracket running
   COMPLETE // Best Baby crowned
 }
@@ -77,7 +76,7 @@ model Playtime {
   slugNumber Int            @unique @default(autoincrement())
   game       Game
   name       String
-  status     PlaytimeStatus @default(DRAFT)
+  status     PlaytimeStatus @default(NURSERY_OPEN)
 
   // Concurrency + ETA configuration.
   stationCount               Int  @default(1)

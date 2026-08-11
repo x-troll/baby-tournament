@@ -57,7 +57,7 @@ export async function addBabyManuallyAction(playtimeId: string, formData: FormDa
   if (!displayName) throw new Error("Display name is required.");
 
   const playtime = await prisma.playtime.findUniqueOrThrow({ where: { id: playtimeId } });
-  if (playtime.status !== "DRAFT" && playtime.status !== "NURSERY_OPEN") {
+  if (playtime.status !== "NURSERY_OPEN") {
     throw new Error("Can't add babies once the playtime has started.");
   }
 
@@ -81,20 +81,11 @@ export async function removeBabyAction(playtimeId: string, babyId: string): Prom
   await requireAdmin();
 
   const playtime = await prisma.playtime.findUniqueOrThrow({ where: { id: playtimeId } });
-  if (playtime.status !== "DRAFT" && playtime.status !== "NURSERY_OPEN") {
+  if (playtime.status !== "NURSERY_OPEN") {
     throw new Error("Can't remove babies once the playtime has started — that's a forfeit, not a removal.");
   }
 
   await prisma.baby.delete({ where: { id: babyId } });
-  revalidatePath(`/admin/playtimes/${playtimeId}`);
-}
-
-export async function openNurseryAction(playtimeId: string): Promise<void> {
-  await requireAdmin();
-  await prisma.playtime.update({
-    where: { id: playtimeId, status: "DRAFT" },
-    data: { status: "NURSERY_OPEN" },
-  });
   revalidatePath(`/admin/playtimes/${playtimeId}`);
 }
 

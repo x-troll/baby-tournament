@@ -9,17 +9,13 @@ import { buildPhase2Bracket } from "@/lib/bracket-view";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import { StyledQrCode } from "@/components/ui/StyledQrCode";
+import { AddBabyManuallyButton } from "@/components/admin/AddBabyManuallyButton";
+import { StartPlaytimeButton } from "@/components/admin/StartPlaytimeButton";
 import { GAME_DISPLAY, PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
-import {
-  addBabyManuallyAction,
-  openNurseryAction,
-  removeBabyAction,
-  startPlaytimeAction,
-} from "@/server-actions/playtimes";
+import { removeBabyAction } from "@/server-actions/playtimes";
 import { reportMatchResultFormAction, undoMatchResultAction } from "@/server-actions/matches";
 import { previewAsBabyAction } from "@/server-actions/baby-auth";
 
@@ -233,17 +229,25 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
             </span>
           </p>
         </div>
-        <Link
-          href={`/live/${playtime.slugNumber}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={buttonVariants({ variant: "secondary", className: "shrink-0" })}
-        >
-          Open as spectator
-        </Link>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <Link
+            href={`/live/${playtime.slugNumber}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            Open as spectator
+          </Link>
+          {playtime.status === "NURSERY_OPEN" && (
+            <>
+              <AddBabyManuallyButton playtimeId={playtime.id} />
+              <StartPlaytimeButton playtimeId={playtime.id} babyCount={playtime.babies.length} />
+            </>
+          )}
+        </div>
       </header>
 
-      {(playtime.status === "DRAFT" || playtime.status === "NURSERY_OPEN") && (
+      {playtime.status === "NURSERY_OPEN" && (
         <Card>
           <CardHeader>
             <CardTitle>The nursery (check-in)</CardTitle>
@@ -295,31 +299,6 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
-
-            <form action={addBabyManuallyAction.bind(null, playtime.id)} className="flex items-end gap-2">
-              <div className="flex flex-1 flex-col gap-1">
-                <label htmlFor="displayName" className="text-sm font-semibold">
-                  Add a baby manually (no Telegram)
-                </label>
-                <Input id="displayName" name="displayName" placeholder="Display name" required />
-              </div>
-              <Button type="submit">Add</Button>
-            </form>
-
-            <div className="flex gap-2">
-              {playtime.status === "DRAFT" && (
-                <form action={openNurseryAction.bind(null, playtime.id)}>
-                  <Button type="submit">Open the nursery</Button>
-                </form>
-              )}
-              {playtime.status === "NURSERY_OPEN" && (
-                <form action={startPlaytimeAction.bind(null, playtime.id)}>
-                  <Button type="submit" disabled={playtime.babies.length < 3}>
-                    Start playtime ({playtime.babies.length}/3 minimum)
-                  </Button>
-                </form>
               )}
             </div>
           </CardContent>

@@ -34,7 +34,7 @@ export function StyledQrCode({ data, size = 300, logoSrc }: { data: string; size
       width: size,
       height: size,
       data,
-      margin: 10,
+      margin: 4,
       image: logoSrc,
       qrOptions: { typeNumber: 0, mode: "Byte", errorCorrectionLevel: "Q" },
       imageOptions: { hideBackgroundDots: true, imageSize: 0.5, margin: 3 },

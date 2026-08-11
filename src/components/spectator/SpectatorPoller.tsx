@@ -58,7 +58,7 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
 
       <StageBanner text={state.stageBanner} />
 
-      {(state.status === "DRAFT" || state.status === "NURSERY_OPEN") && state.joinLink && (
+      {state.status === "NURSERY_OPEN" && state.joinLink && (
         <div className="flex flex-col items-center gap-3 py-4">
           <p className="text-lg font-semibold text-foreground-muted">Scan to join!</p>
           <StyledQrCode data={state.joinLink} size={400} logoSrc={GAME_LOGO_SRC[state.game]} />

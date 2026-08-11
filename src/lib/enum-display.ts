@@ -12,7 +12,6 @@ export const GAME_DISPLAY: Record<Game, { label: string; variant: BadgeProps["va
 };
 
 export const PLAYTIME_STATUS_DISPLAY: Record<PlaytimeStatus, { label: string; variant: BadgeProps["variant"] }> = {
-  [PlaytimeStatus.DRAFT]: { label: "Draft", variant: "neutral" },
   [PlaytimeStatus.NURSERY_OPEN]: { label: "Nursery open", variant: "yellow" },
   [PlaytimeStatus.IN_PROGRESS]: { label: "In progress", variant: "mint" },
   [PlaytimeStatus.COMPLETE]: { label: "Complete", variant: "blue" },
