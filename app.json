@@ -8,7 +8,7 @@
       "description": "Signs admin and baby session cookies.",
       "generator": "secret"
     },
-    "ADMIN_EMAIL": {
+    "ADMIN_USERNAME": {
       "description": "Seeds the first Daddy account on the very first deploy only — the seed script is idempotent and won't touch it again."
     },
     "ADMIN_PASSWORD": {

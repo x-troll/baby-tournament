@@ -160,7 +160,7 @@ heroku addons:create heroku-postgresql:essential-0
 heroku config:set \
   AUTH_SECRET="$(openssl rand -base64 32)" \
   TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 32)" \
-  ADMIN_EMAIL="you@example.com" \
+  ADMIN_USERNAME="daddy" \
   ADMIN_PASSWORD="something-you-will-change-immediately" \
   THEME="nursery"
 
@@ -175,11 +175,14 @@ heroku config:set TELEGRAM_BOT_TOKEN="..." TELEGRAM_BOT_USERNAME="..."
 
 The `release` phase in `Procfile` runs `prisma migrate deploy` and seeds
 the first Daddy automatically on every deploy (the seed is idempotent —
-it only creates an admin if none exist yet). After the first deploy,
-sign in and use the **"Register Telegram webhook"** button on
-`/admin/profile` — that's a one-time-per-environment action, not
-something that needs to run on every deploy, since the Heroku URL is
-stable.
+it only creates an admin if none exist yet). The webhook itself
+registers automatically on boot (`src/instrumentation.ts`) once
+`TELEGRAM_BOT_TOKEN`/`NEXT_PUBLIC_APP_URL`/`TELEGRAM_WEBHOOK_SECRET` are
+all set — a Heroku dyno restarts on every `config:set`, so the last of
+those three you set is what triggers it. The **"Register Telegram
+webhook"** button on `/admin/profile` still exists for re-registering by
+hand (e.g. if you rotate the bot token later without changing anything
+else, which wouldn't otherwise trigger a restart).
 
 Then run `npm run rehearsal` **against production** once
 (`heroku run npm run rehearsal`) as your final check before the actual
