@@ -21,7 +21,8 @@
     "prisma:migrate": "prisma migrate dev",
     "db:seed": "tsx scripts/ensure-admin-seed.ts",
     "rehearsal": "tsx scripts/rehearsal-seed.ts",
-    "rehearsal:telegram": "tsx scripts/rehearsal-with-telegram.ts"
+    "rehearsal:telegram": "tsx scripts/rehearsal-with-telegram.ts",
+    "tunnel": "tsx scripts/dev-tunnel.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

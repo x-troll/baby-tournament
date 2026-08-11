@@ -94,13 +94,25 @@ doesn't work. Use a tunnel:
 
 ```bash
 brew install cloudflared          # no account/signup needed, unlike ngrok
+npm run tunnel
+```
+
+`npm run tunnel` starts a fresh `cloudflared` tunnel (killing any stale
+one for this project first) and automatically rewrites
+`NEXT_PUBLIC_APP_URL` in `.env` to the new `https://<random-words>
+.trycloudflare.com` URL it prints — restart `npm run dev` to pick it up
+(env vars only load at startup), then sign in and click **"Register
+Telegram webhook"** on `/admin/profile` (or just wait for a restart —
+`instrumentation.ts` registers it automatically on boot).
+
+Equivalent by hand, if you'd rather not run the script:
+
+```bash
 cloudflared tunnel --url http://localhost:3000
 ```
 
-That prints a `https://<random-words>.trycloudflare.com` URL. Set
-`NEXT_PUBLIC_APP_URL` to it, restart `npm run dev` (env vars only load at
-startup), then sign in and click **"Register Telegram webhook"** on
-`/admin/profile`.
+That prints the same URL — set `NEXT_PUBLIC_APP_URL` to it yourself and
+restart `npm run dev`.
 
 **One bot, shared between local and production** (the simpler of two
 reasonable setups — see `PLAN.md` for the alternative): a webhook is
