@@ -5,6 +5,8 @@ import { StageBanner } from "./StageBanner";
 import { CurrentMatches } from "./CurrentMatches";
 import { HelpIndicator } from "./HelpIndicator";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
+import { StyledQrCode } from "@/components/ui/StyledQrCode";
+import { GAME_LOGO_SRC } from "@/lib/game-assets";
 import type { SpectatorState } from "@/lib/spectator-state";
 
 const POLL_INTERVAL_MS = 3000;
@@ -55,6 +57,13 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
       <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
 
       <StageBanner text={state.stageBanner} />
+
+      {(state.status === "DRAFT" || state.status === "NURSERY_OPEN") && state.joinLink && (
+        <div className="flex flex-col items-center gap-3 py-4">
+          <p className="text-lg font-semibold text-foreground-muted">Scan to join!</p>
+          <StyledQrCode data={state.joinLink} size={400} logoSrc={GAME_LOGO_SRC[state.game]} />
+        </div>
+      )}
 
       <CurrentMatches matches={state.activeMatches} onDeck={state.onDeck} />
 

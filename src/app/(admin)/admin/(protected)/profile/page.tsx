@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { adminLinkDeepLink } from "@/lib/qr";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RegisterWebhookButton } from "@/components/admin/RegisterWebhookButton";
-import { StyledQrCode } from "@/components/admin/StyledQrCode";
+import { StyledQrCode } from "@/components/ui/StyledQrCode";
 
 // The deep link + bot are both live now (Phase 6) — /start admin_<token>
 // on the bot links this Daddy's Telegram account to receive pushes.
@@ -34,7 +34,7 @@ export default async function AdminProfilePage() {
               <p className="text-sm text-foreground-muted">
                 Scan with Telegram, or open this link, to receive help-request/dispute/round pushes on this device:
               </p>
-              <StyledQrCode data={deepLink} size={220} />
+              <StyledQrCode data={deepLink} size={440} />
               <code className="break-all text-xs text-foreground-muted">{deepLink}</code>
             </div>
           )}

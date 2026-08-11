@@ -10,6 +10,7 @@ import { buildPlaypenSection, type PlaypenSection } from "@/lib/playpen-view";
 import { getTerminology } from "@/lib/terminology";
 import { parseSlugNumber } from "@/lib/slug-number";
 import { resolveAvatarSrc } from "@/lib/avatars";
+import { babyJoinDeepLink } from "@/lib/qr";
 import { MatchKind } from "@/generated/prisma/enums";
 import type { Game, MatchStatus, PlaytimeStatus } from "@/generated/prisma/enums";
 
@@ -57,6 +58,8 @@ export interface SpectatorState {
   phase2Bracket: Phase2BracketData | null;
   /** null before the playtime starts; every round of playpens/round-robin played so far, grouped. */
   playpens: PlaypenSection | null;
+  /** Same join deep link shown in the admin panel's QR — surfaced here so the spectator screen can display its own scan-to-join QR while status is DRAFT/NURSERY_OPEN. Null if TELEGRAM_BOT_USERNAME isn't set. */
+  joinLink: string | null;
 }
 
 const PHASE2_LABELS: Partial<Record<MatchKind, string>> = {
@@ -188,6 +191,7 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     lastEventId: lastEvent?.id ?? 0,
     phase2Bracket,
     playpens,
+    joinLink: process.env.TELEGRAM_BOT_USERNAME ? babyJoinDeepLink(playtime.joinToken) : null,
   };
 }
 

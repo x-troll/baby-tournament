@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
-import { StyledQrCode } from "@/components/admin/StyledQrCode";
+import { StyledQrCode } from "@/components/ui/StyledQrCode";
 import { GAME_DISPLAY, PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
 import {
   addBabyManuallyAction,
@@ -252,7 +252,7 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
             {joinLink ? (
               <div className="flex flex-col items-start gap-2">
                 <p className="text-sm text-foreground-muted">Babies scan this to join via Telegram:</p>
-                <StyledQrCode data={joinLink} size={200} logoSrc={GAME_LOGO_SRC[playtime.game]} />
+                <StyledQrCode data={joinLink} size={400} logoSrc={GAME_LOGO_SRC[playtime.game]} />
                 <code className="break-all text-xs text-foreground-muted">{joinLink}</code>
               </div>
             ) : (

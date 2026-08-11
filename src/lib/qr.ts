@@ -1,5 +1,5 @@
 // Pure URL builders — actual QR rendering moved client-side, see
-// src/components/admin/StyledQrCode.tsx (qr-code-styling needs a real
+// src/components/ui/StyledQrCode.tsx (qr-code-styling needs a real
 // browser canvas; these two functions have nothing to do with that,
 // they just build the t.me deep link a QR code (or a plain tappable
 // link) points at).
