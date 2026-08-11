@@ -95,6 +95,16 @@ export async function deleteWebhook(): Promise<boolean> {
   return result?.ok ?? false;
 }
 
+/** Currently-registered webhook URL, or null if unconfigured/unregistered/errored. */
+export async function getWebhookInfo(): Promise<string | null> {
+  if (!isConfigured()) return null;
+  const result = (await callTelegramApi("getWebhookInfo", {})) as {
+    ok: boolean;
+    result?: { url?: string };
+  } | null;
+  return result?.ok ? (result.result?.url ?? null) : null;
+}
+
 export function isTelegramConfigured(): boolean {
   return isConfigured();
 }
