@@ -9,6 +9,7 @@ import { computeBabyStatus } from "@/lib/baby-status";
 import { confirmReportedMatch, disputeMatch, markMatchInProgress } from "@/lib/playtime-lifecycle";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
 import { SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
+import { GAME_DISPLAY } from "@/lib/enum-display";
 import * as playerCopy from "@/lib/player-copy";
 import { answerCallbackQuery, sendMessage, type InlineKeyboard } from "./client";
 import * as copy from "./copy";
@@ -77,10 +78,15 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
   }
 
   // Not a command — if there's a pending (nameless) registration for this
-  // chat, treat the message as their display name.
+  // chat, treat the message as their display name. Only one nameless
+  // registration can exist per chat at a time (handleBabyStart won't
+  // create a second one across a different playtime while one is still
+  // pending — see there), so this lookup is unambiguous even for
+  // someone signed up for multiple playtimes.
   const pending = await prisma.baby.findFirst({
     where: { telegramChatId: chatId, displayName: null },
     orderBy: { createdAt: "desc" },
+    include: { playtime: true },
   });
   if (pending && text) {
     const updated = await prisma.baby.update({
@@ -88,7 +94,7 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
       data: { displayName: text },
     });
     const link = await magicLink(updated.id);
-    await sendMessage(chatId, copy.registeredAndMagicLink(text, link));
+    await sendMessage(chatId, copy.registeredAndMagicLink(pending.playtime.name, text, link));
   }
 }
 
@@ -108,15 +114,29 @@ async function handleBabyStart(chatId: string, joinToken: string): Promise<void>
     await sendMessage(chatId, copy.unknownJoinToken());
     return;
   }
+  const gameLabel = GAME_DISPLAY[playtime.game].label;
 
   const existing = await prisma.baby.findFirst({ where: { playtimeId: playtime.id, telegramChatId: chatId } });
   if (existing) {
     if (existing.displayName) {
       const link = await magicLink(existing.id);
-      await sendMessage(chatId, copy.alreadyRegistered(existing.displayName, link));
+      await sendMessage(chatId, copy.alreadyRegistered(playtime.name, existing.displayName, link));
     } else {
-      await sendMessage(chatId, copy.askForDisplayName());
+      await sendMessage(chatId, copy.askForDisplayName(playtime.name, gameLabel));
     }
+    return;
+  }
+
+  // Only one nameless registration per chat at a time — the plain-text
+  // "treat this as your display name" handler above can't tell which
+  // pending registration a reply is "for" if there were two, so it'd
+  // silently attach the name to whichever is newest. Simplest fix:
+  // don't let a second one start until the first is named.
+  const otherPending = await prisma.baby.findFirst({
+    where: { telegramChatId: chatId, displayName: null, playtimeId: { not: playtime.id } },
+  });
+  if (otherPending) {
+    await sendMessage(chatId, copy.finishOtherRegistrationFirst());
     return;
   }
 
@@ -131,7 +151,7 @@ async function handleBabyStart(chatId: string, joinToken: string): Promise<void>
       registrationOrder: (lastBaby?.registrationOrder ?? 0) + 1,
     },
   });
-  await sendMessage(chatId, copy.askForDisplayName());
+  await sendMessage(chatId, copy.askForDisplayName(playtime.name, gameLabel));
 }
 
 async function handleStatusCommand(chatId: string): Promise<void> {

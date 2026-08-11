@@ -7,16 +7,25 @@ import { getTerminology } from "@/lib/terminology";
 
 const t = getTerminology();
 
-export function askForDisplayName(): string {
-  return `Welcome to ${t.registration}! 🍼 What should we call you tonight? Just send your name back to me.`;
+// Scanning the join QR can't show which game/playtime you're about to
+// join — Telegram deep links have no per-payload preview, only the
+// bot's own global profile, the same for every link it ever sends. This
+// first reply is the earliest point the bot can say anything
+// payload-specific, so it's where that context actually needs to live.
+export function askForDisplayName(playtimeName: string, gameLabel: string): string {
+  return `Welcome to ${playtimeName} (${gameLabel})! 🍼 What should we call you tonight? Just send your name back to me.`;
 }
 
-export function registeredAndMagicLink(displayName: string, magicLink: string): string {
-  return `You're all checked in, ${displayName}! 🌟\n\nTap below to open your ${t.player} screen:\n${magicLink}\n\nKeep this chat open — I'll ping you here when it's your turn.\n\nWant to pick an avatar or change what we call you? Send /profile anytime.`;
+export function finishOtherRegistrationFirst(): string {
+  return "You're still finishing check-in for another playtime — send your name for that one first, then scan this QR again.";
 }
 
-export function alreadyRegistered(displayName: string, magicLink: string): string {
-  return `Hey ${displayName}, you're already checked in! Here's your screen again:\n${magicLink}`;
+export function registeredAndMagicLink(playtimeName: string, displayName: string, magicLink: string): string {
+  return `You're all checked in to ${playtimeName}, ${displayName}! 🌟\n\nTap below to open your ${t.player} screen:\n${magicLink}\n\nKeep this chat open — I'll ping you here when it's your turn.\n\nWant to pick an avatar or change what we call you? Send /profile anytime.`;
+}
+
+export function alreadyRegistered(playtimeName: string, displayName: string, magicLink: string): string {
+  return `Hey ${displayName}, you're already checked in to ${playtimeName}! Here's your screen again:\n${magicLink}`;
 }
 
 export function unknownJoinToken(): string {

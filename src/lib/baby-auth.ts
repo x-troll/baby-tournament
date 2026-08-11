@@ -101,8 +101,18 @@ export async function requireBaby(playtimeSlug: string): Promise<Baby> {
   }
   const slugNumber = parseSlugNumber(playtimeSlug);
   const playtime = slugNumber === null ? null : await prisma.playtime.findUnique({ where: { slugNumber } });
-  if (!playtime || baby.playtimeId !== playtime.id) {
+  if (!playtime) {
     redirect(`/play/${playtimeSlug}/not-signed-in`);
+  }
+  if (baby.playtimeId !== playtime.id) {
+    // A *valid* session exists, just for a different playtime — there's
+    // only one baby-session cookie site-wide (see the header comment on
+    // COOKIE_NAME above), so opening a second game's magic link always
+    // swaps out whichever one was active. Distinct from "no session at
+    // all" below: this person already has an account here, they're just
+    // not currently logged into it — worth telling them that directly
+    // instead of the generic "scan the QR" copy.
+    redirect(`/play/${playtimeSlug}/not-signed-in?otherPlaytime=1`);
   }
   return baby;
 }
