@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseSlugNumber } from "@/lib/slug-number";
+import { shortId } from "@/lib/short-id";
 import type { Baby } from "@/generated/prisma/client";
 
 const COOKIE_NAME = "playtime_baby_session";
@@ -46,25 +47,32 @@ const MAGIC_LINK_DURATION_SECONDS = 60 * 10; // 10 minutes — the bot can alway
 /**
  * The Telegram bot can't set a cookie in the baby's browser directly —
  * it's a completely separate connection (Telegram's servers hitting our
- * webhook, not the baby's phone). Instead it sends a short-lived signed
- * link; GET /nursery/verify exchanges it for the real session cookie.
+ * webhook, not the baby's phone). Instead it sends a short-lived link;
+ * GET /nursery/verify exchanges it for the real session cookie.
+ *
+ * A short DB-backed token (src/lib/short-id.ts), not a signed JWT — the
+ * same pattern already used for Playtime.joinToken/Admin.adminLinkToken.
+ * A self-contained signed JWT can't be meaningfully shortened (~190
+ * chars minimum for HS256's three base64url segments) while staying
+ * verifiable without a DB round-trip; a short opaque token looked up
+ * against the Baby row trades that statelessness for length, which is
+ * the right trade here since verify() already hits the DB anyway.
+ * Overwrites any previous token/expiry — stays valid and reusable from
+ * any device until it naturally expires (not consumed on first use).
  */
 export async function createMagicLinkToken(babyId: string): Promise<string> {
-  return new SignJWT({ babyId, purpose: "magic-link" })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${MAGIC_LINK_DURATION_SECONDS}s`)
-    .sign(getSecretKey());
+  const token = shortId();
+  await prisma.baby.update({
+    where: { id: babyId },
+    data: { magicLinkToken: token, magicLinkExpiresAt: new Date(Date.now() + MAGIC_LINK_DURATION_SECONDS * 1000) },
+  });
+  return token;
 }
 
 export async function verifyMagicLinkToken(token: string): Promise<string | null> {
-  try {
-    const { payload } = await jwtVerify(token, getSecretKey());
-    if (payload.purpose !== "magic-link" || typeof payload.babyId !== "string") return null;
-    return payload.babyId;
-  } catch {
-    return null;
-  }
+  const baby = await prisma.baby.findUnique({ where: { magicLinkToken: token } });
+  if (!baby?.magicLinkExpiresAt || baby.magicLinkExpiresAt.getTime() < Date.now()) return null;
+  return baby.id;
 }
 
 async function getBabySessionBabyId(): Promise<string | null> {

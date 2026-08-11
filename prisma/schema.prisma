@@ -150,6 +150,16 @@ model Baby {
   // global unique here would make that a constraint violation.
   telegramChatId String?
 
+  // Short-lived exchange token for the Telegram magic link (GET
+  // /nursery/verify?token=...) — a short random string generated in
+  // application code (src/lib/short-id.ts), same pattern as
+  // Playtime.joinToken/Admin.adminLinkToken, not a signed JWT (which
+  // can't be meaningfully shortened while staying self-contained).
+  // Overwritten on every fresh /start, but stays valid — reusable from
+  // any device — until magicLinkExpiresAt passes.
+  magicLinkToken       String?   @unique
+  magicLinkExpiresAt   DateTime?
+
   registrationOrder Int // used as the seed source before any match history exists
   seed              Int? // seed 1-4 once Phase 2 seeding is computed
 
