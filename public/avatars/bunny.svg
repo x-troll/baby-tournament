@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Bunny">
+  <!-- Placeholder only — see src/lib/avatars.ts. -->
+  <ellipse cx="20" cy="14" rx="6" ry="14" fill="#f6c9dd" />
+  <ellipse cx="44" cy="14" rx="6" ry="14" fill="#f6c9dd" />
+  <circle cx="32" cy="38" r="24" fill="#fce3ee" />
+  <circle cx="23" cy="34" r="4" fill="#3a2e3f" />
+  <circle cx="41" cy="34" r="4" fill="#3a2e3f" />
+  <ellipse cx="32" cy="45" rx="7" ry="5" fill="#fff8f0" />
+  <circle cx="32" cy="43" r="2.5" fill="#e08bb0" />
+</svg>

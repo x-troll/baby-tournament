@@ -10,6 +10,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { MatchKind, MatchStatus } from "@/generated/prisma/enums";
+import { getTerminology } from "@/lib/terminology";
 import {
   notifyBabyCrowned,
   notifyBabyNapped,
@@ -263,7 +264,11 @@ export async function confirmReportedMatch(matchId: string, actor: ConfirmReport
       throw new Error("Only a reported match awaiting confirmation can be confirmed this way.");
     }
     if (match.disputed) {
-      throw new Error("This match is disputed — a Daddy needs to resolve it first.");
+      // Deployment-wide term, not a per-baby one — this is an internal
+      // safety-net exception (a REPORTED+disputed match reaching this
+      // code path at all is already the unusual case), not worth a DB
+      // round-trip to resolve one specific baby's /profile preference for.
+      throw new Error(`This match is disputed — a ${getTerminology().admin} needs to resolve it first.`);
     }
 
     await tx.match.update({ where: { id: matchId }, data: { status: "CONFIRMED", deadlineAt: null } });

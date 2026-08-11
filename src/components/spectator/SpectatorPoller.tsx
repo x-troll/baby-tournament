@@ -59,7 +59,7 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
 
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-8">
-      <HelpIndicator count={state.openHelpRequestCount} />
+      <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
 
       <header className="text-center">
         <h1 className="font-display text-2xl font-bold text-foreground-muted">{state.playtimeName}</h1>

@@ -19,6 +19,8 @@ export interface StatusCardCopy {
   registration: string;
   waitingForMatchCapitalized: string;
   nappedMessage?: string;
+  /** This baby's own resolved organizer term (their /profile pick, or the deployment default) — see src/lib/baby-terminology.ts. */
+  organizerTerm: string;
 }
 
 export interface StatusCardProps {
@@ -57,7 +59,7 @@ function renderBody(
       return (
         <div className="flex items-center gap-3">
           <Image src="/admin-avatar.svg" alt="" width={40} height={40} className="rounded-full" />
-          <Headline>Daddy is coming 💫</Headline>
+          <Headline>{copy.organizerTerm} is coming 💫</Headline>
         </div>
       );
 

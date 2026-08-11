@@ -11,6 +11,7 @@ export interface PlaypenViewParticipant {
   name: string;
   finishPosition: number | null;
   seedInMatch: number | null;
+  avatarSrc: string | null;
 }
 
 export interface PlaypenViewMatchInput {

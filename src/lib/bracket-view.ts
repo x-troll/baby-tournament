@@ -15,6 +15,7 @@ export interface Phase2BracketParticipantInput {
   babyId: string;
   name: string;
   finishPosition: number | null;
+  avatarSrc: string | null;
 }
 
 export interface Phase2BracketMatchInput {
@@ -30,6 +31,7 @@ export interface Phase2BoxParticipant {
   /** null → genuinely unknown yet (render "????"), not just unnamed. */
   name: string | null;
   isWinner: boolean;
+  avatarSrc: string | null;
 }
 
 export interface Phase2Box {
@@ -72,8 +74,8 @@ export function buildPhase2Bracket(matches: Phase2BracketMatchInput[]): Phase2Br
 
     const slots: Phase2BoxParticipant[] = [0, 1].map((i) => {
       const p = match?.participants[i];
-      if (!p) return { babyId: null, name: null, isWinner: false };
-      return { babyId: p.babyId, name: p.name, isWinner: p.finishPosition === 1 };
+      if (!p) return { babyId: null, name: null, isWinner: false, avatarSrc: null };
+      return { babyId: p.babyId, name: p.name, isWinner: p.finishPosition === 1, avatarSrc: p.avatarSrc };
     });
 
     return {

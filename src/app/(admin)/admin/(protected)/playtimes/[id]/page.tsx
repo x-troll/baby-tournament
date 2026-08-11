@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { babyJoinDeepLink, qrCodeDataUri } from "@/lib/qr";
 import { getTerminology } from "@/lib/terminology";
+import { resolveAvatarSrc } from "@/lib/avatars";
 import { buildPlaypenSection } from "@/lib/playpen-view";
 import { buildPhase2Bracket } from "@/lib/bracket-view";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -55,12 +56,13 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
     babyId: string;
     finishPosition: number | null;
     seedInMatch: number | null;
-    baby: { displayName: string | null };
+    baby: { displayName: string | null; avatarId: string | null };
   }) => ({
     babyId: p.babyId,
     name: p.baby.displayName ?? "Unnamed baby",
     finishPosition: p.finishPosition,
     seedInMatch: p.seedInMatch,
+    avatarSrc: resolveAvatarSrc(p.baby.avatarId),
   });
 
   const playpens = buildPlaypenSection(

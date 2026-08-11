@@ -125,6 +125,19 @@ model Baby {
   // /start <joinToken> handling.
   displayName String?
 
+  // Optional personalization, all settable (and changeable) via the
+  // Telegram /profile command or the web settings page — never required,
+  // null means "use the deployment's default" everywhere these are read
+  // (see src/lib/avatars.ts, src/lib/baby-terminology.ts). `avatarId`
+  // indexes into avatars.ts's AVATAR_OPTIONS, not a file path directly, so
+  // swapping the actual artwork later never touches stored data.
+  avatarId           String?
+  // What this baby calls the organizer (e.g. "Big bro") — shown back to
+  // the organizer too, so they know what they're being called.
+  organizerRoleLabel String?
+  // What the organizer/UI should call this baby (e.g. "Little sis").
+  selfRoleLabel      String?
+
   // Null for admin-added babies with no Telegram (spec's manual fallback)
   // — they simply receive no pings. Unique *per playtime*, not globally:
   // this is a one-off bar-night app, and the same Telegram account will

@@ -20,6 +20,7 @@ export interface FlowParticipant {
   advancing: boolean;
   /** Playpen finish order (1st, 2nd, ...); null for Phase 2 boxes, which just bold the winner instead. */
   finishPosition: number | null;
+  avatarSrc: string | null;
 }
 
 export interface FlowBox {
@@ -84,6 +85,7 @@ export function buildTournamentFlow(
           name: p.name,
           advancing: p.finishPosition != null && p.finishPosition <= advancingThreshold,
           finishPosition: p.finishPosition,
+          avatarSrc: p.avatarSrc,
         })),
       })),
     });
@@ -114,6 +116,7 @@ export function buildTournamentFlow(
             name: p.name,
             advancing: p.isWinner,
             finishPosition: null,
+            avatarSrc: p.avatarSrc,
           })),
         })),
       });
@@ -147,7 +150,7 @@ function buildNextRoundPreview(lastRound: PlaypenViewRound): FlowColumn | null {
   const knownWinners = lastRound.pens
     .flatMap((pen) => pen.participants)
     .filter((p) => p.finishPosition != null && p.finishPosition <= 2)
-    .map((p) => ({ babyId: p.babyId, name: p.name }));
+    .map((p) => ({ babyId: p.babyId, name: p.name, avatarSrc: p.avatarSrc }));
   if (knownWinners.length === 0) return null; // nothing decided yet — nothing to preview
 
   const totalAdvancing = lastRound.pens.length * 2;
@@ -156,6 +159,7 @@ function buildNextRoundPreview(lastRound: PlaypenViewRound): FlowColumn | null {
     ...Array.from({ length: Math.max(0, totalAdvancing - knownWinners.length) }, () => ({
       babyId: null,
       name: null,
+      avatarSrc: null,
     })),
   ];
 

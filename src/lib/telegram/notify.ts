@@ -7,6 +7,7 @@
 // source of truth).
 import { prisma } from "@/lib/prisma";
 import { loadRules } from "@/lib/rules-content";
+import { resolveOrganizerTerm } from "@/lib/baby-terminology";
 import { sendMessage, type InlineKeyboard } from "./client";
 import * as copy from "./copy";
 
@@ -79,7 +80,7 @@ export async function notifyBabyCrowned(babyId: string): Promise<void> {
 export async function notifyBabyDaddyIsComing(babyId: string): Promise<void> {
   const baby = await prisma.baby.findUnique({ where: { id: babyId } });
   if (!baby?.telegramChatId) return;
-  await sendMessage(baby.telegramChatId, copy.daddyIsComing());
+  await sendMessage(baby.telegramChatId, copy.daddyIsComing(resolveOrganizerTerm(baby)));
 }
 
 async function matchLabel(matchId: string | null): Promise<string> {
@@ -102,9 +103,13 @@ export async function notifyAdminsHelpRequest(helpRequestId: string): Promise<vo
   const label = await matchLabel(req.matchId);
   const deepLink = appUrl(`/admin/playtimes/${req.baby.playtimeId}`);
   const isDispute = req.reason === "score dispute";
+  // Only worth telling the admin what they're called when the baby
+  // actually customized it — otherwise it's just repeating back
+  // terminology.ts's own default, which the admin already knows.
+  const organizerTerm = req.baby.organizerRoleLabel;
   const text = isDispute
-    ? copy.adminDisputeAlert(req.baby.displayName ?? "A baby", label, deepLink)
-    : copy.adminHelpRequestAlert(req.baby.displayName ?? "A baby", label, req.reason, req.note, deepLink);
+    ? copy.adminDisputeAlert(req.baby.displayName ?? "A baby", label, deepLink, organizerTerm)
+    : copy.adminHelpRequestAlert(req.baby.displayName ?? "A baby", label, req.reason, req.note, deepLink, organizerTerm);
 
   const keyboard: InlineKeyboard = [
     [

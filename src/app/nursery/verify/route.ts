@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createBabySession, verifyMagicLinkToken } from "@/lib/baby-auth";
 import { prisma } from "@/lib/prisma";
+import { getTerminology } from "@/lib/terminology";
 
 /** Exchanges a Telegram magic-link token for a real session cookie, then redirects to the baby's screen. */
 export async function GET(request: NextRequest) {
@@ -16,7 +17,11 @@ export async function GET(request: NextRequest) {
 
   const baby = await prisma.baby.findUnique({ where: { id: babyId }, include: { playtime: true } });
   if (!baby) {
-    return new NextResponse("Couldn't find your registration — ask a Daddy for help.", { status: 404 });
+    // No baby found at all — nobody's own /profile preference to read, so
+    // this falls back to the deployment-wide term (see baby-terminology.ts).
+    return new NextResponse(`Couldn't find your registration — ask a ${getTerminology().admin} for help.`, {
+      status: 404,
+    });
   }
 
   await createBabySession(baby.id);

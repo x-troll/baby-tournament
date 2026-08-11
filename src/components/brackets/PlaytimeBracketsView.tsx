@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { StatusBadge } from "./StatusBadge";
 import { buildTournamentFlow, type FlowBox, type FlowParticipant } from "@/lib/tournament-flow";
 import type { PlaypenSection } from "@/lib/playpen-view";
@@ -35,7 +36,10 @@ function sortParticipants(p: FlowParticipant[]): FlowParticipant[] {
 
 function ParticipantRow({ p }: { p: FlowParticipant }) {
   return (
-    <p className={p.advancing ? "truncate text-sm font-bold text-active" : "truncate text-sm text-foreground-muted"}>
+    <p
+      className={`flex items-center gap-1 truncate text-sm ${p.advancing ? "font-bold text-active" : "text-foreground-muted"}`}
+    >
+      {p.avatarSrc && <Image src={p.avatarSrc} alt="" width={16} height={16} className="shrink-0 rounded-full" />}
       {p.finishPosition ? `${p.finishPosition}. ` : p.name ? "· " : ""}
       {p.name ?? "????"}
     </p>

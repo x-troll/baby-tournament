@@ -9,6 +9,7 @@ import { buildPhase2Bracket, type Phase2BracketData } from "@/lib/bracket-view";
 import { buildPlaypenSection, type PlaypenSection } from "@/lib/playpen-view";
 import { getTerminology } from "@/lib/terminology";
 import { parseSlugNumber } from "@/lib/slug-number";
+import { resolveAvatarSrc } from "@/lib/avatars";
 import { MatchKind } from "@/generated/prisma/enums";
 import type { Game, MatchStatus, PlaytimeStatus } from "@/generated/prisma/enums";
 
@@ -17,6 +18,7 @@ export interface SpectatorParticipant {
   name: string;
   finishPosition: number | null;
   seedInMatch: number | null;
+  avatarSrc: string | null;
 }
 
 export interface SpectatorMatch {
@@ -48,6 +50,8 @@ export interface SpectatorState {
   starChart: SpectatorStarChartRow[];
   bestBaby: { babyId: string; name: string } | null;
   openHelpRequestCount: number;
+  /** Deployment-wide organizer term (see baby-terminology.ts) — this is an aggregate across every baby, so there's no single baby's /profile preference to read here. */
+  adminTerm: string;
   lastEventId: number;
   /** null until Phase 2 starts (still in playpens, or the N=3 round-robin path that skips it entirely). */
   phase2Bracket: Phase2BracketData | null;
@@ -97,11 +101,17 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     }),
   ]);
 
-  const toParticipant = (p: { babyId: string; finishPosition: number | null; seedInMatch: number | null; baby: { displayName: string | null } }): SpectatorParticipant => ({
+  const toParticipant = (p: {
+    babyId: string;
+    finishPosition: number | null;
+    seedInMatch: number | null;
+    baby: { displayName: string | null; avatarId: string | null };
+  }): SpectatorParticipant => ({
     babyId: p.babyId,
     name: p.baby.displayName ?? "Unnamed baby",
     finishPosition: p.finishPosition,
     seedInMatch: p.seedInMatch,
+    avatarSrc: resolveAvatarSrc(p.baby.avatarId),
   });
 
   const activeMatches = matches
@@ -141,7 +151,13 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
   const stageBanner = computeStageBanner(playtime.status, matches, aliveCount);
 
   const phase2Bracket = buildPhase2Bracket(
-    matches.map((m) => ({ kind: m.kind, status: m.status, participants: m.participants.map(toParticipant).map((p) => ({ babyId: p.babyId, name: p.name, finishPosition: p.finishPosition })) })),
+    matches.map((m) => ({
+      kind: m.kind,
+      status: m.status,
+      participants: m.participants
+        .map(toParticipant)
+        .map((p) => ({ babyId: p.babyId, name: p.name, finishPosition: p.finishPosition, avatarSrc: p.avatarSrc })),
+    })),
   );
 
   const t = getTerminology();
@@ -168,6 +184,7 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     starChart,
     bestBaby: champion ? { babyId: champion.id, name: champion.displayName ?? "Unnamed baby" } : null,
     openHelpRequestCount: helpRequestCount,
+    adminTerm: t.admin,
     lastEventId: lastEvent?.id ?? 0,
     phase2Bracket,
     playpens,

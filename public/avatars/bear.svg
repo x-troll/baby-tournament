@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Bear">
+  <!-- Placeholder only — see src/lib/avatars.ts. -->
+  <circle cx="16" cy="16" r="8" fill="#c9a27a" />
+  <circle cx="48" cy="16" r="8" fill="#c9a27a" />
+  <circle cx="32" cy="34" r="26" fill="#e0b891" />
+  <circle cx="22" cy="30" r="4" fill="#3a2e3f" />
+  <circle cx="42" cy="30" r="4" fill="#3a2e3f" />
+  <ellipse cx="32" cy="42" rx="9" ry="7" fill="#fff8f0" />
+  <circle cx="32" cy="40" r="3" fill="#3a2e3f" />
+</svg>

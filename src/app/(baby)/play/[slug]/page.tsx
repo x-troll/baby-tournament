@@ -1,8 +1,12 @@
+import Image from "next/image";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireBaby } from "@/lib/baby-auth";
 import { parseSlugNumber } from "@/lib/slug-number";
 import { computeBabyStatus } from "@/lib/baby-status";
 import { getTerminology } from "@/lib/terminology";
+import { resolveOrganizerTerm } from "@/lib/baby-terminology";
+import { resolveAvatarSrc } from "@/lib/avatars";
 import { loadRules } from "@/lib/rules-content";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { RulesBar } from "@/components/rules/RulesBar";
@@ -56,12 +60,14 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
   // Resolved to plain strings here, server-side — StatusCard is a client
   // component and can't receive the Terminology object itself (it carries
   // functions, which can't cross the server/client boundary).
+  const organizerTerm = resolveOrganizerTerm(baby);
   const statusCardCopy = {
     champion: t.champion,
     matchWin: t.matchWin,
     registration: t.registration,
     waitingForMatchCapitalized: t.waitingForMatch[0]!.toUpperCase() + t.waitingForMatch.slice(1),
     nappedMessage: state.kind === "NAPPED" ? t.eliminatedWithPlacement(state.placement ?? 0) : undefined,
+    organizerTerm,
   };
 
   return (
@@ -76,9 +82,23 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
         overrideNote={playtime.rulesOverrideNote}
       />
 
-      <h1 className="sr-only">
-        {playtime.name} — {t.player} screen
-      </h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="sr-only">
+          {playtime.name} — {t.player} screen
+        </h1>
+        {resolveAvatarSrc(baby.avatarId) && (
+          <Image
+            src={resolveAvatarSrc(baby.avatarId)!}
+            alt=""
+            width={40}
+            height={40}
+            className="rounded-full"
+          />
+        )}
+        <Link href={`/play/${slug}/settings`} className="ml-auto text-sm font-semibold text-foreground-muted underline">
+          ⚙️ Settings
+        </Link>
+      </div>
 
       <StatusCard
         slug={slug}
@@ -89,7 +109,7 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
 
       <StarChart rows={starChartRows} currentBabyId={baby.id} />
 
-      <RequestHelpButton slug={slug} adminLabel={t.admin} />
+      <RequestHelpButton slug={slug} adminLabel={organizerTerm} />
     </main>
   );
 }
