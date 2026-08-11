@@ -1,14 +1,17 @@
-// Maps Phase 2's fixed six-match DAG (see bracket-engine/phase2.ts) onto
-// @g-loot/react-tournament-brackets' { upper, lower } shape, so the
-// spectator screen can render it as an actual bracket instead of a flat
-// match list. Pure data transform, no React — shared by the initial
-// server render and the poll endpoint via computeSpectatorState.
+// Builds Phase 2 (the fixed six-match final-four DAG — see
+// bracket-engine/phase2.ts) into a plain, from-scratch view model for
+// src/components/brackets/Phase2Bracket.tsx to render as a small custom
+// bracket diagram. No third-party bracket library: one was tried
+// (@g-loot/react-tournament-brackets) and dropped — its renderer hard-
+// reads exactly two participants per match, which is fine for Phase 2
+// (genuinely 1v1) but the peer-dependency/packaging workarounds it
+// needed weren't worth it for a diagram this small. Pure data transform,
+// no React — shared by the initial server render and the poll endpoint
+// via computeSpectatorState, and by the admin page directly.
 import type { MatchKind, MatchStatus } from "@/generated/prisma/enums";
-// Type-only import — no runtime cost in this server module, but keeps our
-// shape provably assignable to what <DoubleEliminationBracket> expects.
-import type { MatchType } from "@g-loot/react-tournament-brackets";
+import type { DisplayStatus } from "./match-status";
 
-export interface Phase2BracketParticipant {
+export interface Phase2BracketParticipantInput {
   babyId: string;
   name: string;
   finishPosition: number | null;
@@ -17,83 +20,71 @@ export interface Phase2BracketParticipant {
 export interface Phase2BracketMatchInput {
   kind: MatchKind;
   status: MatchStatus;
-  participants: Phase2BracketParticipant[];
+  participants: Phase2BracketParticipantInput[];
+}
+
+export type Phase2BoxStatus = DisplayStatus;
+
+export interface Phase2BoxParticipant {
+  babyId: string | null;
+  /** null → genuinely unknown yet (render "????"), not just unnamed. */
+  name: string | null;
+  isWinner: boolean;
+}
+
+export interface Phase2Box {
+  kind: string;
+  label: string;
+  status: Phase2BoxStatus;
+  /** Purely for layout — two visual tracks so QF1→WINNERS_FINAL and QF2→LOSERS_R1 read as distinct paths that later merge. */
+  row: "a" | "b";
+  col: 1 | 2 | 3 | 4;
+  participants: [Phase2BoxParticipant, Phase2BoxParticipant];
 }
 
 export interface Phase2BracketData {
-  upper: MatchType[];
-  lower: MatchType[];
+  boxes: Phase2Box[];
 }
 
-const PHASE2_KINDS = new Set<MatchKind>([
-  "QF1",
-  "QF2",
-  "LOSERS_R1",
-  "WINNERS_FINAL",
-  "LOSERS_FINAL",
-  "GRAND_FINAL",
-] as MatchKind[]);
-
-const LABELS: Record<string, string> = {
-  QF1: "Quarterfinal 1",
-  QF2: "Quarterfinal 2",
-  LOSERS_R1: "Losers round 1",
-  WINNERS_FINAL: "Winners final",
-  LOSERS_FINAL: "Losers final",
-  GRAND_FINAL: "Grand final",
-};
-
-const DAG: Record<
-  string,
-  { bracket: "upper" | "lower"; nextMatchId: string | null; nextLooserMatchId: string | null }
-> = {
-  QF1: { bracket: "upper", nextMatchId: "WINNERS_FINAL", nextLooserMatchId: "LOSERS_R1" },
-  QF2: { bracket: "upper", nextMatchId: "WINNERS_FINAL", nextLooserMatchId: "LOSERS_R1" },
-  WINNERS_FINAL: { bracket: "upper", nextMatchId: "GRAND_FINAL", nextLooserMatchId: "LOSERS_FINAL" },
-  GRAND_FINAL: { bracket: "upper", nextMatchId: null, nextLooserMatchId: null },
-  LOSERS_R1: { bracket: "lower", nextMatchId: "LOSERS_FINAL", nextLooserMatchId: null },
-  LOSERS_FINAL: { bracket: "lower", nextMatchId: "GRAND_FINAL", nextLooserMatchId: null },
-};
+const STAGES: { kind: MatchKind; label: string; row: "a" | "b"; col: 1 | 2 | 3 | 4 }[] = [
+  { kind: "QF1" as MatchKind, label: "Quarterfinal 1", row: "a", col: 1 },
+  { kind: "QF2" as MatchKind, label: "Quarterfinal 2", row: "b", col: 1 },
+  { kind: "WINNERS_FINAL" as MatchKind, label: "Winners final", row: "a", col: 2 },
+  { kind: "LOSERS_R1" as MatchKind, label: "Losers round 1", row: "b", col: 2 },
+  { kind: "LOSERS_FINAL" as MatchKind, label: "Losers final", row: "b", col: 3 },
+  { kind: "GRAND_FINAL" as MatchKind, label: "Grand final", row: "a", col: 4 },
+];
 
 /**
- * Builds the double-elimination bracket view, or `null` if Phase 2 hasn't
- * started yet (still in playpens, or the N=3 round-robin path that never
- * reaches Phase 2 at all). Matches not yet created in the DB (their
- * feeder matches haven't resolved) render as TBD placeholders so the
- * whole six-match shape is always visible, not just what exists so far.
+ * Returns `null` until Phase 2 starts (still in playpens, or the N=3
+ * round-robin path that never reaches it). Matches not yet created in the
+ * DB (their feeders haven't resolved) render as `NOT_YET_PLAYED` with
+ * both participant slots unknown (`name: null` → "????"), so all six
+ * boxes are always visible, not just what exists so far.
  */
 export function buildPhase2Bracket(matches: Phase2BracketMatchInput[]): Phase2BracketData | null {
-  const byKind = new Map(matches.filter((m) => PHASE2_KINDS.has(m.kind)).map((m) => [m.kind as string, m]));
+  const byKind = new Map(matches.map((m) => [m.kind as string, m]));
   if (!byKind.has("QF1") && !byKind.has("QF2")) return null;
 
-  const toMatchType = (kind: string): MatchType => {
-    const node = DAG[kind]!;
-    const match = byKind.get(kind);
-    const done = match?.status === "CONFIRMED";
+  const boxes: Phase2Box[] = STAGES.map((stage) => {
+    const match = byKind.get(stage.kind);
+    const status: Phase2BoxStatus = !match ? "NOT_YET_PLAYED" : match.status === "CONFIRMED" ? "FINISHED" : "PLAYING";
 
-    const participants: { id: string; name?: string; isWinner: boolean }[] = (match?.participants ?? []).map(
-      (p) => ({ id: p.babyId, name: p.name, isWinner: p.finishPosition === 1 }),
-    );
-    // Pad to 2 slots with TBD placeholders — keeps the bracket's shape
-    // fixed even before a match's feeders have resolved.
-    while (participants.length < 2) {
-      participants.push({ id: `${kind}-tbd-${participants.length}`, isWinner: false });
-    }
+    const slots: Phase2BoxParticipant[] = [0, 1].map((i) => {
+      const p = match?.participants[i];
+      if (!p) return { babyId: null, name: null, isWinner: false };
+      return { babyId: p.babyId, name: p.name, isWinner: p.finishPosition === 1 };
+    });
 
     return {
-      id: kind,
-      name: LABELS[kind]!,
-      nextMatchId: node.nextMatchId,
-      nextLooserMatchId: node.nextLooserMatchId ?? undefined,
-      tournamentRoundText: LABELS[kind]!,
-      startTime: "",
-      state: done ? "DONE" : "SCHEDULED",
-      participants,
+      kind: stage.kind,
+      label: stage.label,
+      status,
+      row: stage.row,
+      col: stage.col,
+      participants: [slots[0]!, slots[1]!],
     };
-  };
+  });
 
-  return {
-    upper: ["QF1", "QF2", "WINNERS_FINAL", "GRAND_FINAL"].map(toMatchType),
-    lower: ["LOSERS_R1", "LOSERS_FINAL"].map(toMatchType),
-  };
+  return { boxes };
 }

@@ -5,7 +5,7 @@ import { StageBanner } from "./StageBanner";
 import { CurrentMatches } from "./CurrentMatches";
 import { SpectatorStarChart } from "./SpectatorStarChart";
 import { HelpIndicator } from "./HelpIndicator";
-import { Phase2Bracket } from "./Phase2Bracket";
+import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import type { SpectatorState } from "@/lib/spectator-state";
 
 const POLL_INTERVAL_MS = 3000;
@@ -58,7 +58,7 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
   }, [slug, state.lastEventId]);
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
+    <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-8">
       <HelpIndicator count={state.openHelpRequestCount} />
 
       <header className="text-center">
@@ -69,11 +69,7 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
 
       <CurrentMatches matches={state.activeMatches} onDeck={state.onDeck} />
 
-      {state.phase2Bracket && (
-        <section aria-label="Bracket">
-          <Phase2Bracket data={state.phase2Bracket} />
-        </section>
-      )}
+      <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
 
       <section aria-label="Star chart" className="rounded-card border-2 border-border bg-background-elevated p-5">
         <SpectatorStarChart rows={state.starChart} justEarnedStarBabyIds={justEarnedStarBabyIds} />

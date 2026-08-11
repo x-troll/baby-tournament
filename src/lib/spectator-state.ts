@@ -6,6 +6,8 @@
 import { prisma } from "@/lib/prisma";
 import { ensureMatchNotExpired, sortMatchesByPriority } from "@/lib/playtime-lifecycle";
 import { buildPhase2Bracket, type Phase2BracketData } from "@/lib/bracket-view";
+import { buildPlaypenSection, type PlaypenSection } from "@/lib/playpen-view";
+import { getTerminology } from "@/lib/terminology";
 import { MatchKind } from "@/generated/prisma/enums";
 import type { Game, MatchStatus, PlaytimeStatus } from "@/generated/prisma/enums";
 
@@ -48,6 +50,8 @@ export interface SpectatorState {
   lastEventId: number;
   /** null until Phase 2 starts (still in playpens, or the N=3 round-robin path that skips it entirely). */
   phase2Bracket: Phase2BracketData | null;
+  /** null before the playtime starts; every round of playpens/round-robin played so far, grouped. */
+  playpens: PlaypenSection | null;
 }
 
 const PHASE2_LABELS: Partial<Record<MatchKind, string>> = {
@@ -137,6 +141,20 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     matches.map((m) => ({ kind: m.kind, status: m.status, participants: m.participants.map(toParticipant).map((p) => ({ babyId: p.babyId, name: p.name, finishPosition: p.finishPosition })) })),
   );
 
+  const t = getTerminology();
+  const playpens = buildPlaypenSection(
+    matches.map((m) => ({
+      id: m.id,
+      kind: m.kind,
+      round: m.round,
+      penIndex: m.penIndex,
+      status: m.status,
+      participants: m.participants.map(toParticipant),
+    })),
+    t.groupStageHeat,
+    t.groupStageHeatPlural,
+  );
+
   return {
     playtimeName: playtime.name,
     game: playtime.game,
@@ -149,6 +167,7 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     openHelpRequestCount: helpRequestCount,
     lastEventId: lastEvent?.id ?? 0,
     phase2Bracket,
+    playpens,
   };
 }
 

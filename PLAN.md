@@ -481,49 +481,152 @@ intended card, because `:has()` matches ancestors at any depth — since
 `div` was the actual fix. Both worth remembering for any future
 Playwright verification script in this project, not just this phase's.
 
-### Addendum — Phase 2 rendered as an actual bracket
+### Addendum — playpens and Phase 2, visualized (fully custom, no library)
 
-The spectator screen originally listed Phase 2 (`QF1`/`QF2`/`LOSERS_R1`/
-`WINNERS_FINAL`/`LOSERS_FINAL`/`GRAND_FINAL`) as a flat, chronological
-match list — functional but not recognizable as a *bracket*. Added
-`@g-loot/react-tournament-brackets` to render it as one:
+The spectator screen originally listed every match — playpens and Phase 2
+alike — as one flat, chronological list. First pass tried
+`@g-loot/react-tournament-brackets` for the Phase 2 stage specifically,
+but it was dropped in favor of a fully custom, dependency-free
+implementation. Two reasons, not one:
 
-- `src/lib/bracket-view.ts` — pure mapper from the DB's Phase 2 matches
-  onto the library's `{ upper, lower }` shape, using the fixed six-match
-  DAG from `bracket-engine/phase2.ts` (same wiring, re-expressed as
-  `nextMatchId`/`nextLooserMatchId` edges). Matches not yet created in the
-  DB (their feeders haven't resolved) render as `TBD` placeholders so all
-  six slots are always visible, not just what exists so far. Returns
-  `null` while still in playpens, or for the N=3 round-robin path that
-  never reaches Phase 2 at all — the spectator screen just omits the
-  section in that case.
-- `src/components/spectator/Phase2Bracket.tsx` — client component
-  wrapping `<DoubleEliminationBracket>` with a custom `matchComponent`
-  built from our own Tailwind tokens (not the library's default
-  styled-components look), and a `createTheme()` override matching the
-  spectator screen's forced-dark palette.
-- `src/lib/spectator-state.ts` gained a `phase2Bracket` field, computed
-  once and shared by both the initial server render and the poll
-  endpoint (`/api/playtime/[slug]/state`) — no separate fetch.
-- **Peer dependency workaround, not optional**: the library declares
-  peers on React 18 and `styled-components@^4`; both work fine at
-  runtime with React 19 / styled-components 6 (verified via a full
-  `next build` + real SSR render, not just typecheck), but `npm ci`
-  refuses to resolve the conflict without help. Added `.npmrc` with
-  `legacy-peer-deps=true` — without it, CI's `npm ci` step (and Heroku's
-  buildpack, which also runs `npm ci`) fails outright before ever
-  reaching the app code. Also needed a hand-written
-  `src/types/g-loot-react-tournament-brackets.d.ts` ambient module
-  declaration: the package's own `package.json` points `types` at a
-  `dist/index.d.ts` that doesn't exist in the published build (the real
-  file is `dist/esm/index.d.ts`) — a packaging bug in the library, not
-  something to wait on upstream for.
-- **Verified**: `npm run rehearsal` seeded a full tournament through
-  Phase 2 to completion, then `curl`'d `/live/[slug]` directly (not just
-  typecheck) — the bracket SSRs correctly with real baby names, winner
-  highlighting, and no console/server errors; confirmed a clean `npm ci`
-  from scratch afterwards to catch exactly the CI failure mode above
-  before it could surface as a real pipeline break.
+1. **Structural**: the library's `match-wrapper.js` hard-reads
+   `participants[0]`/`[1]` only (`topParty`/`bottomParty`) — a 3-4 baby
+   playpen's 3rd/4th participant would just silently vanish from
+   rendering, not error. It's built for 1v1 elimination brackets
+   specifically, which Phase 2 genuinely is and the group stage genuinely
+   isn't (a pen reports a full finish order across 3-4 babies, not a
+   single winner) — no config option changes that.
+2. **Not worth the cost even for the part it could do**: it declared
+   peers on React 18 / `styled-components@4` (needing `.npmrc`
+   `legacy-peer-deps=true` to unblock `npm ci`), plus a packaging bug
+   (its own `types` field pointed at a `dist/index.d.ts` that doesn't
+   exist) needing a hand-written ambient module declaration. All fixable,
+   but a lot of accommodation for a diagram with exactly six fixed nodes
+   — removed entirely (`npm uninstall @g-loot/react-tournament-brackets
+   styled-components react-svg-pan-zoom`, deleted `.npmrc` and the ambient
+   `.d.ts`) once it was clear a from-scratch version wasn't much more
+   work and had no compromises.
+
+**The from-scratch version**, `src/components/brackets/`:
+
+- `src/lib/playpen-view.ts` — groups playpen/round-robin matches by round
+  and pen into a `PlaypenSection`.
+- `src/lib/bracket-view.ts` — maps Phase 2's fixed six-match DAG (from
+  `bracket-engine/phase2.ts`) onto plain `Phase2Box` data, four columns
+  for the four dependency stages. A match not yet created in the DB (its
+  feeders haven't resolved) gets `status: "NOT_YET_PLAYED"` and both
+  participant slots `name: null` — rendered as `????`, not blank, so
+  it's clear the slot is unresolved rather than broken.
+- `src/lib/match-status.ts` — collapses the DB's 5-state `MatchStatus` to
+  the 3 states that actually matter to a viewer (not yet played / playing
+  now / finished), shared by everything under `components/brackets/`.
+  Lives in `lib/`, not `components/`, on purpose — `tournament-flow.ts`
+  (below) needs it too, and `lib/` code shouldn't reach into
+  `components/` for a type.
+- `src/lib/tournament-flow.ts` — merges playpens and Phase 2 into **one**
+  left-to-right column sequence (every playpen round, then the four
+  Phase 2 stages) instead of two separate sections. The interesting part
+  is the connector edges: rather than a hardcoded pen-to-pen pairing (a
+  baby's next-round pen isn't fixed in advance — see the seeding
+  re-draw in `bracket-engine/pens.ts`), each box declares which of its
+  babies are "advancing" (top 2 of a pen, top 1 of a round-robin game, or
+  the winner of a Phase 2 match — explicitly *not* the loser), and a
+  generic pass finds whatever box in a *later* column actually contains
+  that baby id and draws one edge to it. This is honest by construction:
+  a line only ever exists because the data shows that baby really is in
+  both boxes, and a Phase 2 loser's box (e.g. Losers Round 1) still shows
+  them — positioned under and one column right of where they lost — with
+  no line into it, matching a real bracket's convention rather than
+  overclaiming a connection.
+- `PlaytimeBracketsView.tsx` — the renderer: measures every box's real
+  height/left (`getBoundingClientRect`, redrawn via `ResizeObserver`) and
+  draws each edge as an SVG right-angle connector. **No tabs** — the
+  whole tournament, every column, visible at once inside one
+  `overflow-x-auto` canvas, not paginated. One component, used
+  identically by `/live/[slug]` (fed from `spectator-state.ts`'s
+  `playpens`/`phase2Bracket` fields, recomputed every 3s poll — the
+  diagram updates automatically as matches resolve, no separate wiring
+  needed) **and** the admin panel's "Playpens" tab (fed by calling the
+  same `playpen-view.ts`/`bracket-view.ts` builders directly against the
+  already-fetched `playtime.matches`).
+- **Pyramid centering, not top-down stacking**: each box's vertical
+  center is the average of whichever earlier boxes actually feed it
+  (found via `flow.edges`), so later columns naturally converge toward
+  the middle. Falls back to stacking directly under a column-sibling
+  when a box has zero tracked feeders (Phase 2's loser-track boxes, e.g.
+  Losers Round 1 — its real feeder, the loser path, is deliberately
+  untracked, see below), and to centering the whole column as a block
+  against a shared axis (the tallest column's own center) when a box has
+  *more than two* feeders — a playpen pen is routinely fed by every pen
+  in the previous round at once (the seeded re-draw doesn't pair pens
+  1:1), and naively averaging all of them collapses visually distinct
+  pens toward the same point rather than a meaningful position. A
+  same-column collision-resolution pass (sort by target position, push
+  anything too close to its now-settled predecessor straight down) is
+  the actual guarantee against overlap — the feeder-averaging only
+  produces a good starting guess, not a promise of no collision (two
+  Phase 2 boxes drawing one baby each from the exact same two Round 2
+  pens legitimately average to an identical point).
+- **Future rounds, forecast structurally**: every pen advances exactly 2
+  regardless of size (`bracket-engine/pens.ts`'s even-survivor
+  invariant), so the next round's alive count — and its whole pen
+  layout — is knowable the moment the previous round's pens exist, even
+  before a single match in it has been played. `tournament-flow.ts`
+  calls the pure `computeRoundLayout` (the same function the real
+  lifecycle uses) repeatedly until it reaches Final Four, rendering each
+  forecast round with `????` participants and a dashed, lower-opacity
+  "not yet played" style — *who* ends up in which pen isn't decided
+  until that round is actually seeded and created, so only the
+  structure (pen count/size) is shown, never a guessed lineup.
+- **Three real bugs, all caught by actually looking at screenshots, not
+  by typecheck** (all three passed `tsc`/`eslint` the whole time): (1)
+  the edge-search originally only checked the *immediately next* column,
+  so the Phase 2 winners-track line (Winners Final → Grand Final) never
+  appeared — it needs to skip straight over the Losers Final column,
+  which only exists for the losers track. Fixed by searching forward
+  through all later columns and stopping at the first one where the
+  baby turns up. (2) naive per-box feeder-averaging (an earlier version
+  of the pyramid logic above, before the "cap at 2 feeders" / collision
+  pass existed) collapsed Round 2 pens — and separately, Quarterfinal 1
+  and 2 — on top of each other whenever two boxes shared the same
+  feeder pens, since averaging the same inputs produces the same output.
+  Only visible by rendering real data with a real browser and comparing
+  box positions; a hand-picked test fixture with cleanly separated
+  feeders would never have exposed it. (3) earlier still, a column with
+  only one Phase 2 box (Losers Final; Grand Final) collapsed to the top
+  of its column instead of its actual track, so a skip-connector visually
+  cut through its text — this was the original motivation for
+  feeder-based positioning over plain top-down stacking in the first
+  place.
+- `src/components/ui/tabs.tsx` — a small generic, accessible (WAI-ARIA
+  tabs pattern: roving tabindex, arrow-key nav, `aria-selected`) tabs
+  component, **admin-only**: the playtime detail page's three top-level
+  sections (Star chart / Playpens / Matches — the last, with the admin
+  override forms, defaults active) are tabs instead of three stacked
+  cards. The spectator screen deliberately has no tabs anywhere — nobody
+  at the TV can click through them, so everything just renders in full.
+- **A real regression, caught and fixed, not just typechecked**: putting
+  the star chart behind a tab broke `tests/a11y/global-setup.ts`, which
+  clicks a baby's "Preview" button from the star chart table to capture
+  a baby session for the a11y suite — the button no longer existed in
+  the DOM until its tab was active. Fixed by clicking the "Star chart"
+  tab first; caught by actually running the full Playwright a11y suite
+  after the change, not just `tsc`/`eslint` (both of which passed the
+  whole time — this was a real-browser-only failure).
+- **Verified**: several purpose-built fixtures, each screenshotted on
+  `/live/[slug]` with a real headless browser (not just `curl`, since
+  both the connector lines and the pyramid offsets are computed
+  client-side after hydration) and actually inspected — a full 13-baby
+  run through completion (multiple playpen rounds converging into a full
+  Phase 2 bracket, richest picture); a 4-baby playtime confirming only
+  QF1 (`????` placeholders, `NOT_YET_PLAYED` boxes); a 25-baby playtime
+  confirming only Round 1 (forces a real forecast Round 3 — dashed,
+  grayed, `????` — distinct from Round 2, which is real/in-progress with
+  real names). Dumped raw box coordinates via `getBoundingClientRect` in
+  the browser to confirm the math directly (no overlaps, exact expected
+  spacing) before ever looking at a picture. Then the full `test:a11y`
+  suite (17 tests, light+dark) green; then `npm ci` from scratch
+  confirming the library removal left no peer-dependency residue.
 
 ## Phase 8 — Heroku deploy + rehearsal seed ✅ DONE (locally) — not yet actually deployed
 

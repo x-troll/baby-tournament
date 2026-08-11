@@ -90,6 +90,9 @@ export default async function globalSetup() {
   // cookie names, see src/lib/baby-auth.ts) — the admin context can hold
   // both at once, so "Preview" from within it is enough.
   await adminPage.goto(`${baseURL}/admin/playtimes/${playtime.id}`);
+  // The star chart (and its per-baby Preview button) lives behind the
+  // "Star chart" tab — "Matches" is the default active tab.
+  await adminPage.getByRole("tab", { name: "Star chart" }).click();
   await adminPage
     .locator("tr", { hasText: previewBaby.displayName ?? "" })
     .locator('button:has-text("Preview")')
