@@ -16,6 +16,7 @@ import {
   notifyBabyNapped,
   notifyBabyResultConfirmed,
   notifyBabyUpNext,
+  notifyBabyUpSoon,
   notifyMatchReported,
 } from "@/lib/telegram/notify";
 import type { Phase2MatchId, Phase2Result, Phase2Seeds, PenResult, EliminatedRoundEntry } from "@/lib/bracket-engine";
@@ -73,6 +74,8 @@ interface NotificationCollector {
   crownedBabyId: string | null;
   /** Participants of a match that just became CONFIRMED — get "result confirmed" unless they're also napped/crowned above. */
   confirmedParticipantBabyIds: Set<string>;
+  /** The still-PENDING match that's now the immediate next-in-line, if this pass is the first to notice — a one-time "you're up soon" heads-up ahead of the real "you're up" push. See upSoonNotifiedAt. */
+  upSoonMatchId: string | null;
 }
 
 function newCollector(): NotificationCollector {
@@ -81,6 +84,7 @@ function newCollector(): NotificationCollector {
     nappedBabies: [],
     crownedBabyId: null,
     confirmedParticipantBabyIds: new Set(),
+    upSoonMatchId: null,
   };
 }
 
@@ -88,7 +92,14 @@ async function dispatchCollectedNotifications(collector: NotificationCollector):
   for (const matchId of collector.readyMatchIds) {
     const participants = await prisma.matchParticipant.findMany({ where: { matchId } });
     for (const p of participants) {
-      await notifyBabyUpNext(p.babyId);
+      await notifyBabyUpNext(p.babyId, matchId);
+    }
+  }
+
+  if (collector.upSoonMatchId) {
+    const participants = await prisma.matchParticipant.findMany({ where: { matchId: collector.upSoonMatchId } });
+    for (const p of participants) {
+      await notifyBabyUpSoon(p.babyId);
     }
   }
 
@@ -338,15 +349,23 @@ export async function ensureMatchNotExpired(matchId: string): Promise<void> {
  * Distinguishes "up next, go find your station" from "playing now, report
  * when you're done" on the baby status card — no cascade, just a status
  * bump + event.
+ *
+ * Idempotent/monotonic by design: this is reachable from two independent
+ * places now (the web "We're playing" button and the Telegram "we're
+ * playing" callback button), plus either could get double-tapped, so a
+ * second call landing after the match is already IN_PROGRESS is a
+ * silent no-op rather than an error — it never moves status backward,
+ * only ever forward from READY.
  */
 export async function markMatchInProgress(matchId: string, babyId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUniqueOrThrow({ where: { id: matchId }, include: { participants: true } });
-    if (match.status !== "READY") {
-      throw new Error("Only a READY match can be marked in progress.");
-    }
     if (!match.participants.some((p) => p.babyId === babyId)) {
       throw new Error("Only a participant in this match can start it.");
+    }
+    if (match.status === "IN_PROGRESS") return; // already started — no-op
+    if (match.status !== "READY") {
+      throw new Error("Only a READY match can be marked in progress.");
     }
     await tx.match.update({ where: { id: matchId }, data: { status: "IN_PROGRESS" } });
     await tx.matchEvent.create({
@@ -690,7 +709,6 @@ async function scheduleReadyMatches(tx: Tx, playtimeId: string, collector: Notif
     select: { stationNumber: true },
   });
   let freeStationCount = playtime.stationCount - occupiedMatches.length;
-  if (freeStationCount <= 0) return;
 
   const takenStations = new Set(occupiedMatches.map((m) => m.stationNumber).filter((n): n is number => n != null));
   const availableStations: number[] = [];
@@ -698,6 +716,12 @@ async function scheduleReadyMatches(tx: Tx, playtimeId: string, collector: Notif
     if (!takenStations.has(s)) availableStations.push(s);
   }
 
+  // Fetched (and priority-sorted) regardless of whether a station's
+  // actually free right now — the common single-station case has zero
+  // free stations almost the entire night (one match occupies the only
+  // station until it resolves), which is exactly when the "up soon"
+  // check below matters most; it can't be gated behind the same
+  // early-return the READY-assignment loop used to have.
   const pending = await tx.match.findMany({
     where: { playtimeId, status: MatchStatus.PENDING },
     orderBy: { createdAt: "asc" },
@@ -715,6 +739,16 @@ async function scheduleReadyMatches(tx: Tx, playtimeId: string, collector: Notif
     });
     collector.readyMatchIds.add(match.id);
     freeStationCount -= 1;
+  }
+
+  // "Up soon" pre-notice — whichever still-PENDING match (after however
+  // many just got READY above) is now the immediate next in line gets one
+  // one-time heads-up, ahead of the real "you're up" push this function
+  // already sends for real once it actually becomes READY.
+  const nextUp = sorted.find((m) => !collector.readyMatchIds.has(m.id));
+  if (nextUp && !nextUp.upSoonNotifiedAt) {
+    await tx.match.update({ where: { id: nextUp.id }, data: { upSoonNotifiedAt: new Date() } });
+    collector.upSoonMatchId = nextUp.id;
   }
 }
 

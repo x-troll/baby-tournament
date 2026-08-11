@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { createMagicLinkToken } from "@/lib/baby-auth";
 import { loadRules } from "@/lib/rules-content";
 import { computeBabyStatus } from "@/lib/baby-status";
-import { confirmReportedMatch, disputeMatch } from "@/lib/playtime-lifecycle";
+import { confirmReportedMatch, disputeMatch, markMatchInProgress } from "@/lib/playtime-lifecycle";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
 import { ORGANIZER_ROLE_OPTIONS, SELF_ROLE_OPTIONS, resolveOrganizerTerm } from "@/lib/baby-terminology";
 import { answerCallbackQuery, sendMessage, type InlineKeyboard } from "./client";
@@ -233,6 +233,24 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
         await disputeMatch(id, baby.id);
         await answerCallbackQuery(query.id, `Dispute sent — a ${resolveOrganizerTerm(baby)} will sort it out.`);
       }
+    } catch (err) {
+      await answerCallbackQuery(query.id, err instanceof Error ? err.message : "Something went wrong.");
+    }
+    return;
+  }
+
+  if (action === "start") {
+    const baby = chatId ? await prisma.baby.findFirst({ where: { telegramChatId: chatId } }) : null;
+    if (!baby) {
+      await answerCallbackQuery(query.id, "Couldn't find your registration.");
+      return;
+    }
+    try {
+      // markMatchInProgress is itself idempotent (READY -> IN_PROGRESS
+      // only, no-ops if already IN_PROGRESS) — safe however many times
+      // this gets tapped, from here or the web "We're playing" button.
+      await markMatchInProgress(id, baby.id);
+      await answerCallbackQuery(query.id, copy.readyCheckReply(baby.displayName ?? "baby"));
     } catch (err) {
       await answerCallbackQuery(query.id, err instanceof Error ? err.message : "Something went wrong.");
     }

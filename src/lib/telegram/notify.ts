@@ -22,14 +22,42 @@ async function rulesSummaryFor(playtimeId: string): Promise<string> {
   return rules.summary;
 }
 
-export async function notifyBabyUpNext(babyId: string): Promise<void> {
+// Label shared by both this and notifyBabyUpSoon below — same "your
+// dashboard" screen either way, per spec ("a link to the same dashboard
+// as above, but worded as 'Update playtime status: ...'").
+const DASHBOARD_BUTTON_LABEL = "📲 Update playtime status";
+
+export async function notifyBabyUpNext(babyId: string, matchId: string): Promise<void> {
   const baby = await prisma.baby.findUnique({ where: { id: babyId }, include: { playtime: true } });
   if (!baby?.telegramChatId) return;
   const summary = await rulesSummaryFor(baby.playtimeId);
-  await sendMessage(
-    baby.telegramChatId,
-    copy.upNext(baby.displayName ?? "baby", appUrl(`/play/${baby.playtime.slugNumber}`), summary),
-  );
+  const keyboard: InlineKeyboard = [
+    [{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/play/${baby.playtime.slugNumber}`) }],
+    [{ text: copy.readyCheckButtonLabel(resolveOrganizerTerm(baby)), callback_data: `start:${matchId}` }],
+  ];
+  await sendMessage(baby.telegramChatId, copy.upNext(baby.displayName ?? "baby", summary), {
+    replyMarkup: keyboard,
+  });
+}
+
+/**
+ * The genuine second message per match, ahead of notifyBabyUpNext's real
+ * "you're up" push — fired once (see scheduleReadyMatches's
+ * upSoonNotifiedAt guard) as soon as a baby's match becomes the immediate
+ * next in line. ETA uses the playtime's static configured
+ * defaultMatchDurationSec — there's no real rolling average tracked
+ * anywhere in this codebase despite the schema field's name/comment
+ * suggesting otherwise (see PLAN.md); this is exactly as accurate as that
+ * one number already is.
+ */
+export async function notifyBabyUpSoon(babyId: string): Promise<void> {
+  const baby = await prisma.baby.findUnique({ where: { id: babyId }, include: { playtime: true } });
+  if (!baby?.telegramChatId) return;
+  const etaMinutes = Math.max(1, Math.round(baby.playtime.defaultMatchDurationSec / 60));
+  const keyboard: InlineKeyboard = [[{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/play/${baby.playtime.slugNumber}`) }]];
+  await sendMessage(baby.telegramChatId, copy.upSoon(baby.displayName ?? "baby", etaMinutes), {
+    replyMarkup: keyboard,
+  });
 }
 
 export async function notifyMatchReported(matchId: string, reporterBabyId: string): Promise<void> {
@@ -108,14 +136,15 @@ export async function notifyAdminsHelpRequest(helpRequestId: string): Promise<vo
   // terminology.ts's own default, which the admin already knows.
   const organizerTerm = req.baby.organizerRoleLabel;
   const text = isDispute
-    ? copy.adminDisputeAlert(req.baby.displayName ?? "A baby", label, deepLink, organizerTerm)
-    : copy.adminHelpRequestAlert(req.baby.displayName ?? "A baby", label, req.reason, req.note, deepLink, organizerTerm);
+    ? copy.adminDisputeAlert(req.baby.displayName ?? "A baby", label, organizerTerm)
+    : copy.adminHelpRequestAlert(req.baby.displayName ?? "A baby", label, req.reason, req.note, organizerTerm);
 
   const keyboard: InlineKeyboard = [
     [
       { text: "🏃 On my way", callback_data: `help-ack:${req.id}` },
       { text: "✅ Resolved", callback_data: `help-resolve:${req.id}` },
     ],
+    [{ text: "📋 Open in admin panel", url: deepLink }],
   ];
 
   for (const admin of admins) {

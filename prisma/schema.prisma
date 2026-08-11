@@ -215,6 +215,11 @@ model Match {
 
   reportedById String? // which Baby submitted the result
   forfeited    Boolean @default(false)
+  // Set once the "you're up soon" pre-notice fires for this (still-PENDING)
+  // match, so scheduleReadyMatches's cascade-triggered re-check doesn't
+  // re-send it every time some *other* match elsewhere resolves. Distinct
+  // from the real "you're up" push, which fires once for real at READY.
+  upSoonNotifiedAt DateTime?
   // Set true by disputeMatch(); freezes the match — the lazy auto-confirm
   // check in playtime-lifecycle.ts explicitly skips disputed matches.
   // Cleared when an admin override resolves it.

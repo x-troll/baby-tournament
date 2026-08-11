@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { StageBanner } from "./StageBanner";
 import { CurrentMatches } from "./CurrentMatches";
-import { SpectatorStarChart } from "./SpectatorStarChart";
 import { HelpIndicator } from "./HelpIndicator";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import type { SpectatorState } from "@/lib/spectator-state";
@@ -16,11 +15,14 @@ const POLL_INTERVAL_MS = 3000;
  * `?since=<lastEventId>` makes most polls cheap — the server replies
  * `{ unchanged: true }` instead of re-shipping the full state when
  * nothing happened, reusing the append-only MatchEvent log as the cursor.
+ *
+ * No playtime title, no star chart/score board — deliberately trimmed to
+ * just what's happening right now (help indicator, stage banner, current
+ * matches, the bracket itself). The star chart is still real data
+ * (`state.starChart`), just no longer rendered on this screen.
  */
 export function SpectatorPoller({ slug, initial }: { slug: string; initial: SpectatorState }) {
   const [state, setState] = useState(initial);
-  const previousGoldStars = useRef<Map<string, number>>(new Map(initial.starChart.map((r) => [r.babyId, r.goldStars])));
-  const [justEarnedStarBabyIds, setJustEarnedStarBabyIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -32,16 +34,7 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
         const json = await res.json();
         if (json.unchanged || cancelled) return;
 
-        const next: SpectatorState = json.state;
-        const justEarned = new Set<string>();
-        for (const row of next.starChart) {
-          const before = previousGoldStars.current.get(row.babyId) ?? 0;
-          if (row.goldStars > before) justEarned.add(row.babyId);
-        }
-        previousGoldStars.current = new Map(next.starChart.map((r) => [r.babyId, r.goldStars]));
-
-        setJustEarnedStarBabyIds(justEarned);
-        setState(next);
+        setState(json.state);
       } catch {
         // Network hiccup — just try again next tick, nothing to surface on a TV.
       }
@@ -61,19 +54,11 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
     <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-8">
       <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
 
-      <header className="text-center">
-        <h1 className="font-display text-2xl font-bold text-foreground-muted">{state.playtimeName}</h1>
-      </header>
-
       <StageBanner text={state.stageBanner} />
 
       <CurrentMatches matches={state.activeMatches} onDeck={state.onDeck} />
 
       <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
-
-      <section aria-label="Star chart" className="rounded-card border-2 border-border bg-background-elevated p-5">
-        <SpectatorStarChart rows={state.starChart} justEarnedStarBabyIds={justEarnedStarBabyIds} />
-      </section>
     </div>
   );
 }

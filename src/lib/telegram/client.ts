@@ -10,10 +10,10 @@
 
 const API_BASE = "https://api.telegram.org";
 
-export interface InlineKeyboardButton {
-  text: string;
-  callback_data: string;
-}
+// Either a callback button (round-trips through the webhook as a
+// callback_query) or a URL button (opens a link directly, no round-trip)
+// — never both on the same button, matching Telegram's own API shape.
+export type InlineKeyboardButton = { text: string } & ({ callback_data: string } | { url: string });
 
 export type InlineKeyboard = InlineKeyboardButton[][];
 

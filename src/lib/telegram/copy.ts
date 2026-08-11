@@ -29,8 +29,22 @@ export function unknownAdminToken(): string {
   return "That admin link doesn't look right — check the QR code in your profile page.";
 }
 
-export function upNext(displayName: string, appUrl: string, rulesSummary: string): string {
-  return `It's your turn, ${displayName}! 🎮 Head over to the console.\n\n📋 ${rulesSummary}\n\n${appUrl}`;
+export function upNext(displayName: string, rulesSummary: string): string {
+  return `It's your turn, ${displayName}! 🎮 Head over to the console.\n\n📋 ${rulesSummary}`;
+}
+
+/** The pre-notice, ahead of upNext's real "you're up" push once the match actually goes READY. */
+export function upSoon(displayName: string, etaMinutes: number): string {
+  return `Heads up, ${displayName} — you're up in about ${etaMinutes} minute${etaMinutes === 1 ? "" : "s"}! 👀`;
+}
+
+/** Button label for the ready-check callback — "Everyone's here, we're playing, {organizer}!" per spec. */
+export function readyCheckButtonLabel(organizerTerm: string): string {
+  return `Everyone's here, we're playing, ${organizerTerm}!`;
+}
+
+export function readyCheckReply(displayName: string): string {
+  return `Good ${displayName}! 🎉`;
 }
 
 export function needsYourConfirmation(reporterName: string, rulesSummary: string): string {
@@ -101,23 +115,23 @@ export function rulesReply(gameSummary: string, overrideNote: string | null): st
 // `organizerTerm` is only appended when the baby actually customized it
 // (see notify.ts) — a baby who never touched /profile still calls the
 // organizer whatever terminology.ts's deployment default already is, so
-// repeating that back would just be noise.
+// repeating that back would just be noise. The deep link itself is a real
+// URL button now (see notify.ts), not embedded in the text.
 export function adminHelpRequestAlert(
   babyName: string,
   matchLabel: string,
   reason: string,
   note: string | null,
-  deepLink: string,
   organizerTerm: string | null,
 ): string {
   const noteLine = note ? `\n"${note}"` : "";
   const calledLine = organizerTerm ? ` (calls you "${organizerTerm}")` : "";
-  return `🆘 ${babyName}${calledLine} needs help (${matchLabel})\nReason: ${reason}${noteLine}\n\n${deepLink}`;
+  return `🆘 ${babyName}${calledLine} needs help (${matchLabel})\nReason: ${reason}${noteLine}`;
 }
 
-export function adminDisputeAlert(babyName: string, matchLabel: string, deepLink: string, organizerTerm: string | null): string {
+export function adminDisputeAlert(babyName: string, matchLabel: string, organizerTerm: string | null): string {
   const calledLine = organizerTerm ? ` (calls you "${organizerTerm}")` : "";
-  return `⚠️ ${babyName}${calledLine} disputed a result (${matchLabel}) — the match is frozen until you resolve it.\n\n${deepLink}`;
+  return `⚠️ ${babyName}${calledLine} disputed a result (${matchLabel}) — the match is frozen until you resolve it.`;
 }
 
 export function adminOnMyWaySent(organizerTerm: string): string {
