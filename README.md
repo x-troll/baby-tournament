@@ -148,31 +148,6 @@ or gold-star button, and can let the 60s auto-confirm timer actually run
 out if you want to see it fire for real (nobody else is there to confirm
 it). Everything else keeps auto-playing in the background while it waits.
 
-## Accessibility
-
-```bash
-npm run test:a11y
-```
-
-Runs the axe-core suite (`tests/a11y/`) against the key screens —
-admin login, dashboard, playtime detail, help inbox, profile, the baby
-play screen, the spectator screen, rules preview, style guide — each in
-both light and dark. It seeds its own test data and signs in for real
-(driving the actual login form once, then reusing the session), so it
-needs a running Postgres the same as everything else.
-
-Two WCAG criteria are deliberately waived, per the spec: drag-to-reorder
-result entry (2.1.1, drag-only, no keyboard alternative) and the 60s
-auto-confirm timer (2.2.1, not pausable/extendable — that's the point of
-it). Axe-core doesn't have direct automated checks for either criterion
-(both are fundamentally behavioral, not static-DOM), so there's nothing
-to suppress in config; see the comment in `tests/a11y/pages.spec.ts`.
-
-`THEME` is a server-startup-time flag, not a runtime toggle, so covering
-all 4 theme combinations (light/dark × nursery/plain) means running this
-suite once per skin — CI does that with a matrix job; locally it just
-uses whatever `THEME` your dev server already has.
-
 ## Deploying to Heroku
 
 Not yet done — here's how, when you're ready. `app.json` documents every
@@ -229,7 +204,6 @@ npm run dev            # dev server
 npm run build            # production build (also validates content/rules/*.md)
 npm run start              # run a production build
 npm run test                 # Vitest — the bracket engine's 123 tests, zero DB
-npm run test:a11y              # axe-core over the key screens — see "Accessibility" below
 npm run lint                     # eslint (includes jsx-a11y)
 npm run typecheck                  # tsc --noEmit
 npm run prisma:migrate               # create + apply a new migration in dev

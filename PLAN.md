@@ -744,3 +744,117 @@ only treat it as "your turn" once the match is `READY`/`IN_PROGRESS`/
 Also caught mid-session: `TELEGRAM_WEBHOOK_SECRET` is self-generated,
 not issued by Telegram/BotFather — worth being explicit about in the
 README, since it wasn't obvious from the earlier phases' code alone.
+
+### Addendum — a11y suite removed; bracket view polish; a genuine forecasting rethink
+
+Six small follow-ups filed together, mostly touching the bracket view
+from the previous addendum.
+
+**A11y test suite dropped entirely** — "good enough for now, future
+changes don't need to be WCAG-compliant." Deleted `tests/a11y/` and
+`playwright.config.ts`, removed `@axe-core/playwright`/`@playwright/test`
+and the `test:a11y` script, removed the CI `a11y:` job (the `test:` job
+— lint/typecheck/vitest/build — is untouched), removed the README
+Accessibility section. The CSS/token fixes axe-core caught back in
+Phase 8 (`--on-accent`/`--on-danger`, etc.) are real and stay; only the
+test runner that found them is gone.
+
+**Discovered mid-session: `next dev` (Next 16, Turbopack) refuses a
+second concurrent instance in the same project directory, regardless of
+port.** This is *why* "run it on a different port" hadn't worked when
+tried manually — it's not a port conflict, Next tracks a single dev
+server per project dir and errors out on a second one outright. Running
+alongside the user's own session isn't possible via a second `next dev`
+at all; the resolution is to just edit files (their already-running
+server hot-reloads them, which is also literally what "I'd like to view
+while you do stuff" was asking for) and, if a headless browser needs
+something to hit for automated verification, point it at whatever's
+already running rather than starting a second server. If nothing's
+running at all, starting one on a non-default port is fine (nothing to
+conflict with).
+
+**Three small bracket-view fixes**, all in
+`src/components/brackets/PlaytimeBracketsView.tsx` /
+`src/lib/tournament-flow.ts`:
+- Connector elbows now sit a fixed `OUT_NUB_PX` (16px) out from the
+  source box instead of at the geometric midpoint between source and
+  target. For an ordinary adjacent-column edge those are the same
+  number (the column gap is fixed), so this is a no-op there — it only
+  changes a "skip" edge (Winners Final → Grand Final, jumping clean over
+  the Losers Final column), whose first segment used to stretch across
+  the entire skipped column at the source box's height instead of
+  staying a short nub. This was the actual mechanism behind a
+  connector-crossing bug that resurfaced after the previous addendum's
+  fix (which addressed a different cause).
+- Losers Round 1 / Losers Final get a fixed `LOSER_TRACK_OFFSET_PX`
+  (28px) added to their layout target, plus a `border-danger/60` tint,
+  so the losers track reads as visually distinct at a glance. Driven by
+  a new `FlowBox.isLoserTrack` flag set in `tournament-flow.ts` rather
+  than string-matching box keys in the renderer.
+- Column headers: `PHASE2_COLUMN_LABELS[3]` changed from `"Losers
+  final"` to `"Semifinals"` (same text as col 2) — the column itself
+  stays physically separate (Losers Final depends on both Semifinal
+  results, so merging the columns would misrepresent timing), only the
+  header text is shared, and a duplicate label immediately following the
+  same one is suppressed so it reads as one heading spanning both
+  columns. Also added a faint `border-r border-border/40` between
+  columns, mirroring the existing `border-b ... last:border-0` idiom
+  used in both star-chart tables (no `divide-x` precedent existed in
+  this codebase).
+
+**A real, pre-existing bug found while verifying those three fixes, not
+caused by them**: the pyramid-centering transform math assumed every
+column's box stack starts at DOM y=0, but it actually starts *below*
+that column's `<h3>` heading — a `translateY` offset computed in a
+"headerless" coordinate frame, applied on top of a real DOM position
+that does include the header, so every box rendered ~28px lower than
+its own connector lines assumed. Uniform across every column, so the
+pyramid *shape* still looked right, but every line entered and exited
+boxes off-center rather than at their true middle — caught only by
+dumping `getBoundingClientRect()` per box (keyed via a new permanent
+`data-key={box.key}` attribute on `BoxCard`) and comparing against the
+internal `centerY` map used to draw the lines; not visible from the
+math alone, and easy to miss in a screenshot at a glance. Fixed by
+measuring each column's real starting Y via a ref on its box-stack
+wrapper div (safe to re-measure on every pass, same reasoning as
+height/left/width: a child's `translateY` never changes a static-flow
+parent's own position) instead of assuming zero.
+
+**Forecasting rethought — this went through a real correction.** The
+first draft of this session's plan kept the previous addendum's
+`forecastFutureRounds()` approach (predicting every future playpen
+round's pen count/size via the bracket-engine) and additionally proposed
+predicting the *entire* Phase 2 skeleton ahead of time too. Rejected
+outright: "don't predict anything, make the code a lot simpler — show
+the next column only." `forecastFutureRounds()` and its bracket-engine
+import are gone; `buildNextRoundPreview()` replaces it with a few lines
+of arithmetic and no engine call at all, using the one true invariant
+that holds regardless of pen size — every pen advances exactly 2 — so
+the total next-round headcount is just `lastRound.pens.length * 2`.
+Exactly one preview column is appended past whatever's real, listing
+known winners (real names, as pens finish) plus `????` for whoever's
+undecided, and nothing further. No changes were needed to
+`bracket-view.ts`— once playpens are fully spent the preview box quietly
+shows all 4 finalists' names as "up next," and the moment Phase 2
+actually starts, `phase2` stops being `null` and the existing 6-box
+Phase 2 rendering (which already synthesizes `????` for any stage
+without a real match row) takes over with no gap.
+
+**Verified against real data already sitting in the dev DB from earlier
+sessions**, not just fresh fixtures — including the exact playtime the
+bug was reported against
+(`cmsnvi3bh00008w9knut8hnd3`/`a11y-test-1786405149770`, one pen done,
+one not, on `/admin/playtimes/…`'s Playpens tab): confirmed via
+screenshot that it now shows a single "Next round" box with the two
+known winners plus two `????`, dashed/grayed. A completed 13-baby
+tournament (`full-pyramid-1786404425526`) confirmed all three bracket
+fixes together — the Winners Final → Grand Final line now visibly
+clears above the Losers Final box instead of through it, Losers Round 1
+/ Losers Final sit lower with a visible red tint, "Semifinals" appears
+once, faint separators are visible between every column. A 25-baby
+playtime with round 2 fully in progress but nothing confirmed yet
+(`forecast-1786404736700`) confirmed the *absence* of a preview column
+when nothing's decided. Coordinate math cross-checked against real
+`getBoundingClientRect()` dumps in all cases, not screenshots alone.
+Full suite green after: `typecheck`, `lint`, `test` (123/123),
+`build`.

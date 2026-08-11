@@ -11,6 +11,14 @@ import type { Phase2BracketData } from "@/lib/bracket-view";
 // exact pixel value, not just the class name.
 const BOX_GAP_PX = 12;
 
+// How far a connector's elbow sits from the box it leaves, regardless of
+// how far away the target column is — see the `elbowX` comment below.
+const OUT_NUB_PX = 16;
+
+// Extra vertical nudge applied to Losers Round 1 / Losers Final so the
+// losers track visually separates from the winners track above it.
+const LOSER_TRACK_OFFSET_PX = 28;
+
 interface Line {
   x1: number;
   y1: number;
@@ -44,15 +52,23 @@ function BoxCard({
   boxRef: (el: HTMLDivElement | null) => void;
 }) {
   const notYetPlayed = box.status === "NOT_YET_PLAYED";
+  // Losers Round 1 / Losers Final get a slight red tint on top of the
+  // normal played/not-yet-played styling, so the losers track reads as
+  // visually distinct at a glance (see also the vertical offset in the
+  // layout pass below).
+  const borderClasses = box.isLoserTrack
+    ? notYetPlayed
+      ? "border-dashed border-danger/40 bg-background-elevated/50 opacity-60"
+      : "border-danger/60 bg-background-elevated"
+    : notYetPlayed
+      ? "border-dashed border-border/60 bg-background-elevated/50 opacity-60"
+      : "border-border bg-background-elevated";
   return (
     <div
       ref={boxRef}
+      data-key={box.key}
       style={{ transform: `translateY(${offsetY}px)` }}
-      className={`flex w-56 flex-col gap-2 rounded-card border-2 p-3 shadow-soft transition-opacity ${
-        notYetPlayed
-          ? "border-dashed border-border/60 bg-background-elevated/50 opacity-60"
-          : "border-border bg-background-elevated"
-      }`}
+      className={`flex w-56 flex-col gap-2 rounded-card border-2 p-3 shadow-soft transition-opacity ${borderClasses}`}
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">{box.label}</p>
@@ -68,9 +84,11 @@ function BoxCard({
 }
 
 /**
- * The whole tournament — every playpen round (played and, until Phase 2
- * starts, forecast) plus the Phase 2 bracket — as one continuous
- * left-to-right sequence of columns, not separate stacked sections.
+ * The whole tournament — every real playpen round played so far, one
+ * preview column of who's advancing next (see `tournament-flow.ts`'s
+ * `buildNextRoundPreview` — deliberately not a full structural forecast),
+ * and the Phase 2 bracket once it exists — as one continuous left-to-right
+ * sequence of columns, not separate stacked sections.
  *
  * Boxes are pyramid-centered, not top-aligned: each box's vertical
  * center is the average of whichever earlier boxes actually feed it
@@ -79,12 +97,15 @@ function BoxCard({
  * top-down natural position for a genuine root (the very first column,
  * or an isolated box with nothing feeding it). This is *why* it comes
  * out looking like a sideways pyramid — later columns naturally
- * converge toward the middle — and it's also what keeps a skip-
- * connector (Winners Final → Grand Final, which skips the Losers Final
- * column entirely) from ever cutting through an unrelated box: Losers
- * Final centers on its own real feeder (Losers Round 1), landing
- * wherever the losers track actually is, not wherever it happens to
- * fall in top-down order.
+ * converge toward the middle. Losers Round 1 / Losers Final also get a
+ * deliberate extra downward nudge (`LOSER_TRACK_OFFSET_PX`) and a red
+ * tint so the losers track reads as visually distinct from the winners
+ * track above it. Connector elbows sit a fixed short distance
+ * (`OUT_NUB_PX`) out from the source box rather than at the geometric
+ * midpoint — that's what keeps a skip-connector (Winners Final → Grand
+ * Final, which skips the Losers Final column entirely) from stretching
+ * its first segment across the skipped column instead of staying a
+ * short nub right at the box.
  *
  * Connector lines and box offsets both derive from the same measured
  * pass (`getBoundingClientRect` for stable height/left values, which a
@@ -108,6 +129,7 @@ export function PlaytimeBracketsView({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const boxEls = useRef(new Map<string, HTMLDivElement>());
+  const colBoxWrapperEls = useRef(new Map<string, HTMLDivElement>());
   const [lines, setLines] = useState<Line[]>([]);
   const [offsets, setOffsets] = useState<Map<string, number>>(new Map());
   const [canvas, setCanvas] = useState({ width: 0, height: 0 });
@@ -122,7 +144,11 @@ export function PlaytimeBracketsView({
 
       // Height and left are stable regardless of any Y-only transform
       // already applied from a previous pass — safe to re-measure every
-      // time. `top` is deliberately never read here.
+      // time. A box's own `top` is deliberately never read (a transform
+      // on it would make that circular), but a *column wrapper's* top
+      // is: a `translateY` on a descendant box never affects the size or
+      // position of its static-flow parent, so this is exactly as safe
+      // to re-measure as height/left/width.
       const height = new Map<string, number>();
       const left = new Map<string, number>();
       const width = new Map<string, number>();
@@ -133,16 +159,31 @@ export function PlaytimeBracketsView({
         width.set(key, r.width);
       }
 
+      // Where each column's box stack actually starts, in real DOM terms
+      // — below that column's `<h3>` heading, not at y=0. Skipping this
+      // and assuming 0 would leave every box rendering below where its
+      // connector lines think it is (the heading's height isn't in the
+      // `natural`/`target` arithmetic at all, but the `translateY`
+      // transform is applied on top of the *real* DOM position, which
+      // does include it) — same offset for every column, so the pyramid
+      // shape itself would still look right, but every line would enter
+      // and exit boxes off-center instead of at their true middle.
+      const colStartY = new Map<string, number>();
+      for (const [id, el] of colBoxWrapperEls.current) {
+        colStartY.set(id, el.getBoundingClientRect().top - containerRect.top);
+      }
+
       const naturalCenter = new Map<string, number>();
       const columnHeight = new Map<string, number>();
       for (const col of flow.columns) {
-        let y = 0;
+        const startY = colStartY.get(col.id) ?? 0;
+        let y = startY;
         for (const box of col.boxes) {
           const h = height.get(box.key) ?? 0;
           naturalCenter.set(box.key, y + h / 2);
           y += h + BOX_GAP_PX;
         }
-        columnHeight.set(col.id, Math.max(0, y - BOX_GAP_PX));
+        columnHeight.set(col.id, Math.max(0, y - startY - BOX_GAP_PX));
       }
       // The tallest column sets the shared pyramid axis — every other
       // column centers its own block against this same line by default.
@@ -196,6 +237,7 @@ export function PlaytimeBracketsView({
             // block against the shared axis instead.
             target = (naturalCenter.get(box.key) ?? 0) + columnOffset;
           }
+          if (box.isLoserTrack) target += LOSER_TRACK_OFFSET_PX;
           raw.push({ key: box.key, height: h, target });
           prevKey = box.key;
         }
@@ -276,11 +318,19 @@ export function PlaytimeBracketsView({
           aria-hidden="true"
         >
           {lines.map((l, i) => {
-            const midX = (l.x1 + l.x2) / 2;
+            // Elbow sits a fixed short distance out from the source box,
+            // not at the geometric midpoint — for an ordinary
+            // adjacent-column edge those are the same thing (the column
+            // gap is fixed), but a "skip" edge (e.g. Winners Final →
+            // Grand Final, jumping clean over the Losers Final column)
+            // has a far-away x2, and a midpoint elbow would land deep
+            // inside the skipped column instead of staying a short nub
+            // right at the box.
+            const elbowX = l.x1 + OUT_NUB_PX;
             return (
               <path
                 key={i}
-                d={`M ${l.x1} ${l.y1} H ${midX} V ${l.y2} H ${l.x2}`}
+                d={`M ${l.x1} ${l.y1} H ${elbowX} V ${l.y2} H ${l.x2}`}
                 fill="none"
                 style={{ stroke: "var(--border)" }}
                 strokeWidth={2}
@@ -288,26 +338,43 @@ export function PlaytimeBracketsView({
             );
           })}
         </svg>
-        {flow.columns.map((col) => (
-          <div key={col.id} className="flex flex-col gap-3">
-            <h3 className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">
-              {col.label}
-            </h3>
-            <div className="flex flex-col gap-3">
-              {col.boxes.map((box) => (
-                <BoxCard
-                  key={box.key}
-                  box={box}
-                  offsetY={offsets.get(box.key) ?? 0}
-                  boxRef={(el) => {
-                    if (el) boxEls.current.set(box.key, el);
-                    else boxEls.current.delete(box.key);
-                  }}
-                />
-              ))}
+        {flow.columns.map((col, i) => {
+          // Losers Final shares its header text with Semifinals (see
+          // PHASE2_COLUMN_LABELS in tournament-flow.ts) since it's still
+          // conceptually part of that round even though it needs its own
+          // column — skip printing the label a second time in a row so
+          // it reads as one heading spanning both columns.
+          const showLabel = col.label !== flow.columns[i - 1]?.label;
+          return (
+            <div
+              key={col.id}
+              className="flex flex-col gap-3 border-r border-border/40 pr-3 last:border-r-0 last:pr-0"
+            >
+              <h3 className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+                {showLabel ? col.label : " "}
+              </h3>
+              <div
+                className="flex flex-col gap-3"
+                ref={(el) => {
+                  if (el) colBoxWrapperEls.current.set(col.id, el);
+                  else colBoxWrapperEls.current.delete(col.id);
+                }}
+              >
+                {col.boxes.map((box) => (
+                  <BoxCard
+                    key={box.key}
+                    box={box}
+                    offsetY={offsets.get(box.key) ?? 0}
+                    boxRef={(el) => {
+                      if (el) boxEls.current.set(box.key, el);
+                      else boxEls.current.delete(box.key);
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
