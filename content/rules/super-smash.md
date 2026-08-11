@@ -2,7 +2,7 @@
 game: SUPER_SMASH
 summary: "1v1 · Stock · Final Destination"
 screenshots:
-  - src: /rules/super-smash/settings-placeholder.png
+  - src: /games/super-smash/rules.png
     caption: "PLACEHOLDER — replace with a real photo/capture of your match settings screen"
 ---
 

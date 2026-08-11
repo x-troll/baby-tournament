@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { babyJoinDeepLink, qrCodeDataUri } from "@/lib/qr";
+import { babyJoinDeepLink } from "@/lib/qr";
+import { GAME_LOGO_SRC } from "@/lib/game-assets";
 import { getTerminology } from "@/lib/terminology";
 import { resolveAvatarSrc } from "@/lib/avatars";
 import { buildPlaypenSection } from "@/lib/playpen-view";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
+import { StyledQrCode } from "@/components/admin/StyledQrCode";
 import { GAME_DISPLAY, PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
 import {
   addBabyManuallyAction,
@@ -38,7 +39,6 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
 
   const hasBotUsername = Boolean(process.env.TELEGRAM_BOT_USERNAME);
   const joinLink = hasBotUsername ? babyJoinDeepLink(playtime.joinToken) : null;
-  const qr = joinLink ? await qrCodeDataUri(joinLink) : null;
 
   const activeCount = playtime.babies.filter((b) => b.status === "ACTIVE").length;
   const t = getTerminology();
@@ -249,10 +249,10 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
             <CardTitle>The nursery (check-in)</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            {joinLink && qr ? (
+            {joinLink ? (
               <div className="flex flex-col items-start gap-2">
                 <p className="text-sm text-foreground-muted">Babies scan this to join via Telegram:</p>
-                <Image src={qr} alt="Join QR code" width={200} height={200} unoptimized />
+                <StyledQrCode data={joinLink} size={200} logoSrc={GAME_LOGO_SRC[playtime.game]} />
                 <code className="break-all text-xs text-foreground-muted">{joinLink}</code>
               </div>
             ) : (

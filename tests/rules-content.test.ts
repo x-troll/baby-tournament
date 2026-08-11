@@ -32,7 +32,7 @@ describe("loadRules — parse + sanitize + render", () => {
   it("includes the committed placeholder screenshot with its caption", async () => {
     const rules = await loadRules(Game.MARIO_KART);
     expect(rules.screenshots).toHaveLength(1);
-    expect(rules.screenshots[0]!.src).toBe("/rules/mario-kart/settings-placeholder.png");
+    expect(rules.screenshots[0]!.src).toBe("/games/mario-kart/rules.png");
   });
 
   it("loadAllRules returns both games keyed by the Game enum", async () => {

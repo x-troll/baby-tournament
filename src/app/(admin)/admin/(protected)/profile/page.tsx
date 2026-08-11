@@ -1,8 +1,8 @@
-import Image from "next/image";
 import { requireAdmin } from "@/lib/auth";
-import { adminLinkDeepLink, qrCodeDataUri } from "@/lib/qr";
+import { adminLinkDeepLink } from "@/lib/qr";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RegisterWebhookButton } from "@/components/admin/RegisterWebhookButton";
+import { StyledQrCode } from "@/components/admin/StyledQrCode";
 
 // The deep link + bot are both live now (Phase 6) — /start admin_<token>
 // on the bot links this Daddy's Telegram account to receive pushes.
@@ -10,7 +10,6 @@ export default async function AdminProfilePage() {
   const admin = await requireAdmin();
   const hasBotUsername = Boolean(process.env.TELEGRAM_BOT_USERNAME);
   const deepLink = hasBotUsername ? adminLinkDeepLink(admin.adminLinkToken) : null;
-  const qr = deepLink ? await qrCodeDataUri(deepLink) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,12 +29,12 @@ export default async function AdminProfilePage() {
             </p>
           )}
 
-          {deepLink && qr && (
+          {deepLink && (
             <div className="flex flex-col items-start gap-2">
               <p className="text-sm text-foreground-muted">
                 Scan with Telegram, or open this link, to receive help-request/dispute/round pushes on this device:
               </p>
-              <Image src={qr} alt="Telegram admin-link QR code" width={220} height={220} unoptimized />
+              <StyledQrCode data={deepLink} size={220} />
               <code className="break-all text-xs text-foreground-muted">{deepLink}</code>
             </div>
           )}

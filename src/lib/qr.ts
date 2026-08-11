@@ -1,14 +1,8 @@
-// No `import "server-only"` — see src/lib/auth.ts for why (also used by
-// standalone scripts outside Next's build pipeline).
-import QRCode from "qrcode";
-
-/** Renders a QR code server-side as an inline SVG data URI — no external image service. */
-export async function qrCodeDataUri(text: string): Promise<string> {
-  const svg = await QRCode.toString(text, { type: "svg", margin: 1, color: { dark: "#3a2e3f", light: "#ffffff" } });
-  const base64 = Buffer.from(svg).toString("base64");
-  return `data:image/svg+xml;base64,${base64}`;
-}
-
+// Pure URL builders — actual QR rendering moved client-side, see
+// src/components/admin/StyledQrCode.tsx (qr-code-styling needs a real
+// browser canvas; these two functions have nothing to do with that,
+// they just build the t.me deep link a QR code (or a plain tappable
+// link) points at).
 export function babyJoinDeepLink(joinToken: string): string {
   const botUsername = process.env.TELEGRAM_BOT_USERNAME;
   if (!botUsername) throw new Error("TELEGRAM_BOT_USERNAME is not set");

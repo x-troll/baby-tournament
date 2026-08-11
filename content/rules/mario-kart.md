@@ -2,7 +2,7 @@
 game: MARIO_KART
 summary: "No items · Random map · 150cc"
 screenshots:
-  - src: /rules/mario-kart/settings-placeholder.png
+  - src: /games/mario-kart/rules.png
     caption: "PLACEHOLDER — replace with a real photo/capture of your race settings screen"
 ---
 
