@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "./CountdownTimer";
@@ -53,7 +54,12 @@ function renderBody(
 ) {
   switch (state.kind) {
     case "DADDY_COMING":
-      return <Headline>Daddy is coming 💫</Headline>;
+      return (
+        <div className="flex items-center gap-3">
+          <Image src="/admin-avatar.svg" alt="" width={40} height={40} className="rounded-full" />
+          <Headline>Daddy is coming 💫</Headline>
+        </div>
+      );
 
     case "CHAMPION":
       return <Headline>You&apos;re the {copy.champion}! 🌟🌟🌟</Headline>;

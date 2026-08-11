@@ -43,6 +43,13 @@ export async function createPlaytimeAction(formData: FormData): Promise<void> {
   redirect(`/admin/playtimes/${playtime.id}`);
 }
 
+/** Destructive, admin-gated, confirmed client-side first (see DeleteAllPlaytimesButton) — every dependent row cascades via schema.prisma's onDelete: Cascade, no manual ordering needed. */
+export async function deleteAllPlaytimesAction(): Promise<void> {
+  await requireAdmin();
+  await prisma.playtime.deleteMany({});
+  revalidatePath("/admin");
+}
+
 export async function addBabyManuallyAction(playtimeId: string, formData: FormData): Promise<void> {
   await requireAdmin();
 

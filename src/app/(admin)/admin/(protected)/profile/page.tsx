@@ -14,7 +14,7 @@ export default async function AdminProfilePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">My profile</h1>
+      <h1 className="text-2xl font-bold">Settings</h1>
 
       <Card>
         <CardHeader>

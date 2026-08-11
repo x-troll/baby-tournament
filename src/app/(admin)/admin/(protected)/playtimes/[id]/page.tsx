@@ -7,9 +7,11 @@ import { buildPlaypenSection } from "@/lib/playpen-view";
 import { buildPhase2Bracket } from "@/lib/bracket-view";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
+import { GAME_DISPLAY, PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
 import {
   addBabyManuallyAction,
   openNurseryAction,
@@ -82,14 +84,15 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
     })),
   );
 
-  // Three tabs instead of three stacked cards — same content as before,
-  // just switchable instead of one long scroll. "Matches" (where the
-  // admin actually takes action — reporting/undoing results) defaults
-  // active, since that's what running the event mostly means.
+  // Two tabs — the bracket/playpen view renders full-width above these,
+  // not as a third tab, so it's always visible rather than switched away
+  // from. "Matches" (where the admin actually takes action — reporting/
+  // undoing results) defaults active, since that's what running the event
+  // mostly means.
   const detailTabs: TabItem[] = [
     {
-      id: "star-chart",
-      label: "Star chart",
+      id: "score",
+      label: "Score",
       content: (
         <>
           <table className="w-full text-sm">
@@ -136,16 +139,6 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
           <p className="mt-2 text-xs text-foreground-muted">{activeCount} baby(ies) still active.</p>
         </>
       ),
-    },
-    {
-      id: "playpens",
-      label: t.groupStageHeatPlural.charAt(0).toUpperCase() + t.groupStageHeatPlural.slice(1),
-      content:
-        playpens || phase2Bracket ? (
-          <PlaytimeBracketsView playpens={playpens} phase2Bracket={phase2Bracket} />
-        ) : (
-          <p className="text-sm text-foreground-muted">Nothing to show yet.</p>
-        ),
     },
     {
       id: "matches",
@@ -227,9 +220,15 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{playtime.name}</h1>
-          <p className="text-sm text-foreground-muted">
-            {playtime.game} · {playtime.status} · {playtime.stationCount} station
-            {playtime.stationCount === 1 ? "" : "s"}
+          <p className="mt-1 flex items-center gap-2 text-sm text-foreground-muted">
+            <Badge variant={GAME_DISPLAY[playtime.game].variant}>{GAME_DISPLAY[playtime.game].label}</Badge>
+            <Badge variant={PLAYTIME_STATUS_DISPLAY[playtime.status].variant}>
+              {PLAYTIME_STATUS_DISPLAY[playtime.status].label}
+            </Badge>
+            <span>
+              {playtime.stationCount} station
+              {playtime.stationCount === 1 ? "" : "s"}
+            </span>
           </p>
         </div>
         <Link
@@ -326,9 +325,12 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
       )}
 
       {(playtime.status === "IN_PROGRESS" || playtime.status === "COMPLETE") && (
-        <Card>
-          <Tabs label="Playtime details" items={detailTabs} defaultTabId="matches" />
-        </Card>
+        <>
+          {(playpens || phase2Bracket) && <PlaytimeBracketsView playpens={playpens} phase2Bracket={phase2Bracket} />}
+          <Card>
+            <Tabs label="Playtime details" items={detailTabs} defaultTabId="matches" />
+          </Card>
+        </>
       )}
     </div>
   );

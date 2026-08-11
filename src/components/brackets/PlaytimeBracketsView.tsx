@@ -345,10 +345,16 @@ export function PlaytimeBracketsView({
           // column — skip printing the label a second time in a row so
           // it reads as one heading spanning both columns.
           const showLabel = col.label !== flow.columns[i - 1]?.label;
+          // Alternating tint instead of a separator line between columns —
+          // a low-opacity black overlay reads as "slightly darker" in both
+          // light and dark mode alike, unlike picking a named background
+          // token (which would invert which one looks "darker" between
+          // themes).
+          const isEvenColumn = i % 2 === 1;
           return (
             <div
               key={col.id}
-              className="flex flex-col gap-3 border-r border-border/40 pr-3 last:border-r-0 last:pr-0"
+              className={`flex flex-col gap-3 rounded-card px-3 py-2 ${isEvenColumn ? "bg-black/5" : ""}`}
             >
               <h3 className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">
                 {showLabel ? col.label : " "}
