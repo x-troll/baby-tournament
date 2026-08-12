@@ -7,11 +7,9 @@ import { createMagicLinkToken } from "@/lib/baby-auth";
 import { loadRules } from "@/lib/rules-content";
 import { computeBabyStatus } from "@/lib/baby-status";
 import { confirmReportedMatch, disputeMatch, markMatchInProgress } from "@/lib/playtime-lifecycle";
-import { AVATAR_OPTIONS } from "@/lib/avatars";
-import { SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
 import { GAME_DISPLAY } from "@/lib/enum-display";
 import * as playerCopy from "@/lib/player-copy";
-import { answerCallbackQuery, sendMessage, type InlineKeyboard } from "./client";
+import { answerCallbackQuery, sendMessage } from "./client";
 import * as copy from "./copy";
 
 interface TelegramMessage {
@@ -72,30 +70,10 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
     return;
   }
 
-  if (text === "/profile") {
-    await handleProfileCommand(chatId);
-    return;
-  }
-
-  // Not a command — if there's a pending (nameless) registration for this
-  // chat, treat the message as their display name. Only one nameless
-  // registration can exist per chat at a time (handleBabyStart won't
-  // create a second one across a different playtime while one is still
-  // pending — see there), so this lookup is unambiguous even for
-  // someone signed up for multiple playtimes.
-  const pending = await prisma.baby.findFirst({
-    where: { telegramChatId: chatId, displayName: null },
-    orderBy: { createdAt: "desc" },
-    include: { playtime: true },
-  });
-  if (pending && text) {
-    const updated = await prisma.baby.update({
-      where: { id: pending.id },
-      data: { displayName: text },
-    });
-    const link = await magicLink(updated.id);
-    await sendMessage(chatId, copy.registeredAndMagicLink(pending.playtime.name, text, link));
-  }
+  // Anything else (including a bare "/profile" — registration and
+  // profile edits both happen on the web now, see
+  // src/app/(baby)/play/[slug]/register/page.tsx and .../settings) is
+  // silently ignored — there's nothing left for free-text chat to do.
 }
 
 async function handleAdminStart(chatId: string, adminToken: string): Promise<void> {
@@ -114,44 +92,41 @@ async function handleBabyStart(chatId: string, joinToken: string): Promise<void>
     await sendMessage(chatId, copy.unknownJoinToken());
     return;
   }
+
+  let baby = await prisma.baby.findFirst({ where: { playtimeId: playtime.id, telegramChatId: chatId } });
+
+  if (baby?.displayName) {
+    const link = await magicLink(baby.id);
+    await sendMessage(chatId, copy.alreadyRegistered(playtime.name, baby.displayName, link));
+    return;
+  }
+
+  // No baby yet, or one already exists but hasn't finished registering
+  // (a re-tap of the same link) — either way, the same nameless-baby
+  // shape and the same next step: a magic link to the web registration
+  // page (requireBaby's gate in baby-auth.ts sends any nameless baby
+  // there automatically, so this link doesn't need to know that route
+  // exists). No more per-playtime "one nameless registration at a time"
+  // guard needed — that only ever existed because names used to be
+  // collected via ambiguous free-text chat replies, which no longer
+  // happens at all.
+  if (!baby) {
+    const lastBaby = await prisma.baby.findFirst({
+      where: { playtimeId: playtime.id },
+      orderBy: { registrationOrder: "desc" },
+    });
+    baby = await prisma.baby.create({
+      data: {
+        playtimeId: playtime.id,
+        telegramChatId: chatId,
+        registrationOrder: (lastBaby?.registrationOrder ?? 0) + 1,
+      },
+    });
+  }
+
   const gameLabel = GAME_DISPLAY[playtime.game].label;
-
-  const existing = await prisma.baby.findFirst({ where: { playtimeId: playtime.id, telegramChatId: chatId } });
-  if (existing) {
-    if (existing.displayName) {
-      const link = await magicLink(existing.id);
-      await sendMessage(chatId, copy.alreadyRegistered(playtime.name, existing.displayName, link));
-    } else {
-      await sendMessage(chatId, copy.askForDisplayName(playtime.name, gameLabel));
-    }
-    return;
-  }
-
-  // Only one nameless registration per chat at a time — the plain-text
-  // "treat this as your display name" handler above can't tell which
-  // pending registration a reply is "for" if there were two, so it'd
-  // silently attach the name to whichever is newest. Simplest fix:
-  // don't let a second one start until the first is named.
-  const otherPending = await prisma.baby.findFirst({
-    where: { telegramChatId: chatId, displayName: null, playtimeId: { not: playtime.id } },
-  });
-  if (otherPending) {
-    await sendMessage(chatId, copy.finishOtherRegistrationFirst());
-    return;
-  }
-
-  const lastBaby = await prisma.baby.findFirst({
-    where: { playtimeId: playtime.id },
-    orderBy: { registrationOrder: "desc" },
-  });
-  await prisma.baby.create({
-    data: {
-      playtimeId: playtime.id,
-      telegramChatId: chatId,
-      registrationOrder: (lastBaby?.registrationOrder ?? 0) + 1,
-    },
-  });
-  await sendMessage(chatId, copy.askForDisplayName(playtime.name, gameLabel));
+  const link = await magicLink(baby.id);
+  await sendMessage(chatId, copy.finishSignupOnWeb(playtime.name, gameLabel, link));
 }
 
 async function handleStatusCommand(chatId: string): Promise<void> {
@@ -176,35 +151,6 @@ async function handleRulesCommand(chatId: string): Promise<void> {
   }
   const rules = await loadRules(baby.playtime.game);
   await sendMessage(chatId, copy.rulesReply(rules.summary, baby.playtime.rulesOverrideNote));
-}
-
-// Entry point for both first-time setup ("during registering") and later
-// edits ("afterwards") — the same command either way, per the spec. Kicks
-// off a short chained wizard: avatar -> self term -> explicit-messages
-// toggle, each step's callback sending the next step's keyboard (see
-// handleCallbackQuery below), all optional in the sense that a baby who
-// never runs /profile at all just keeps the deployment defaults everywhere.
-async function handleProfileCommand(chatId: string): Promise<void> {
-  const baby = await prisma.baby.findFirst({ where: { telegramChatId: chatId }, orderBy: { createdAt: "desc" } });
-  if (!baby?.displayName) {
-    await sendMessage(chatId, copy.notCheckedInYet());
-    return;
-  }
-  await sendMessage(chatId, copy.pickAvatarPrompt(), { replyMarkup: avatarKeyboard() });
-}
-
-function avatarKeyboard(): InlineKeyboard {
-  return [AVATAR_OPTIONS.map((a) => ({ text: a.label, callback_data: `avatar:${a.id}` }))];
-}
-
-// Chunked into rows of 2 — Telegram wraps long single-row keyboards
-// awkwardly on narrow phone screens, and both option lists are too long
-// for one row to stay tappable.
-function chunkedKeyboard(options: readonly string[], prefix: string): InlineKeyboard {
-  const buttons = options.map((label, i) => ({ text: label, callback_data: `${prefix}:${i}` }));
-  const rows: InlineKeyboard = [];
-  for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
-  return rows;
 }
 
 async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> {
@@ -252,55 +198,6 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
     } catch (err) {
       await answerCallbackQuery(query.id, err instanceof Error ? err.message : "Something went wrong.");
     }
-    return;
-  }
-
-  if (action === "avatar") {
-    const baby = chatId ? await prisma.baby.findFirst({ where: { telegramChatId: chatId }, orderBy: { createdAt: "desc" } }) : null;
-    if (!baby) {
-      await answerCallbackQuery(query.id, "Couldn't find your registration.");
-      return;
-    }
-    const avatar = AVATAR_OPTIONS.find((a) => a.id === id);
-    await prisma.baby.update({ where: { id: baby.id }, data: { avatarId: avatar?.id ?? null } });
-    await answerCallbackQuery(query.id);
-    await sendMessage(chatId!, copy.avatarSetPrompt(avatar?.label ?? id));
-    await sendMessage(chatId!, copy.pickSelfRolePrompt(), { replyMarkup: chunkedKeyboard(SELF_ROLE_OPTIONS, "selfrole") });
-    return;
-  }
-
-  if (action === "selfrole") {
-    const baby = chatId ? await prisma.baby.findFirst({ where: { telegramChatId: chatId }, orderBy: { createdAt: "desc" } }) : null;
-    if (!baby) {
-      await answerCallbackQuery(query.id, "Couldn't find your registration.");
-      return;
-    }
-    const label = SELF_ROLE_OPTIONS[Number(id)];
-    await prisma.baby.update({ where: { id: baby.id }, data: { selfRoleLabel: label ?? null } });
-    await answerCallbackQuery(query.id);
-    if (label) await sendMessage(chatId!, copy.selfRoleSetPrompt(label));
-    await sendMessage(chatId!, copy.pickExplicitPrompt(), {
-      replyMarkup: [
-        [
-          { text: "Yes, spicy 🌶️", callback_data: "explicit:1" },
-          { text: "No, keep it playful", callback_data: "explicit:0" },
-        ],
-      ],
-    });
-    return;
-  }
-
-  if (action === "explicit") {
-    const baby = chatId ? await prisma.baby.findFirst({ where: { telegramChatId: chatId }, orderBy: { createdAt: "desc" } }) : null;
-    if (!baby) {
-      await answerCallbackQuery(query.id, "Couldn't find your registration.");
-      return;
-    }
-    const allowExplicitMessages = id === "1";
-    await prisma.baby.update({ where: { id: baby.id }, data: { allowExplicitMessages } });
-    await answerCallbackQuery(query.id);
-    await sendMessage(chatId!, copy.explicitSetPrompt(allowExplicitMessages));
-    await sendMessage(chatId!, copy.profileSetupComplete());
     return;
   }
 

@@ -12,16 +12,12 @@ const t = getTerminology();
 // bot's own global profile, the same for every link it ever sends. This
 // first reply is the earliest point the bot can say anything
 // payload-specific, so it's where that context actually needs to live.
-export function askForDisplayName(playtimeName: string, gameLabel: string): string {
-  return `Welcome to ${playtimeName} (${gameLabel})! 🍼 What should we call you tonight? Just send your name back to me.`;
-}
-
-export function finishOtherRegistrationFirst(): string {
-  return "You're still finishing check-in for another playtime — send your name for that one first, then scan this QR again.";
-}
-
-export function registeredAndMagicLink(playtimeName: string, displayName: string, magicLink: string): string {
-  return `You're all checked in to ${playtimeName}, ${displayName}! 🌟\n\nTap below to open your ${t.player} screen:\n${magicLink}\n\nKeep this chat open — I'll ping you here when it's your turn.\n\nWant to pick an avatar or change what we call you? Send /profile anytime.`;
+//
+// Registration itself (name/avatar/role) happens on the web now, not in
+// this chat — see src/app/(baby)/play/[slug]/register/page.tsx — so
+// this just hands over a magic link instead of asking a question here.
+export function finishSignupOnWeb(playtimeName: string, gameLabel: string, magicLink: string): string {
+  return `Welcome to ${playtimeName} (${gameLabel})! 🍼 Tap below to finish signing up — pick your name and a picture:\n${magicLink}\n\nKeep this chat open — I'll ping you here when it's your turn.`;
 }
 
 export function alreadyRegistered(playtimeName: string, displayName: string, magicLink: string): string {
@@ -38,40 +34,6 @@ export function adminLinked(name: string): string {
 
 export function unknownAdminToken(): string {
   return "That admin link doesn't look right — check the QR code in your profile page.";
-}
-
-// ── /profile — avatar + self term picker + explicit-messages toggle ──
-
-export function pickAvatarPrompt(): string {
-  return "Pick a picture for yourself! 🎨";
-}
-
-export function avatarSetPrompt(label: string): string {
-  return `You're a ${label} now! 🎉`;
-}
-
-export function pickSelfRolePrompt(): string {
-  return "What should we call you?";
-}
-
-export function selfRoleSetPrompt(label: string): string {
-  return `Got it — you're a ${label}.`;
-}
-
-export function pickExplicitPrompt(): string {
-  return "🌶️ Allow explicit messages? Messages you receive will be slightly more explicit and teasing, instead of playful.";
-}
-
-export function explicitSetPrompt(allowed: boolean): string {
-  return allowed ? "Spicy mode on. 🌶️" : "Keeping it playful. 🍼";
-}
-
-export function profileSetupComplete(): string {
-  return "All set! ✨ Send /profile anytime to change any of this.";
-}
-
-export function notCheckedInYet(): string {
-  return "Join a playtime and tell me your name first, then you can customize your profile.";
 }
 
 export function statusReply(displayName: string, summary: string): string {

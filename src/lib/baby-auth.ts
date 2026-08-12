@@ -105,8 +105,8 @@ export async function getCurrentBaby(): Promise<Baby | null> {
   return prisma.baby.findUnique({ where: { id: babyId } });
 }
 
-/** For a playtime-scoped baby page — redirects to that playtime's join info if not this baby's session. */
-export async function requireBaby(playtimeSlug: string): Promise<Baby> {
+/** Session validation shared by requireBaby and requireBabyForRegistration below — not exported, since the only difference between those two is whether a null displayName redirects away or not. */
+async function requireBabySessionOnly(playtimeSlug: string): Promise<Baby> {
   const baby = await getCurrentBaby();
   if (!baby) {
     redirect(`/play/${playtimeSlug}/not-signed-in`);
@@ -127,6 +127,31 @@ export async function requireBaby(playtimeSlug: string): Promise<Baby> {
     redirect(`/play/${playtimeSlug}/not-signed-in?otherPlaytime=1`);
   }
   return baby;
+}
+
+/**
+ * For a playtime-scoped baby page — redirects to that playtime's join
+ * info if not this baby's session, or to the required registration page
+ * if the session's baby hasn't picked a display name yet (arrived via a
+ * fresh Telegram magic link, or a website /join that hasn't finished
+ * registering — see requireBabyForRegistration and
+ * src/app/(baby)/play/[slug]/register/page.tsx).
+ */
+export async function requireBaby(playtimeSlug: string): Promise<Baby> {
+  const baby = await requireBabySessionOnly(playtimeSlug);
+  if (!baby.displayName) {
+    redirect(`/play/${playtimeSlug}/register`);
+  }
+  return baby;
+}
+
+/**
+ * Used only by /play/[slug]/register itself — same session validation
+ * as requireBaby, but deliberately doesn't redirect away for a null
+ * displayName, since fixing that is the whole point of this page.
+ */
+export async function requireBabyForRegistration(playtimeSlug: string): Promise<Baby> {
+  return requireBabySessionOnly(playtimeSlug);
 }
 
 /**
@@ -153,6 +178,9 @@ export async function requireBabyWithToken(playtimeSlug: string, token: string |
 
   const existing = await getCurrentBaby();
   if (existing && existing.playtimeId === playtime.id) {
+    if (!existing.displayName) {
+      redirect(`/play/${playtimeSlug}/register`);
+    }
     return existing;
   }
 
