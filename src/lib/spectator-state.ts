@@ -72,7 +72,7 @@ const PHASE2_LABELS: Partial<Record<MatchKind, string>> = {
   [MatchKind.QF2]: "QUARTERFINALS",
   [MatchKind.LOSERS_R1]: "LOSERS ROUND 1",
   [MatchKind.WINNERS_FINAL]: "WINNERS FINAL",
-  [MatchKind.LOSERS_FINAL]: "LOSERS FINAL",
+  [MatchKind.LOSERS_FINAL]: "LOSERS SEMI-FINAL",
   [MatchKind.GRAND_FINAL]: "GRAND FINAL",
 };
 

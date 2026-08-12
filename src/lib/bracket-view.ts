@@ -53,7 +53,7 @@ const STAGES: { kind: MatchKind; label: string; row: "a" | "b"; col: 1 | 2 | 3 |
   { kind: "QF2" as MatchKind, label: "Playpen 2", row: "b", col: 1 },
   { kind: "WINNERS_FINAL" as MatchKind, label: "Winner playpen", row: "a", col: 2 },
   { kind: "LOSERS_R1" as MatchKind, label: "Losers playpen", row: "b", col: 2 },
-  { kind: "LOSERS_FINAL" as MatchKind, label: "Losers final", row: "b", col: 3 },
+  { kind: "LOSERS_FINAL" as MatchKind, label: "Losers semi-final", row: "b", col: 3 },
   { kind: "GRAND_FINAL" as MatchKind, label: "Grand final", row: "a", col: 4 },
 ];
 
