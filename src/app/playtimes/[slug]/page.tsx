@@ -284,16 +284,24 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {joinLink || websiteLink ? (
-              <NurseryCheckIn telegramLink={joinLink} websiteLink={websiteLink}>
-                {joinLink && <code className="break-all text-xs text-foreground-muted">{joinLink}</code>}
-                <div className="w-full max-w-xl">
-                  <h3 className="mb-2 text-sm font-semibold">
-                    Registered babies ({playtime.babies.length})
-                  </h3>
+              <>
+                {/* Extra bottom margin, not just the CardContent gap — the
+                    "Recommended" pill pokes up and left past the QR
+                    card's own top edge (rotated, so more than its plain
+                    -top-2 offset suggests), and this line sits directly
+                    above it. */}
+                {joinLink && (
+                  <code className="mb-4 break-all text-xs text-foreground-muted">{joinLink}</code>
+                )}
+                <NurseryCheckIn
+                  telegramLink={joinLink}
+                  websiteLink={websiteLink}
+                  playersTitle={`Registered babies (${playtime.babies.length})`}
+                >
                   {playtime.babies.length === 0 ? (
                     <p className="text-sm text-foreground-muted">Nobody yet.</p>
                   ) : (
-                    <ul className="flex flex-col gap-1">
+                    <ul className="flex w-full flex-col gap-1">
                       {playtime.babies.map((baby) => (
                         <li
                           key={baby.id}
@@ -321,8 +329,8 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
                       ))}
                     </ul>
                   )}
-                </div>
-              </NurseryCheckIn>
+                </NurseryCheckIn>
+              </>
             ) : (
               <p className="text-sm text-foreground-muted">
                 Set TELEGRAM_BOT_USERNAME and/or NEXT_PUBLIC_APP_URL to show a join QR.

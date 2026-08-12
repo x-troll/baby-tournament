@@ -6,9 +6,7 @@ import { CurrentMatches } from "./CurrentMatches";
 import { HelpIndicator } from "./HelpIndicator";
 import { RegisteredBabies } from "./RegisteredBabies";
 import { RulesFooter } from "./RulesFooter";
-import { QrJoinCard } from "@/components/ui/QrJoinCard";
-import { buildJoinQrCards } from "@/components/ui/JoinQrPair";
-import { Card } from "@/components/ui/card";
+import { NurseryCheckIn } from "./NurseryCheckIn";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import { GAME_LOGO_SRC } from "@/lib/game-assets";
 import type { SpectatorState } from "@/lib/spectator-state";
@@ -83,15 +81,6 @@ export function SpectatorPoller({
     };
   }, [slug, state.lastEventId]);
 
-  // Two QR cards plus a third "who's here" card, three equal-width
-  // columns filling the full 16:9 width instead of the QR pair floating
-  // centered above a separate badge row — every column shares the same
-  // Card component, and CSS grid's default row stretch (`items-stretch`)
-  // equalizes all three to the tallest one's height for free, no manual
-  // min-height bookkeeping needed the way the two QR captions already do
-  // for each other.
-  const qrCards = buildJoinQrCards(state.joinLink, state.websiteJoinLink, 360);
-
   return (
     <div className="mx-auto flex max-w-[1920px] flex-col gap-6 p-8">
       <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
@@ -107,28 +96,9 @@ export function SpectatorPoller({
       <RulesFooter summary={rulesSummary} overrideNote={rulesOverrideNote} />
 
       {state.status === "NURSERY_OPEN" && (
-        <div
-          className={`grid grid-cols-1 items-stretch gap-8 ${
-            qrCards.length === 2
-              ? "lg:grid-cols-[auto_auto_1fr]"
-              : qrCards.length === 1
-                ? "lg:grid-cols-[auto_1fr]"
-                : ""
-          }`}
-        >
-          {qrCards.map((card) => (
-            <QrJoinCard key={card.title} {...card} />
-          ))}
-          {/* The QR cards are only ever as wide as their fixed-size QR
-              image needs — this one grows to soak up whatever's left
-              (the `1fr` track above) so the row still reaches the
-              screen's full width instead of leaving a gap past the
-              second QR card. */}
-          <Card className="flex h-full flex-col items-center gap-4">
-            <h3 className="text-xl font-semibold text-foreground-muted">Littles and bigs</h3>
-            <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
-          </Card>
-        </div>
+        <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} playersTitle="Littles and bigs">
+          <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
+        </NurseryCheckIn>
       )}
 
       {state.status === "IN_PROGRESS" && <CurrentMatches matches={state.activeMatches} onDeck={state.onDeck} />}

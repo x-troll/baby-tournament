@@ -13,7 +13,7 @@ export function StartPlaytimeButton({ playtimeId, babyCount }: { playtimeId: str
   return (
     <>
       <Button onClick={() => setOpen(true)} disabled={!canStart}>
-        Start playtime ({babyCount}/3 minimum)
+        {canStart ? "Start playtime" : "Not enough babies yet"}
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="Start the tournament?">
         <p className="text-sm text-foreground-muted">
