@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { babyJoinDeepLink, websiteJoinLink } from "@/lib/qr";
-import { GAME_LOGO_SRC } from "@/lib/game-assets";
 import { getTerminology } from "@/lib/terminology";
 import { resolveAvatarSrc } from "@/lib/avatars";
 import { buildPlaypenSection } from "@/lib/playpen-view";
@@ -256,12 +255,7 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
           <CardContent className="flex flex-col gap-4">
             {joinLink || websiteLink ? (
               <div className="flex flex-col items-center gap-2 self-center">
-                <JoinQrPair
-                  telegramLink={joinLink}
-                  websiteLink={websiteLink}
-                  gameLabel={GAME_DISPLAY[playtime.game].label}
-                  gameLogoSrc={GAME_LOGO_SRC[playtime.game]}
-                />
+                <JoinQrPair telegramLink={joinLink} websiteLink={websiteLink} />
                 {joinLink && <code className="break-all text-xs text-foreground-muted">{joinLink}</code>}
               </div>
             ) : (

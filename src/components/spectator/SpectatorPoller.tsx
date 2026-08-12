@@ -8,7 +8,6 @@ import { RegisteredBabies } from "./RegisteredBabies";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import { JoinQrPair } from "@/components/ui/JoinQrPair";
 import { GAME_LOGO_SRC } from "@/lib/game-assets";
-import { GAME_DISPLAY } from "@/lib/enum-display";
 import type { SpectatorState } from "@/lib/spectator-state";
 
 const POLL_INTERVAL_MS = 3000;
@@ -72,17 +71,11 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
     <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-8">
       <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
 
-      <StageBanner text={state.stageBanner} />
+      <StageBanner text={state.stageBanner} logoSrc={GAME_LOGO_SRC[state.game]} />
 
       {state.status === "NURSERY_OPEN" && (
         <div className="flex flex-col items-center gap-6 py-4">
-          <JoinQrPair
-            telegramLink={state.joinLink}
-            websiteLink={state.websiteJoinLink}
-            gameLabel={GAME_DISPLAY[state.game].label}
-            gameLogoSrc={GAME_LOGO_SRC[state.game]}
-            size={400}
-          />
+          <JoinQrPair telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} size={400} />
           <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
         </div>
       )}
