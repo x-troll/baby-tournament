@@ -41,3 +41,9 @@ split into phases, commit after each (+ testing and everything), but please comp
 # ignore everything below
 
 - if a user deletes the chat with the bot, and scan again, tries to use /start command, what will happen? can they then re-sign up? New user? Will this cause any problems?
+
+- need a save success box on settings for players
+
+- seems like a bug where role cannot be changed?
+
+- duplicate default (baby) and baby role options

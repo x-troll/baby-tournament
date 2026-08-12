@@ -1,23 +1,16 @@
-import Image from "next/image";
 import Link from "next/link";
 import { requireBaby } from "@/lib/baby-auth";
-import { AVATAR_OPTIONS } from "@/lib/avatars";
-import { SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
-import { getTerminology } from "@/lib/terminology";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { BabyProfileForm } from "@/components/baby/BabyProfileForm";
 import { updateBabyProfileAction } from "@/server-actions/baby-profile";
 
 // Everything a baby set once at registration (src/app/(baby)/play/[slug]/
-// register/page.tsx) plus the explicit-messages toggle, editable anytime
-// afterward — the Telegram /profile wizard this used to mirror is gone
-// (registration is web-only now), so this is the only place any of it
-// can be changed post-signup.
+// register/page.tsx, sharing the same BabyProfileForm) plus the
+// explicit-messages toggle, editable anytime afterward — the Telegram
+// /profile wizard this used to mirror is gone (registration is web-only
+// now), so this is the only place any of it can be changed post-signup.
 export default async function BabySettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const baby = await requireBaby(slug);
-  const t = getTerminology();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-4 pb-32">
@@ -28,88 +21,12 @@ export default async function BabySettingsPage({ params }: { params: Promise<{ s
         </Link>
       </div>
 
-      <form action={updateBabyProfileAction.bind(null, slug)} className="flex flex-col gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Your name</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Input name="displayName" required maxLength={40} defaultValue={baby.displayName ?? ""} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Pick a picture</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            {AVATAR_OPTIONS.map((a) => (
-              <label
-                key={a.id}
-                className="flex cursor-pointer flex-col items-center gap-1 rounded-card border border-border p-2 text-xs font-semibold has-checked:border-active has-checked:bg-background-sunken"
-              >
-                <input
-                  type="radio"
-                  name="avatarId"
-                  value={a.id}
-                  defaultChecked={baby.avatarId === a.id}
-                  className="sr-only"
-                />
-                <Image src={a.src} alt="" width={48} height={48} />
-                {a.label}
-              </label>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Your role</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-1">
-            <label htmlFor="selfRoleLabel" className="text-sm text-foreground-muted">
-              What should we call you?
-            </label>
-            <select
-              id="selfRoleLabel"
-              name="selfRoleLabel"
-              defaultValue={baby.selfRoleLabel ?? ""}
-              className="min-h-11 rounded-card border border-border bg-background-elevated px-3 py-2 text-sm text-foreground"
-            >
-              <option value="">Default ({t.player})</option>
-              {SELF_ROLE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>🌶️ Allow explicit messages</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="allowExplicitMessages"
-                defaultChecked={baby.allowExplicitMessages}
-                className="h-5 w-5"
-              />
-              Yes, allow it
-            </label>
-            <p className="text-xs text-foreground-muted">
-              Messages and texts you receive will be slightly more explicit and teasing, instead of playful.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Button type="submit" className="self-start">
-          Save
-        </Button>
-      </form>
+      <BabyProfileForm
+        action={updateBabyProfileAction.bind(null, slug)}
+        mode="settings"
+        baby={baby}
+        submitLabel="Save"
+      />
     </main>
   );
 }
