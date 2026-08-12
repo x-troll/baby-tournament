@@ -83,7 +83,7 @@ export function BrowserNotifications({ slug }: { slug: string }) {
         const result = await Notification.requestPermission();
         setPermission(result);
       }}
-      className="self-start rounded-card border border-border bg-background-elevated px-3 py-1.5 text-xs font-semibold text-foreground-muted hover:opacity-80"
+      className="shrink-0 rounded-card border border-border bg-background-elevated px-3 py-1.5 text-xs font-semibold text-foreground-muted hover:opacity-80"
     >
       🔔 Enable notifications
     </button>

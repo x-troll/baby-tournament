@@ -79,7 +79,7 @@ export function buildTournamentFlow(
       boxes: round.pens.map((pen) => ({
         key: `pen-${pen.matchId}`,
         label: pen.label,
-        status: toDisplayStatus(pen.status),
+        status: toDisplayStatus(pen.status, pen.isNextUp),
         participants: pen.participants.map((p) => ({
           babyId: p.babyId,
           name: p.name,

@@ -63,12 +63,18 @@ export async function notifyBabyUpSoon(babyId: string): Promise<void> {
 /**
  * Fired once a match flips READY -> IN_PROGRESS (see
  * `markMatchInProgress`) — every other transition already has a push,
- * this was the one gap. Goes to every participant with Telegram linked,
- * not just whoever tapped "we're playing" — the whole match just
- * started for all of them, and they'll all need the same "submit your
- * result when you're done" link back to the dashboard.
+ * this was the one gap. Goes to every *other* participant with
+ * Telegram linked — not whoever actually tapped "we're playing"
+ * (`actingBabyId`): they already got Telegram's own instant reply for
+ * that tap (`readyCheckReply`, an `answerCallbackQuery` toast) or, if
+ * they started it from the web instead, they're already looking at the
+ * PLAYING state — sending them this too would land right on top of
+ * their own still-visible "we're ready" button and read as two prompts
+ * for the same moment. Everyone else on the match still gets this as
+ * genuine news (someone else just started it) plus the same "submit
+ * your result when you're done" link back to the dashboard.
  */
-export async function notifyMatchStarted(matchId: string): Promise<void> {
+export async function notifyMatchStarted(matchId: string, actingBabyId: string): Promise<void> {
   const match = await prisma.match.findUnique({
     where: { id: matchId },
     include: { participants: { include: { baby: true } }, playtime: true },
@@ -77,6 +83,7 @@ export async function notifyMatchStarted(matchId: string): Promise<void> {
   const keyboard: InlineKeyboard = [[{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/play/${match.playtime.slugNumber}`) }]];
 
   for (const p of match.participants) {
+    if (p.babyId === actingBabyId) continue;
     if (!p.baby.telegramChatId) continue;
     await sendMessage(p.baby.telegramChatId, playerCopy.matchStarted(p.baby, p.baby.displayName ?? "baby"), {
       replyMarkup: keyboard,

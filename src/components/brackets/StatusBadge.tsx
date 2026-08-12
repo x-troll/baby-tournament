@@ -5,13 +5,17 @@ export type { DisplayStatus };
 
 const LABEL: Record<DisplayStatus, string> = {
   NOT_YET_PLAYED: "Not yet played",
+  NEXT_UP: "Next up",
+  READY: "Ready to play",
   PLAYING: "Playing now",
   FINISHED: "Finished",
 };
 
 const CLASSES: Record<DisplayStatus, string> = {
   NOT_YET_PLAYED: "text-foreground-muted",
-  PLAYING: "text-active",
+  NEXT_UP: "text-accent-blue",
+  READY: "text-active",
+  PLAYING: "text-danger",
   FINISHED: "text-success",
 };
 

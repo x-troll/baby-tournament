@@ -246,7 +246,7 @@ export async function markMatchInProgress(matchId: string, babyId: string): Prom
   // Only on the real READY -> IN_PROGRESS transition — a double-tap (see
   // the idempotency note above) shouldn't re-send the "good job, go
   // play" push a second time.
-  if (justStarted) await notifyMatchStarted(matchId);
+  if (justStarted) await notifyMatchStarted(matchId, babyId);
 }
 
 function setOrderedFinishPositions(

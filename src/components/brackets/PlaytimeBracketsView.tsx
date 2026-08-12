@@ -51,11 +51,27 @@ function ParticipantRow({ p }: { p: FlowParticipant }) {
       <span className="min-w-0 truncate">{p.name ?? "????"}</span>
     </p>
   );
-  // A winner gets its own small gold-bordered card — separate per
-  // winner (a playpen box routinely has two, 1st and 2nd place both
-  // advancing) rather than one wrapper around the whole box.
   if (!p.advancing) return row;
-  return <div className="rounded-pill border-2 border-star-gold bg-star-gold/10 px-2 py-0.5">{row}</div>;
+  // A winner gets its own small gold pill — separate per winner (a
+  // playpen box routinely has two, 1st and 2nd place both advancing)
+  // rather than one wrapper around the whole box. The pill itself is a
+  // decorative `absolute` sibling that bleeds outward past the row's
+  // own box (via negative inset) instead of wrapping the row in real
+  // padding/border — that would shift the avatar+name rightward
+  // relative to a plain (non-winner) row in the same box, breaking
+  // alignment between the two. `animate-sparkle` re-plays whenever this
+  // element's class list newly includes it — on first paint if already
+  // a winner, and again if a poll update flips someone into first/second
+  // place — no diffing needed (see globals.css).
+  return (
+    <div className="relative">
+      <span
+        aria-hidden
+        className="absolute -inset-x-2 -inset-y-0.5 -z-10 rounded-pill border-2 border-star-gold bg-star-gold-fill/30 animate-sparkle motion-reduce:animate-none"
+      />
+      {row}
+    </div>
+  );
 }
 
 function BoxCard({
@@ -86,11 +102,11 @@ function BoxCard({
       style={{ transform: `translateY(${offsetY}px)` }}
       className={`flex w-52 flex-col gap-2 rounded-card border-2 p-3 shadow-soft transition-opacity ${borderClasses}`}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col gap-0.5">
         <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">{box.label}</p>
         <StatusBadge status={box.status} />
       </div>
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-2">
         {sortParticipants(box.participants).map((p, i) => (
           <ParticipantRow key={p.babyId ?? i} p={p} />
         ))}
@@ -448,13 +464,22 @@ export function PlaytimeBracketsView({
           // before one) so the two read as flush/continuous instead of
           // leaving the usual full column-gap between them.
           const paddingClass = `${showLabel ? "pl-6" : "pl-2"} ${continuesToNext ? "pr-2" : "pr-6"}`;
+          // The header band's own negative margins exactly cancel the
+          // column's horizontal padding above, so its dark background
+          // bleeds to the true edge of this column's slot — adjacent
+          // columns' bands then abut with no gap, reading as one
+          // continuous strip across the whole panel instead of per-
+          // column tinted rectangles.
+          const headerBleedClass = `${showLabel ? "-ml-6" : "-ml-2"} ${continuesToNext ? "-mr-2" : "-mr-6"}`;
           return (
-            <div key={col.id} className={`flex shrink-0 flex-col gap-3 py-2 ${paddingClass} ${columnTintClass(columnTintGroups[i]!)}`}>
-              <h3 className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">
-                {showLabel ? col.label : " "}
-              </h3>
+            <div key={col.id} className={`flex shrink-0 flex-col gap-3 ${paddingClass} ${columnTintClass(columnTintGroups[i]!)}`}>
+              <div className={`bg-black/30 py-2 ${headerBleedClass}`}>
+                <h3 className="text-center text-sm font-semibold uppercase tracking-wide text-foreground-muted">
+                  {showLabel ? col.label : " "}
+                </h3>
+              </div>
               <div
-                className="flex flex-col gap-3 pb-2"
+                className="flex flex-col gap-3 pt-1 pb-2"
                 style={{ minHeight: colHeights.get(col.id) }}
                 ref={(el) => {
                   if (el) colBoxWrapperEls.current.set(col.id, el);

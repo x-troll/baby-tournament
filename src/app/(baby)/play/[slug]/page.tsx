@@ -104,17 +104,22 @@ export default async function PlayPage({
         overrideNote={playtime.rulesOverrideNote}
       />
 
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="sr-only">
-          {playtime.name}, {t.player} screen
-        </h1>
-        {resolveAvatarSrc(baby.avatarId) && <Avatar src={resolveAvatarSrc(baby.avatarId)} size={70} />}
-        <Link href={`/play/${slug}/settings`} className="ml-auto text-sm font-semibold text-foreground-muted underline">
-          ⚙️ Settings
-        </Link>
-      </div>
+      <h1 className="font-display text-2xl font-bold">
+        Welcome, {baby.selfRoleLabel ? `${baby.selfRoleLabel} ${baby.displayName}` : baby.displayName}
+      </h1>
 
-      <BrowserNotifications slug={slug} />
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="sr-only">
+          {playtime.name}, {t.player} screen
+        </h2>
+        {resolveAvatarSrc(baby.avatarId) && <Avatar src={resolveAvatarSrc(baby.avatarId)} size={70} />}
+        <div className="ml-auto flex items-center gap-3">
+          <BrowserNotifications slug={slug} />
+          <Link href={`/play/${slug}/settings`} className="text-sm font-semibold text-foreground-muted underline">
+            ⚙️ Settings
+          </Link>
+        </div>
+      </div>
 
       <StatusCard
         slug={slug}

@@ -27,6 +27,8 @@ export interface PlaypenViewPen {
   matchId: string;
   label: string;
   status: MatchStatus;
+  /** True for the single PENDING pen (in the latest round — earlier rounds are always fully resolved) that's first in line by penIndex, i.e. next to get a station. Always false once `status` isn't PENDING. */
+  isNextUp: boolean;
   participants: PlaypenViewParticipant[];
 }
 
@@ -56,6 +58,7 @@ export function buildPlaypenSection(
 
   const heatLabelTitled = heatLabel.charAt(0).toUpperCase() + heatLabel.slice(1);
   const rounds = [...new Set(heatMatches.map((m) => m.round))].sort((a, b) => a - b);
+  const lastRound = rounds.at(-1);
 
   return {
     heatLabel,
@@ -65,6 +68,12 @@ export function buildPlaypenSection(
       const isRoundRobin = inRound.some((m) => m.kind === "ROUND_ROBIN");
       const sorted = isRoundRobin ? inRound : [...inRound].sort((a, b) => (a.penIndex ?? 0) - (b.penIndex ?? 0));
 
+      // Only the latest round can still have PENDING pens — every
+      // earlier round is always fully resolved by construction. The
+      // first PENDING one here, in pen order, is next in line for a
+      // free station.
+      const nextUpMatchId = round === lastRound ? (sorted.find((m) => m.status === "PENDING")?.id ?? null) : null;
+
       return {
         round,
         isRoundRobin,
@@ -73,6 +82,7 @@ export function buildPlaypenSection(
           matchId: m.id,
           label: isRoundRobin ? `Match ${i + 1}` : `${heatLabelTitled} ${(m.penIndex ?? 0) + 1}`,
           status: m.status,
+          isNextUp: m.id === nextUpMatchId,
           participants: m.participants,
         })),
       };

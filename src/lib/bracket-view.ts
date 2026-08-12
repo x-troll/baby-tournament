@@ -70,7 +70,19 @@ export function buildPhase2Bracket(matches: Phase2BracketMatchInput[]): Phase2Br
 
   const boxes: Phase2Box[] = STAGES.map((stage) => {
     const match = byKind.get(stage.kind);
-    const status: Phase2BoxStatus = !match ? "NOT_YET_PLAYED" : match.status === "CONFIRMED" ? "FINISHED" : "PLAYING";
+    // No NEXT_UP distinction here (unlike playpen pens) — a Phase 2
+    // match is created directly once its feeders resolve, so there's
+    // rarely more than one genuinely PENDING Phase 2 match queued up
+    // behind a busy station at once.
+    const status: Phase2BoxStatus = !match
+      ? "NOT_YET_PLAYED"
+      : match.status === "CONFIRMED"
+        ? "FINISHED"
+        : match.status === "PENDING"
+          ? "NOT_YET_PLAYED"
+          : match.status === "READY"
+            ? "READY"
+            : "PLAYING"; // IN_PROGRESS | REPORTED
 
     const slots: Phase2BoxParticipant[] = [0, 1].map((i) => {
       const p = match?.participants[i];
