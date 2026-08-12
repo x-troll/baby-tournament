@@ -14,6 +14,13 @@ import { Badge } from "@/components/ui/badge";
  * NEXT_PUBLIC_APP_URL configured) — degrades to showing just the other
  * one, same graceful-degradation spirit as the single-QR display this
  * replaced. Renders nothing if both are null.
+ *
+ * Wraps to a stacked layout (flex-wrap) rather than overflowing the
+ * viewport when the container's too narrow for both QR codes side by
+ * side at the requested `size` — the admin panel's column and the
+ * spectator screen naturally wrap at different widths since they're
+ * genuinely different widths, which is fine; both render this exact
+ * same component, so the QR display itself never drifts between them.
  */
 export function JoinQrPair({
   telegramLink,
@@ -22,17 +29,6 @@ export function JoinQrPair({
 }: {
   telegramLink: string | null;
   websiteLink: string | null;
-  /**
-   * Deliberately never wraps to a stacked layout (see the pair's
-   * container below) — letting it wrap made the two QRs (and the
-   * RECOMMENDED badge's position) land in genuinely different spots
-   * between the admin panel's narrower column and the spectator
-   * screen's full-width one, at whatever browser width happened to
-   * cross each container's own wrap threshold. No contained
-   * `overflow-x` either — a narrow viewport lets the whole page scroll
-   * horizontally instead, so the RECOMMENDED badge's own negative
-   * offset never gets clipped by a scroll container edge.
-   */
   size?: number;
 }) {
   if (!telegramLink && !websiteLink) return null;
@@ -41,7 +37,7 @@ export function JoinQrPair({
     <div className="flex flex-col items-center gap-4">
       <p className="text-lg font-semibold text-foreground-muted">Scan to join!</p>
 
-      <div className="flex items-start justify-center gap-24">
+      <div className="flex flex-wrap items-start justify-center gap-24">
         {telegramLink && (
           <div className="relative flex flex-col items-center gap-2">
             <Badge
