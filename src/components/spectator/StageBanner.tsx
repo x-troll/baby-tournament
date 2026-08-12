@@ -18,7 +18,11 @@ export function StageBanner({
 }) {
   return (
     <div className="flex items-center justify-center gap-3 rounded-card border-2 border-active bg-background-elevated px-6 py-4 text-center shadow-soft">
-      {logoSrc && <Image src={logoSrc} alt="" width={64} height={64} className="rounded-card" />}
+      {logoSrc && (
+        <div className="flex shrink-0 items-center justify-center rounded-card border-2 border-border bg-white p-1.5">
+          <Image src={logoSrc} alt="" width={56} height={56} className="rounded-lg" />
+        </div>
+      )}
       <p className="font-display text-3xl font-bold tracking-wide text-active sm:text-4xl">{text}</p>
       {trailingAvatarSrc !== undefined &&
         (trailingAvatarSrc ? (

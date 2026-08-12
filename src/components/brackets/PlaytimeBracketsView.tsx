@@ -351,7 +351,7 @@ export function PlaytimeBracketsView({
   if (!flow) return null;
 
   return (
-    <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background-sunken p-4">
+    <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background-sunken p-4 pb-1">
       <div ref={containerRef} className="relative flex w-fit items-stretch gap-8">
         <svg
           className="pointer-events-none absolute left-0 top-0 overflow-visible"
@@ -399,15 +399,15 @@ export function PlaytimeBracketsView({
           // it reads as one heading spanning both columns.
           const showLabel = col.label !== flow.columns[i - 1]?.label;
           // Alternating tint instead of a separator line between columns —
-          // a low-opacity black overlay reads as "slightly darker" in both
-          // light and dark mode alike, unlike picking a named background
-          // token (which would invert which one looks "darker" between
-          // themes).
+          // low-opacity black/white overlays read as "darker"/"lighter"
+          // in both light and dark mode alike, unlike picking a named
+          // background token (which would invert which one looks
+          // "darker" between themes).
           const isEvenColumn = i % 2 === 1;
           return (
             <div
               key={col.id}
-              className={`flex flex-col gap-3 rounded-card px-3 py-2 ${isEvenColumn ? "bg-black/12" : ""}`}
+              className={`flex flex-col gap-3 rounded-card px-3 py-2 ${isEvenColumn ? "bg-black/22" : "bg-white/8"}`}
             >
               <h3 className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">
                 {showLabel ? col.label : " "}
