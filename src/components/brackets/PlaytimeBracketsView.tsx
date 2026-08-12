@@ -27,6 +27,18 @@ interface Line {
   y2: number;
 }
 
+// Alternating tint instead of a separator line between columns — a
+// low-opacity black overlay reads as "darker" in both light and dark
+// mode alike, unlike picking a named background token (which would
+// invert which one looks darker between themes). The other half of the
+// pair is deliberately no class at all (fully transparent, so it's
+// exactly the panel's own background) rather than a second overlay —
+// see the bleed spacers around the columns map below for why that
+// matters at the panel's edges.
+function columnTintClass(i: number): string {
+  return i % 2 === 1 ? "bg-black/22" : "";
+}
+
 function sortParticipants(p: FlowParticipant[]): FlowParticipant[] {
   return [...p].sort((a, b) => {
     if (a.finishPosition != null && b.finishPosition != null) return a.finishPosition - b.finishPosition;
@@ -351,8 +363,8 @@ export function PlaytimeBracketsView({
   if (!flow) return null;
 
   return (
-    <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background-sunken p-4 pb-1">
-      <div ref={containerRef} className="relative flex w-fit items-stretch gap-8">
+    <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background p-4 pb-1">
+      <div ref={containerRef} className="relative flex w-full items-stretch">
         <svg
           className="pointer-events-none absolute left-0 top-0 overflow-visible"
           width={canvas.width}
@@ -391,6 +403,15 @@ export function PlaytimeBracketsView({
             );
           })}
         </svg>
+        {/* Left bleed spacer: grows to fill any leftover space once the
+            row is centered (see the trailing spacer below), tinted to
+            match whatever the first column's own color is so that color
+            reads as starting right at the panel's true left edge rather
+            than leaving a gap of plain background before it. Only ever
+            visible when there's slack to grow into ("if space"); once
+            the columns overflow, flex-basis 0 collapses it to nothing
+            and the panel scrolls horizontally instead. */}
+        <div className={`flex-1 ${columnTintClass(0)}`} aria-hidden />
         {flow.columns.map((col, i) => {
           // Losers Final shares its header text with Semifinals (see
           // PHASE2_COLUMN_LABELS in tournament-flow.ts) since it's still
@@ -398,17 +419,8 @@ export function PlaytimeBracketsView({
           // column — skip printing the label a second time in a row so
           // it reads as one heading spanning both columns.
           const showLabel = col.label !== flow.columns[i - 1]?.label;
-          // Alternating tint instead of a separator line between columns —
-          // low-opacity black/white overlays read as "darker"/"lighter"
-          // in both light and dark mode alike, unlike picking a named
-          // background token (which would invert which one looks
-          // "darker" between themes).
-          const isEvenColumn = i % 2 === 1;
           return (
-            <div
-              key={col.id}
-              className={`flex flex-col gap-3 rounded-card px-3 py-2 ${isEvenColumn ? "bg-black/22" : "bg-white/8"}`}
-            >
+            <div key={col.id} className={`flex shrink-0 flex-col gap-3 px-3 py-2 ${columnTintClass(i)}`}>
               <h3 className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">
                 {showLabel ? col.label : " "}
               </h3>
@@ -435,6 +447,12 @@ export function PlaytimeBracketsView({
             </div>
           );
         })}
+        {/* Right bleed spacer: deliberately never tinted, even when the
+            last column is the dark variant — the color stops right at
+            that column's edge and plain background resumes for any
+            leftover space, instead of trailing off past where the
+            bracket actually ends. */}
+        <div className="flex-1" aria-hidden />
       </div>
     </div>
   );
