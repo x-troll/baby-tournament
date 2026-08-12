@@ -60,6 +60,8 @@ export interface SpectatorState {
   playpens: PlaypenSection | null;
   /** Same join deep link shown in the admin panel's QR — surfaced here so the spectator screen can display its own scan-to-join QR while status is NURSERY_OPEN. Null if TELEGRAM_BOT_USERNAME isn't set. */
   joinLink: string | null;
+  /** Who's checked in so far, in join order — shown as a Kahoot-style badge row next to the join QR while status is NURSERY_OPEN. Empty (not populated) once the playtime starts; use starChart for the in-progress roster instead. */
+  registeredBabies: SpectatorParticipant[];
 }
 
 const PHASE2_LABELS: Partial<Record<MatchKind, string>> = {
@@ -163,6 +165,19 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     })),
   );
 
+  // registrationOrder is exactly join order — `babies` above is already
+  // sorted by it (secondary key), so no extra sort needed here.
+  const registeredBabies: SpectatorParticipant[] =
+    playtime.status === "NURSERY_OPEN"
+      ? babies.map((b) => ({
+          babyId: b.id,
+          name: b.displayName ?? "Unnamed baby",
+          finishPosition: null,
+          seedInMatch: null,
+          avatarSrc: resolveAvatarSrc(b.avatarId),
+        }))
+      : [];
+
   const t = getTerminology();
   const playpens = buildPlaypenSection(
     matches.map((m) => ({
@@ -192,6 +207,7 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     phase2Bracket,
     playpens,
     joinLink: process.env.TELEGRAM_BOT_USERNAME ? babyJoinDeepLink(playtime.joinToken) : null,
+    registeredBabies,
   };
 }
 

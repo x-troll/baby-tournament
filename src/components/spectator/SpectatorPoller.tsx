@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { StageBanner } from "./StageBanner";
 import { CurrentMatches } from "./CurrentMatches";
 import { HelpIndicator } from "./HelpIndicator";
+import { RegisteredBabies } from "./RegisteredBabies";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import { StyledQrCode } from "@/components/ui/StyledQrCode";
 import { GAME_LOGO_SRC } from "@/lib/game-assets";
@@ -59,9 +60,12 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
       <StageBanner text={state.stageBanner} />
 
       {state.status === "NURSERY_OPEN" && state.joinLink && (
-        <div className="flex flex-col items-center gap-3 py-4">
-          <p className="text-lg font-semibold text-foreground-muted">Scan to join!</p>
-          <StyledQrCode data={state.joinLink} size={400} logoSrc={GAME_LOGO_SRC[state.game]} />
+        <div className="flex flex-col items-center gap-6 py-4">
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-lg font-semibold text-foreground-muted">Scan to join!</p>
+            <StyledQrCode data={state.joinLink} size={400} logoSrc={GAME_LOGO_SRC[state.game]} />
+          </div>
+          <RegisteredBabies babies={state.registeredBabies} />
         </div>
       )}
 
