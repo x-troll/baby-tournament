@@ -12,6 +12,9 @@ export interface AvatarOption {
 
 export const AVATAR_OPTIONS: AvatarOption[] = [
   { id: "giraffe", label: "Giraffe", src: "/avatars/peekabu_giraffe.png" },
+  { id: "panda", label: "Trash Panda", src: "/avatars/peekabu_panda.png" },
+  { id: "dragon", label: "Dragon", src: "/avatars/peekabu_dragon.png" },
+  { id: "husky", label: "Husky", src: "/avatars/peekabu_husky.png" },
   { id: "little_king", label: "Little King", src: "/avatars/little_kings.png" },
 ];
 

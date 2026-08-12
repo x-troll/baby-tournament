@@ -16,10 +16,6 @@ const BOX_GAP_PX = 12;
 // how far away the target column is — see the `elbowX` comment below.
 const OUT_NUB_PX = 16;
 
-// Extra vertical nudge applied to Losers Round 1 / Losers Final so the
-// losers track visually separates from the winners track above it.
-const LOSER_TRACK_OFFSET_PX = 28;
-
 interface Line {
   x1: number;
   y1: number;
