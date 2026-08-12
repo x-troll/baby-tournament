@@ -9,7 +9,6 @@ import { resolveAvatarSrc } from "@/lib/avatars";
 import { loadRules } from "@/lib/rules-content";
 import * as playerCopy from "@/lib/player-copy";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { RulesBar } from "@/components/rules/RulesBar";
 import { StatusCard, type StatusCardCopy } from "@/components/baby/StatusCard";
 import { StarChart, type StarChartRow } from "@/components/baby/StarChart";
 import { RequestHelpButton } from "@/components/baby/RequestHelpButton";
@@ -96,14 +95,6 @@ export default async function PlayPage({
         </div>
       )}
 
-      <RulesBar
-        game={playtime.game}
-        summary={rules.summary}
-        bodyHtml={rules.bodyHtml}
-        screenshots={rules.screenshots}
-        overrideNote={playtime.rulesOverrideNote}
-      />
-
       <div className="flex items-center justify-center gap-3">
         <h2 className="sr-only">
           {playtime.name}, {t.player} screen
@@ -130,6 +121,17 @@ export default async function PlayPage({
           goldStarPrompt: playerCopy.goldStarPrompt(baby),
           dragInstruction: playerCopy.dragInstruction(baby),
         }}
+        rules={
+          state.kind === "UP_NEXT"
+            ? {
+                game: playtime.game,
+                summary: rules.summary,
+                bodyHtml: rules.bodyHtml,
+                screenshots: rules.screenshots,
+                overrideNote: playtime.rulesOverrideNote,
+              }
+            : undefined
+        }
       />
 
       <StarChart rows={starChartRows} currentBabyId={baby.id} viewerBaby={baby} />

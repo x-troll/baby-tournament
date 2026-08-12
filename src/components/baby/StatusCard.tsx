@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/Avatar";
+import { RulesBar, type RulesBarProps } from "@/components/rules/RulesBar";
 import { ResultReportForm, type ReportableParticipant, type ResultReportFormCopy } from "./ResultReportForm";
 import { babyStartMatchAction } from "@/server-actions/baby-matches";
 import type { BabyStatusState } from "@/lib/baby-status";
@@ -31,6 +32,8 @@ export interface StatusCardProps {
   currentMatchParticipants?: ReportableParticipant[];
   /** Only needed for the PLAYING state. */
   reportFormCopy?: ResultReportFormCopy;
+  /** Only needed for the UP_NEXT state — the rules bar now lives inside that message instead of always sitting at the top of the page, since it's only actually relevant once there's a match to look them up for. */
+  rules?: Omit<RulesBarProps, "initialExpanded" | "instanceId">;
 }
 
 /**
@@ -38,13 +41,13 @@ export interface StatusCardProps {
  * these states, always the top of the baby screen. `aria-live="polite"`
  * on the message so state changes announce without stealing focus.
  */
-export function StatusCard({ slug, state, copy, currentMatchParticipants, reportFormCopy }: StatusCardProps) {
+export function StatusCard({ slug, state, copy, currentMatchParticipants, reportFormCopy, rules }: StatusCardProps) {
   const wobble = state.kind === "UP_NEXT" ? "animate-wobble motion-reduce:animate-none" : "";
 
   return (
     <Card className={`border-2 ${wobble}`}>
       <div aria-live="polite" className="flex flex-col gap-3">
-        {renderBody(state, slug, copy, currentMatchParticipants, reportFormCopy)}
+        {renderBody(state, slug, copy, currentMatchParticipants, reportFormCopy, rules)}
       </div>
     </Card>
   );
@@ -56,6 +59,7 @@ function renderBody(
   copy: StatusCardCopy,
   currentMatchParticipants: ReportableParticipant[] | undefined,
   reportFormCopy: ResultReportFormCopy | undefined,
+  rules: Omit<RulesBarProps, "initialExpanded" | "instanceId"> | undefined,
 ) {
   switch (state.kind) {
     case "DADDY_COMING":
@@ -83,6 +87,12 @@ function renderBody(
         <>
           <Headline>{copy.upNextLine}</Headline>
           <StartMatchButton slug={slug} matchId={state.matchId} label={copy.startMatchButtonLabel} />
+          {rules && (
+            <div className="flex flex-col gap-1">
+              <RulesBar {...rules} />
+              <p className="text-xs text-foreground-muted">Click to see full rulesets for this match</p>
+            </div>
+          )}
         </>
       );
 
