@@ -2,11 +2,13 @@
 // handler itself so it's testable without going through a real HTTP
 // request, and separate from client.ts/copy.ts/notify.ts so each stays
 // focused (transport, voice, push-dispatch, routing).
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createMagicLinkToken } from "@/lib/baby-auth";
 import { loadRules } from "@/lib/rules-content";
 import { computeBabyStatus } from "@/lib/baby-status";
 import { confirmReportedMatch, disputeMatch, markMatchInProgress } from "@/lib/playtime-lifecycle";
+import { acknowledgeHelpRequest, resolveHelpRequest } from "@/lib/help-requests";
 import { GAME_DISPLAY } from "@/lib/enum-display";
 import * as playerCopy from "@/lib/player-copy";
 import { answerCallbackQuery, sendMessage } from "./client";
@@ -213,20 +215,13 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
     }
 
     if (action === "help-ack") {
-      await prisma.helpRequest.update({ where: { id }, data: { status: "ACKNOWLEDGED" } });
-      if (req.baby.telegramChatId) await sendMessage(req.baby.telegramChatId, playerCopy.organizerIsComing(req.baby));
+      await acknowledgeHelpRequest(id);
+      revalidatePath("/admin/help-requests");
       await answerCallbackQuery(query.id, copy.adminOnMyWaySent());
     } else {
-      // Deliberately does *not* touch Match.disputed — that only clears
-      // via an actual admin-panel override (confirmMatchResult), which
-      // enters a real corrected result. Silently clearing it here would
-      // let the original (disputed!) report auto-confirm on its own,
-      // the next time anything reads it past its deadline.
       const admin = chatId ? await prisma.admin.findFirst({ where: { telegramChatId: chatId } }) : null;
-      await prisma.helpRequest.update({
-        where: { id },
-        data: { status: "RESOLVED", resolvedById: admin?.id },
-      });
+      await resolveHelpRequest(id, admin?.id ?? null);
+      revalidatePath("/admin/help-requests");
       await answerCallbackQuery(query.id, "Marked resolved.");
     }
   }

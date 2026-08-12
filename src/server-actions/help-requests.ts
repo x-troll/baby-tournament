@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { requireBaby } from "@/lib/baby-auth";
 import { prisma } from "@/lib/prisma";
-import { notifyAdminsHelpRequest, notifyBabyDaddyIsComing } from "@/lib/telegram/notify";
+import { notifyAdminsHelpRequest } from "@/lib/telegram/notify";
+import { acknowledgeHelpRequest, resolveHelpRequest } from "@/lib/help-requests";
 
 const HELP_REQUEST_COOLDOWN_SECONDS = 60;
 
@@ -66,19 +67,15 @@ export async function createHelpRequestAction(
   return {};
 }
 
-/** "On my way" — pushes "Daddy is coming 💫" to the baby's screen (both the Telegram-button and web-panel paths land here). */
+/** "On my way" — thin wrapper around the shared core (src/lib/help-requests.ts), same as the Telegram-button path. */
 export async function acknowledgeHelpRequestAction(id: string): Promise<void> {
   await requireAdmin();
-  const req = await prisma.helpRequest.update({ where: { id }, data: { status: "ACKNOWLEDGED" } });
+  await acknowledgeHelpRequest(id);
   revalidatePath("/admin/help-requests");
-  await notifyBabyDaddyIsComing(req.babyId);
 }
 
 export async function resolveHelpRequestAction(id: string): Promise<void> {
   const admin = await requireAdmin();
-  await prisma.helpRequest.update({
-    where: { id },
-    data: { status: "RESOLVED", resolvedById: admin.id },
-  });
+  await resolveHelpRequest(id, admin.id);
   revalidatePath("/admin/help-requests");
 }
