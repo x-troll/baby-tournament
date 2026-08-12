@@ -13,6 +13,7 @@ import { RulesBar } from "@/components/rules/RulesBar";
 import { StatusCard, type StatusCardCopy } from "@/components/baby/StatusCard";
 import { StarChart, type StarChartRow } from "@/components/baby/StarChart";
 import { RequestHelpButton } from "@/components/baby/RequestHelpButton";
+import { BrowserNotifications } from "@/components/baby/BrowserNotifications";
 import type { ReportableParticipant } from "@/components/baby/ResultReportForm";
 
 export default async function PlayPage({
@@ -125,6 +126,8 @@ export default async function PlayPage({
           ⚙️ Settings
         </Link>
       </div>
+
+      <BrowserNotifications slug={slug} />
 
       <StatusCard
         slug={slug}
