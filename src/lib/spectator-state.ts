@@ -50,7 +50,7 @@ export interface SpectatorState {
   activeMatches: SpectatorMatch[];
   onDeck: SpectatorParticipant[];
   starChart: SpectatorStarChartRow[];
-  bestBaby: { babyId: string; name: string } | null;
+  bestBaby: { babyId: string; name: string; avatarSrc: string | null } | null;
   openHelpRequestCount: number;
   /** Deployment-wide organizer term (see baby-terminology.ts) — this is an aggregate across every baby, so there's no single baby's /profile preference to read here. */
   adminTerm: string;
@@ -203,7 +203,9 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     activeMatches,
     onDeck,
     starChart,
-    bestBaby: champion ? { babyId: champion.id, name: champion.displayName ?? "Unnamed baby" } : null,
+    bestBaby: champion
+      ? { babyId: champion.id, name: champion.displayName ?? "Unnamed baby", avatarSrc: resolveAvatarSrc(champion.avatarId) }
+      : null,
     openHelpRequestCount: helpRequestCount,
     adminTerm: t.admin,
     lastEventId: lastEvent?.id ?? 0,
@@ -219,11 +221,12 @@ function computeStageBanner(
   status: PlaytimeStatus,
   matches: { kind: MatchKind; round: number; status: MatchStatus; penIndex: number | null; createdAt: Date }[],
   aliveCount: number,
-  champion: { selfRoleLabel: string | null } | null,
+  champion: { selfRoleLabel: string | null; displayName: string | null } | null,
 ): string {
   if (status === "COMPLETE") {
     const term = champion ? resolveSelfTerm(champion) : getTerminology().player;
-    return `🌟 ${term.toUpperCase()} CROWNED 🌟`;
+    const name = champion?.displayName ?? "Unnamed baby";
+    return `The very best ${term} won, ${name}`;
   }
   if (status !== "IN_PROGRESS") return "Getting ready…";
 

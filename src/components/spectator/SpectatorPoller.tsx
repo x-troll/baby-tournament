@@ -71,7 +71,11 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
     <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-8">
       <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
 
-      <StageBanner text={state.stageBanner} logoSrc={GAME_LOGO_SRC[state.game]} />
+      <StageBanner
+        text={state.stageBanner}
+        logoSrc={GAME_LOGO_SRC[state.game]}
+        trailingAvatarSrc={state.status === "COMPLETE" ? (state.bestBaby?.avatarSrc ?? null) : undefined}
+      />
 
       {state.status === "NURSERY_OPEN" && (
         <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink}>
