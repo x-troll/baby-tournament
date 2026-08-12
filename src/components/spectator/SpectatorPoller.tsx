@@ -6,8 +6,9 @@ import { CurrentMatches } from "./CurrentMatches";
 import { HelpIndicator } from "./HelpIndicator";
 import { RegisteredBabies } from "./RegisteredBabies";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
-import { StyledQrCode } from "@/components/ui/StyledQrCode";
+import { JoinQrPair } from "@/components/ui/JoinQrPair";
 import { GAME_LOGO_SRC } from "@/lib/game-assets";
+import { GAME_DISPLAY } from "@/lib/enum-display";
 import type { SpectatorState } from "@/lib/spectator-state";
 
 const POLL_INTERVAL_MS = 3000;
@@ -59,12 +60,15 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
 
       <StageBanner text={state.stageBanner} />
 
-      {state.status === "NURSERY_OPEN" && state.joinLink && (
+      {state.status === "NURSERY_OPEN" && (
         <div className="flex flex-col items-center gap-6 py-4">
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-lg font-semibold text-foreground-muted">Scan to join!</p>
-            <StyledQrCode data={state.joinLink} size={400} logoSrc={GAME_LOGO_SRC[state.game]} />
-          </div>
+          <JoinQrPair
+            telegramLink={state.joinLink}
+            websiteLink={state.websiteJoinLink}
+            gameLabel={GAME_DISPLAY[state.game].label}
+            gameLogoSrc={GAME_LOGO_SRC[state.game]}
+            size={400}
+          />
           <RegisteredBabies babies={state.registeredBabies} />
         </div>
       )}

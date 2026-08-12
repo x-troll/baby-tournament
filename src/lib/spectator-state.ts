@@ -10,7 +10,7 @@ import { buildPlaypenSection, type PlaypenSection } from "@/lib/playpen-view";
 import { getTerminology } from "@/lib/terminology";
 import { parseSlugNumber } from "@/lib/slug-number";
 import { resolveAvatarSrc } from "@/lib/avatars";
-import { babyJoinDeepLink } from "@/lib/qr";
+import { babyJoinDeepLink, websiteJoinLink } from "@/lib/qr";
 import { MatchKind } from "@/generated/prisma/enums";
 import type { Game, MatchStatus, PlaytimeStatus } from "@/generated/prisma/enums";
 
@@ -60,6 +60,8 @@ export interface SpectatorState {
   playpens: PlaypenSection | null;
   /** Same join deep link shown in the admin panel's QR — surfaced here so the spectator screen can display its own scan-to-join QR while status is NURSERY_OPEN. Null if TELEGRAM_BOT_USERNAME isn't set. */
   joinLink: string | null;
+  /** Website counterpart to joinLink, shown side-by-side with it — see JoinQrPair. Null if NEXT_PUBLIC_APP_URL isn't set. */
+  websiteJoinLink: string | null;
   /** Who's checked in so far, in join order — shown as a Kahoot-style badge row next to the join QR while status is NURSERY_OPEN. Empty (not populated) once the playtime starts; use starChart for the in-progress roster instead. */
   registeredBabies: SpectatorParticipant[];
 }
@@ -207,6 +209,7 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     phase2Bracket,
     playpens,
     joinLink: process.env.TELEGRAM_BOT_USERNAME ? babyJoinDeepLink(playtime.joinToken) : null,
+    websiteJoinLink: websiteJoinLink(playtime.joinToken),
     registeredBabies,
   };
 }

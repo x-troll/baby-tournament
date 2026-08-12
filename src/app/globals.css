@@ -97,6 +97,24 @@ h4 {
   animation: star-pop 0.4s ease-out;
 }
 
+@keyframes splash-bounce {
+  0%,
+  100% {
+    transform: rotate(-8deg) scale(1);
+  }
+  50% {
+    transform: rotate(-8deg) scale(1.12);
+  }
+}
+
+.animate-splash-bounce {
+  /* The one deliberate exception to every other animation in this file
+     being finite (see soft-wobble/star-pop above) — a Minecraft-splash-
+     style attention-getter next to the join QR, meant to keep pulsing
+     for as long as the QR is up on screen, not just once. */
+  animation: splash-bounce 1s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

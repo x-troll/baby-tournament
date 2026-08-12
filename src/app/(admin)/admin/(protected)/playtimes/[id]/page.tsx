@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { babyJoinDeepLink } from "@/lib/qr";
+import { babyJoinDeepLink, websiteJoinLink } from "@/lib/qr";
 import { GAME_LOGO_SRC } from "@/lib/game-assets";
 import { getTerminology } from "@/lib/terminology";
 import { resolveAvatarSrc } from "@/lib/avatars";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
-import { StyledQrCode } from "@/components/ui/StyledQrCode";
+import { JoinQrPair } from "@/components/ui/JoinQrPair";
 import { AddBabyManuallyButton } from "@/components/admin/AddBabyManuallyButton";
 import { StartPlaytimeButton } from "@/components/admin/StartPlaytimeButton";
 import { GAME_DISPLAY, PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
@@ -35,6 +35,7 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
 
   const hasBotUsername = Boolean(process.env.TELEGRAM_BOT_USERNAME);
   const joinLink = hasBotUsername ? babyJoinDeepLink(playtime.joinToken) : null;
+  const websiteLink = websiteJoinLink(playtime.joinToken);
 
   const activeCount = playtime.babies.filter((b) => b.status === "ACTIVE").length;
   const t = getTerminology();
@@ -253,15 +254,19 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
             <CardTitle>The nursery (check-in)</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            {joinLink ? (
-              <div className="flex flex-col items-start gap-2">
-                <p className="text-sm text-foreground-muted">Babies scan this to join via Telegram:</p>
-                <StyledQrCode data={joinLink} size={400} logoSrc={GAME_LOGO_SRC[playtime.game]} />
-                <code className="break-all text-xs text-foreground-muted">{joinLink}</code>
+            {joinLink || websiteLink ? (
+              <div className="flex flex-col items-center gap-2 self-center">
+                <JoinQrPair
+                  telegramLink={joinLink}
+                  websiteLink={websiteLink}
+                  gameLabel={GAME_DISPLAY[playtime.game].label}
+                  gameLogoSrc={GAME_LOGO_SRC[playtime.game]}
+                />
+                {joinLink && <code className="break-all text-xs text-foreground-muted">{joinLink}</code>}
               </div>
             ) : (
               <p className="text-sm text-foreground-muted">
-                Set TELEGRAM_BOT_USERNAME to show the join QR (bot itself lands in Phase 6).
+                Set TELEGRAM_BOT_USERNAME and/or NEXT_PUBLIC_APP_URL to show a join QR.
               </p>
             )}
 
