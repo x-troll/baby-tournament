@@ -157,7 +157,7 @@ h4 {
   /* Starts a third of a cycle after splash-bounce, and runs a touch
      slower, so the two pills' bounces don't land in sync on the same
      card. */
-  animation: splash-bounce-reverse 1.2s ease-in-out infinite;
+  animation: splash-bounce-reverse 1s ease-in-out infinite;
   animation-delay: 0.33s;
 }
 
