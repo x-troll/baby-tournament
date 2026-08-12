@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
 import { SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
-import { getTerminology } from "@/lib/terminology";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,14 +19,16 @@ export function BabyProfileForm({
   mode,
   baby,
   submitLabel,
+  pending = false,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  /** Either a plain bound server action (register) or the `formAction` dispatcher useActionState returns (settings) — both fit a form's `action` prop. */
+  action: (formData: FormData) => void;
   mode: "register" | "settings";
   baby: Pick<Baby, "displayName" | "avatarId" | "selfRoleLabel" | "allowExplicitMessages" | "telegramChatId">;
   submitLabel: string;
+  pending?: boolean;
 }) {
   const required = mode === "register";
-  const t = getTerminology();
 
   return (
     <form action={action} className="flex flex-col gap-6">
@@ -87,7 +88,7 @@ export function BabyProfileForm({
             className="min-h-11 rounded-card border border-border bg-background-elevated px-3 py-2 text-sm text-foreground"
           >
             <option value="" disabled={required}>
-              {required ? "Choose one" : `Default (${t.player})`}
+              {required ? "Choose one" : "No preference"}
             </option>
             {SELF_ROLE_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -135,7 +136,7 @@ export function BabyProfileForm({
         </Card>
       )}
 
-      <Button type="submit" className="self-start">
+      <Button type="submit" disabled={pending} className="self-start">
         {submitLabel}
       </Button>
     </form>

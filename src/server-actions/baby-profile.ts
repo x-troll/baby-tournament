@@ -7,29 +7,59 @@ import { prisma } from "@/lib/prisma";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
 import { SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
 
-/** Editing anytime after registration — same fields as completeRegistrationAction below, but every field here stays optional/clearable (display name is the one exception: never allowed to go blank, since it's shown everywhere once set). */
-export async function updateBabyProfileAction(slug: string, formData: FormData): Promise<void> {
+export interface UpdateBabyProfileState {
+  error?: string;
+  /** Set on a successful save — SettingsForm.tsx uses this both to flash a "Saved!" banner and as a remount key for the form below it (see that file for why the remount matters). */
+  savedAt?: number;
+  saved?: {
+    displayName: string;
+    avatarId: string | null;
+    selfRoleLabel: string | null;
+    allowExplicitMessages: boolean;
+  };
+}
+
+/**
+ * Editing anytime after registration — same fields as
+ * completeRegistrationAction below, but every field here stays
+ * optional/clearable (display name is the one exception: never allowed
+ * to go blank, since it's shown everywhere once set).
+ *
+ * `(prevState, formData) => State` rather than plain `(formData) =>
+ * void` — driven by useActionState in SettingsForm.tsx, not a bare
+ * `<form action>`, so the page can show a save confirmation and (more
+ * importantly) so the form's uncontrolled fields can be deliberately
+ * remounted with the values that actually got saved. Without that,
+ * React ignores a changed `defaultValue`/`defaultChecked` on an
+ * already-mounted element — after Next revalidates this route post-save,
+ * fields would appear to silently "revert" to whatever was there before
+ * the edit, even though the save itself succeeded.
+ */
+export async function updateBabyProfileAction(
+  slug: string,
+  _prevState: UpdateBabyProfileState,
+  formData: FormData,
+): Promise<UpdateBabyProfileState> {
   const baby = await requireBaby(slug);
 
   const displayName = String(formData.get("displayName") ?? "").trim();
-  if (!displayName) throw new Error("Please tell us what to call you.");
+  if (!displayName) return { error: "Please tell us what to call you." };
 
-  const avatarId = String(formData.get("avatarId") ?? "");
-  const selfRoleLabel = String(formData.get("selfRoleLabel") ?? "");
+  const avatarIdRaw = String(formData.get("avatarId") ?? "");
+  const avatarId = AVATAR_OPTIONS.some((a) => a.id === avatarIdRaw) ? avatarIdRaw : null;
+  const selfRoleLabelRaw = String(formData.get("selfRoleLabel") ?? "");
+  const selfRoleLabel = (SELF_ROLE_OPTIONS as readonly string[]).includes(selfRoleLabelRaw) ? selfRoleLabelRaw : null;
   const allowExplicitMessages = formData.get("allowExplicitMessages") === "on";
 
   await prisma.baby.update({
     where: { id: baby.id },
-    data: {
-      displayName,
-      avatarId: AVATAR_OPTIONS.some((a) => a.id === avatarId) ? avatarId : null,
-      selfRoleLabel: (SELF_ROLE_OPTIONS as readonly string[]).includes(selfRoleLabel) ? selfRoleLabel : null,
-      allowExplicitMessages,
-    },
+    data: { displayName, avatarId, selfRoleLabel, allowExplicitMessages },
   });
 
   revalidatePath(`/play/${slug}`);
   revalidatePath(`/play/${slug}/settings`);
+
+  return { savedAt: Date.now(), saved: { displayName, avatarId, selfRoleLabel, allowExplicitMessages } };
 }
 
 /**
