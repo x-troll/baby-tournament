@@ -79,7 +79,7 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
         </NurseryCheckIn>
       )}
 
-      <CurrentMatches matches={state.activeMatches} onDeck={state.onDeck} />
+      {state.status === "IN_PROGRESS" && <CurrentMatches matches={state.activeMatches} onDeck={state.onDeck} />}
 
       <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
     </div>
