@@ -68,7 +68,7 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
   }, [slug, state.lastEventId]);
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-8">
+    <div className="mx-auto flex max-w-[1920px] flex-col gap-6 p-8">
       <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
 
       <StageBanner

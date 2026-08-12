@@ -37,11 +37,24 @@ function sortParticipants(p: FlowParticipant[]): FlowParticipant[] {
 function ParticipantRow({ p }: { p: FlowParticipant }) {
   return (
     <p
-      className={`flex items-center gap-1 truncate text-sm ${p.advancing ? "font-bold text-active" : "text-foreground-muted"}`}
+      className={`flex min-w-0 items-center gap-1 text-sm ${p.advancing ? "font-bold text-active" : "text-foreground-muted"}`}
     >
-      {p.avatarSrc && <Image src={p.avatarSrc} alt="" width={16} height={16} className="shrink-0 rounded-full" />}
-      {p.finishPosition ? `${p.finishPosition}. ` : p.name ? "· " : ""}
-      {p.name ?? "????"}
+      {p.avatarSrc ? (
+        <Image src={p.avatarSrc} alt="" width={16} height={16} className="shrink-0 rounded-full" />
+      ) : (
+        <span
+          aria-hidden
+          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-background-sunken text-[10px] leading-none"
+        >
+          🍼
+        </span>
+      )}
+      <span className="min-w-0 truncate">{p.name ?? "????"}</span>
+      {p.advancing && (
+        <span aria-hidden className="shrink-0">
+          👑
+        </span>
+      )}
     </p>
   );
 }
@@ -72,7 +85,7 @@ function BoxCard({
       ref={boxRef}
       data-key={box.key}
       style={{ transform: `translateY(${offsetY}px)` }}
-      className={`flex w-56 flex-col gap-2 rounded-card border-2 p-3 shadow-soft transition-opacity ${borderClasses}`}
+      className={`flex w-48 flex-col gap-2 rounded-card border-2 p-3 shadow-soft transition-opacity ${borderClasses}`}
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">{box.label}</p>
@@ -137,6 +150,14 @@ export function PlaytimeBracketsView({
   const [lines, setLines] = useState<Line[]>([]);
   const [offsets, setOffsets] = useState<Map<string, number>>(new Map());
   const [canvas, setCanvas] = useState({ width: 0, height: 0 });
+  // How tall each column's box-stack wrapper needs to be to actually
+  // contain every box once pyramid-centering's translateY is applied —
+  // a bare flex column's natural height only accounts for boxes'
+  // untransformed stacking order, so without this a column whose boxes
+  // get pushed down toward the shared axis would visually spill out
+  // past both its own alternating-tint background (which stops at the
+  // untransformed height) and the outer container's bottom padding.
+  const [colHeights, setColHeights] = useState<Map<string, number>>(new Map());
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -275,6 +296,23 @@ export function PlaytimeBracketsView({
         for (const [key, target] of centerY) centerY.set(key, target - globalMinTop);
       }
 
+      // Real per-column extent, in the same coordinate space colStartY
+      // measured in — i.e. how far past the column's own top (below its
+      // heading) the lowest transformed box actually reaches.
+      const nextColHeights = new Map<string, number>();
+      for (const col of flow.columns) {
+        const startY = colStartY.get(col.id) ?? 0;
+        let bottom = startY;
+        for (const box of col.boxes) {
+          const target = centerY.get(box.key);
+          if (target == null) continue;
+          const h = height.get(box.key) ?? 0;
+          bottom = Math.max(bottom, target + h / 2);
+        }
+        nextColHeights.set(col.id, Math.max(0, bottom - startY));
+      }
+      setColHeights(nextColHeights);
+
       const nextOffsets = new Map<string, number>();
       let minY = Infinity;
       let maxY = -Infinity;
@@ -321,6 +359,16 @@ export function PlaytimeBracketsView({
           height={canvas.height}
           aria-hidden="true"
         >
+          <defs>
+            {/* Arrowhead marker dropped at each line's receiving end (x2,
+                y2) — since every path's last segment is the horizontal
+                `H x2` run into the target box, the marker's `auto`
+                orientation naturally points it rightward, landing right
+                at the box's left edge. */}
+            <marker id="bracket-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" style={{ fill: "var(--border)" }} />
+            </marker>
+          </defs>
           {lines.map((l, i) => {
             // Elbow sits a fixed short distance out from the source box,
             // not at the geometric midpoint — for an ordinary
@@ -338,6 +386,7 @@ export function PlaytimeBracketsView({
                 fill="none"
                 style={{ stroke: "var(--border)" }}
                 strokeWidth={2}
+                markerEnd="url(#bracket-arrow)"
               />
             );
           })}
@@ -358,13 +407,14 @@ export function PlaytimeBracketsView({
           return (
             <div
               key={col.id}
-              className={`flex flex-col gap-3 rounded-card px-3 py-2 ${isEvenColumn ? "bg-black/5" : ""}`}
+              className={`flex flex-col gap-3 rounded-card px-3 py-2 ${isEvenColumn ? "bg-black/12" : ""}`}
             >
               <h3 className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">
                 {showLabel ? col.label : " "}
               </h3>
               <div
-                className="flex flex-col gap-3"
+                className="flex flex-col gap-3 pb-2"
+                style={{ minHeight: colHeights.get(col.id) }}
                 ref={(el) => {
                   if (el) colBoxWrapperEls.current.set(col.id, el);
                   else colBoxWrapperEls.current.delete(col.id);

@@ -55,7 +55,7 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
       <>
         <script dangerouslySetInnerHTML={{ __html: FORCE_DARK_SCRIPT }} />
         <main className="min-h-screen pb-20">
-          <div className="mx-auto max-w-[1600px] px-8 pt-6">
+          <div className="mx-auto max-w-[1920px] px-8 pt-6">
             <Link href="/playtimes" className="text-sm font-semibold text-foreground-muted hover:opacity-80">
               ← All playtimes
             </Link>
