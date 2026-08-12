@@ -4,14 +4,13 @@ import { getCurrentAdmin } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreatePlaytimeButton } from "@/components/admin/CreatePlaytimeButton";
-import { DeleteAllPlaytimesButton } from "@/components/admin/DeleteAllPlaytimesButton";
 import { GAME_DISPLAY, PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
 
 // Same list, two audiences: an admin sees every playtime (any status)
-// plus the create/delete-all controls; anyone else sees only the ones
-// still running (COMPLETE is hidden) with no controls at all — this
-// page replaces both the old /admin dashboard and doubles as the public
-// "what's on right now" index.
+// plus the create control; anyone else sees only the ones still running
+// (COMPLETE is hidden) with no controls at all — this page replaces
+// both the old /admin dashboard and doubles as the public "what's on
+// right now" index. Delete-all lives in Settings' danger zone, not here.
 export default async function PlaytimesListPage() {
   const admin = await getCurrentAdmin();
 
@@ -27,7 +26,6 @@ export default async function PlaytimesListPage() {
         <h1 className="text-2xl font-bold">Playtimes</h1>
         {admin && (
           <div className="flex gap-2">
-            <DeleteAllPlaytimesButton />
             <CreatePlaytimeButton />
           </div>
         )}

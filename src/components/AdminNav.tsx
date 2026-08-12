@@ -35,7 +35,7 @@ export function AdminNav({ openRequestCount }: { openRequestCount: number }) {
         </nav>
       </div>
       <div className="flex items-center gap-3 text-sm font-semibold">
-        <NavLink href="/admin/profile">Settings</NavLink>
+        <NavLink href="/admin/settings">Settings</NavLink>
         <form action={logoutAction}>
           <Button type="submit" variant="ghost" size="sm">
             Sign out

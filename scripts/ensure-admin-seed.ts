@@ -5,8 +5,7 @@
 // password an admin has since changed from the panel.
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
-import { hashPassword } from "../src/lib/auth";
-import { shortId } from "../src/lib/short-id";
+import { seedFirstAdminFromEnv } from "../src/lib/seed-admin";
 
 async function main() {
   const existingCount = await prisma.admin.count();
@@ -15,18 +14,7 @@ async function main() {
     return;
   }
 
-  const username = process.env.ADMIN_USERNAME;
-  const password = process.env.ADMIN_PASSWORD;
-  if (!username || !password) {
-    throw new Error(
-      "[ensure-admin-seed] No admins exist yet, and ADMIN_USERNAME/ADMIN_PASSWORD are not both set — cannot seed the first Daddy.",
-    );
-  }
-
-  const passwordHash = await hashPassword(password);
-  const admin = await prisma.admin.create({
-    data: { username, passwordHash, name: "Daddy", adminLinkToken: shortId() },
-  });
+  const admin = await seedFirstAdminFromEnv();
   console.log(`[ensure-admin-seed] Created first admin: ${admin.username} (id ${admin.id}).`);
   console.log("[ensure-admin-seed] Change this password from the admin panel after logging in.");
 }

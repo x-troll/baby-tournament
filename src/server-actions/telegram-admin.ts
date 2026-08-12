@@ -16,6 +16,6 @@ export async function registerWebhookAction(): Promise<{ ok: boolean; message: s
   await requireAdmin();
 
   const result = await ensureWebhookRegistered({ force: true });
-  revalidatePath("/admin/profile");
+  revalidatePath("/admin/settings");
   return result;
 }
