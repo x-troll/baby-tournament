@@ -48,7 +48,7 @@ export async function joinViaWebsiteAction(joinToken: string): Promise<void> {
   // see requireBabyWithToken in baby-auth.ts.
   const bookmarkToken = await createMagicLinkToken(baby.id, WEB_BOOKMARK_LINK_DURATION_SECONDS);
 
-  revalidatePath(`/admin/playtimes/${playtime.id}`);
+  revalidatePath(`/playtimes/${playtime.slugNumber}`);
   // requireBaby's register-gate (baby-auth.ts) takes it from here —
   // this baby has no displayName yet, so /play/[slug] redirects
   // straight to /play/[slug]/register.

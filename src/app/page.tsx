@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 
-// This is an admin-only self-serve tool — babies arrive via their
-// Telegram deep link (/play/[slug]) and spectators via the TV link
-// (/live/[slug]), neither of which ever touches "/". The only real
-// audience for the bare root is a Daddy, so send them straight to the
-// admin panel (which itself redirects to /admin/login if not signed in).
+// Babies arrive via their Telegram/website deep link (/play/[slug]) and
+// spectators/admins via /playtimes, neither of which ever touches "/".
+// Send the bare root straight to the public playtimes list — signed-out
+// visitors see what's running right now, signed-in admins get the full
+// dashboard on the same URL (see src/app/playtimes/page.tsx).
 export default function RootPage() {
-  redirect("/admin");
+  redirect("/playtimes");
 }

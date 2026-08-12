@@ -5,6 +5,14 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { confirmMatchResult, undoLastMatchResult } from "@/lib/playtime-lifecycle";
 
+async function revalidatePlaytimePage(playtimeId: string): Promise<void> {
+  const playtime = await prisma.playtime.findUniqueOrThrow({
+    where: { id: playtimeId },
+    select: { slugNumber: true },
+  });
+  revalidatePath(`/playtimes/${playtime.slugNumber}`);
+}
+
 /**
  * Admin override result entry — the same `confirmMatchResult` code path
  * Phase 5 will wire baby self-report + the 60s auto-confirm timer to.
@@ -22,7 +30,7 @@ export async function adminReportMatchResultAction(
     orderedBabyIds,
     actor: { type: "ADMIN", adminId: admin.id },
   });
-  revalidatePath(`/admin/playtimes/${playtimeId}`);
+  await revalidatePlaytimePage(playtimeId);
 }
 
 /**
@@ -54,13 +62,13 @@ export async function reportMatchResultFormAction(
     orderedBabyIds,
     actor: { type: "ADMIN", adminId: admin.id },
   });
-  revalidatePath(`/admin/playtimes/${playtimeId}`);
+  await revalidatePlaytimePage(playtimeId);
 }
 
 export async function undoMatchResultAction(playtimeId: string, matchId: string): Promise<void> {
   const admin = await requireAdmin();
   await undoLastMatchResult(matchId, admin.id);
-  revalidatePath(`/admin/playtimes/${playtimeId}`);
+  await revalidatePlaytimePage(playtimeId);
 }
 
 export async function getMatchEventLog(matchId: string) {

@@ -129,7 +129,7 @@ export async function notifyAdminsHelpRequest(helpRequestId: string): Promise<vo
   if (admins.length === 0) return;
 
   const label = await matchLabel(req.matchId);
-  const deepLink = appUrl(`/admin/playtimes/${req.baby.playtimeId}`);
+  const deepLink = appUrl(`/playtimes/${req.baby.playtime.slugNumber}`);
   const isDispute = req.reason === "score dispute";
   const text = isDispute
     ? copy.adminDisputeAlert(req.baby.displayName ?? "A baby", label)

@@ -39,15 +39,15 @@ export async function createPlaytimeAction(formData: FormData): Promise<void> {
     },
   });
 
-  revalidatePath("/admin");
-  redirect(`/admin/playtimes/${playtime.id}`);
+  revalidatePath("/playtimes");
+  redirect(`/playtimes/${playtime.slugNumber}`);
 }
 
 /** Destructive, admin-gated, confirmed client-side first (see DeleteAllPlaytimesButton) — every dependent row cascades via schema.prisma's onDelete: Cascade, no manual ordering needed. */
 export async function deleteAllPlaytimesAction(): Promise<void> {
   await requireAdmin();
   await prisma.playtime.deleteMany({});
-  revalidatePath("/admin");
+  revalidatePath("/playtimes");
 }
 
 export async function addBabyManuallyAction(playtimeId: string, formData: FormData): Promise<void> {
@@ -74,7 +74,7 @@ export async function addBabyManuallyAction(playtimeId: string, formData: FormDa
     },
   });
 
-  revalidatePath(`/admin/playtimes/${playtimeId}`);
+  revalidatePath(`/playtimes/${playtime.slugNumber}`);
 }
 
 export async function removeBabyAction(playtimeId: string, babyId: string): Promise<void> {
@@ -86,11 +86,15 @@ export async function removeBabyAction(playtimeId: string, babyId: string): Prom
   }
 
   await prisma.baby.delete({ where: { id: babyId } });
-  revalidatePath(`/admin/playtimes/${playtimeId}`);
+  revalidatePath(`/playtimes/${playtime.slugNumber}`);
 }
 
 export async function startPlaytimeAction(playtimeId: string): Promise<void> {
   await requireAdmin();
   await startPlaytimeLifecycle(playtimeId);
-  revalidatePath(`/admin/playtimes/${playtimeId}`);
+  const playtime = await prisma.playtime.findUniqueOrThrow({
+    where: { id: playtimeId },
+    select: { slugNumber: true },
+  });
+  revalidatePath(`/playtimes/${playtime.slugNumber}`);
 }

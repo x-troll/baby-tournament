@@ -26,7 +26,7 @@ export async function loginAction(_prevState: LoginActionState, formData: FormDa
   }
 
   await createAdminSession({ adminId: admin.id, username: admin.username });
-  redirect("/admin");
+  redirect("/playtimes");
 }
 
 export async function logoutAction(): Promise<void> {
