@@ -36,11 +36,7 @@ export function buildJoinQrCards(
       size,
       logoSrc: "/website-signup-badge.svg",
       badge: telegramLink ? "scan-me" : undefined,
-      caption: (
-        <>
-          <strong className="underline">No notifications.</strong> You&rsquo;ll need to watch this page yourself.
-        </>
-      ),
+      caption: "No notifications, you’ll need to watch this page yourself.",
     });
   }
   return cards;

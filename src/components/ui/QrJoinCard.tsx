@@ -41,7 +41,7 @@ export function QrJoinCard({
       {badge === "recommended" && (
         <Badge
           variant="yellow"
-          className="absolute -top-4 -left-6 z-10 rotate-[-10deg] px-3 py-1.5 text-base animate-splash-bounce motion-reduce:animate-none"
+          className="absolute -top-2 -left-6 z-10 rotate-[-10deg] px-3 py-1.5 text-base animate-splash-bounce motion-reduce:animate-none"
         >
           RECOMMENDED
         </Badge>
