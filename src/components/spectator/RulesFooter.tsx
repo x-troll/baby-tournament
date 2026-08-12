@@ -3,7 +3,7 @@ export function RulesFooter({ summary, overrideNote }: { summary: string; overri
   return (
     <div className="rounded-pill border border-border bg-background-elevated px-4 py-2 text-center text-lg">
       📋 {summary}
-      {overrideNote && <span className="ml-2 font-semibold text-active">— Tonight only: {overrideNote}</span>}
+      {overrideNote && <span className="ml-2 font-semibold text-active">Tonight only: {overrideNote}</span>}
     </div>
   );
 }

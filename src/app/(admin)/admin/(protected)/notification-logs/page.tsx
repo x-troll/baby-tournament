@@ -25,7 +25,7 @@ export default async function NotificationLogsPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Notification logs</h1>
       <p className="text-sm text-foreground-muted">
-        Every Telegram send this server process has made, newest first — lost on restart, nothing persisted.
+        Every Telegram send this server process has made, newest first. Lost on restart, nothing persisted.
       </p>
 
       {entries.length === 0 ? (

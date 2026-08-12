@@ -101,7 +101,7 @@ export function validateRulesFileSync(game: Game): RulesValidationResult {
   const errors: string[] = [];
   if (parsed.data.game !== game) {
     errors.push(
-      `${filePath}: frontmatter "game: ${parsed.data.game}" does not match the file's expected game ${game} — check the filename-to-game mapping in rules-content.ts`,
+      `${filePath}: frontmatter "game: ${parsed.data.game}" does not match the file's expected game ${game}, check the filename-to-game mapping in rules-content.ts`,
     );
   }
   errors.push(...checkScreenshotsExist(parsed.data.screenshots, filePath));

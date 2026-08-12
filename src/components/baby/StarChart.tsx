@@ -40,7 +40,7 @@ export function StarChart({
       <CardContent className="overflow-x-auto">
         <table className="w-full text-sm">
           <caption className="sr-only">
-            Standings — each row shows a {t.player}&apos;s gold stars and current status.
+            Standings: each row shows a {t.player}&apos;s gold stars and current status.
           </caption>
           <thead>
             <tr className="border-b border-border text-left text-foreground-muted">

@@ -36,7 +36,7 @@ export interface Terminology {
   earnedMatchWin: (subject: string) => string;
   /** Being eliminated, as a verb phrase, e.g. "{baby} was sent for a nap". */
   eliminated: (subject: string) => string;
-  /** Noun for elimination + placement, e.g. "Naptime — 7th place". */
+  /** Noun for elimination + placement, e.g. "Naptime: 7th place". */
   eliminatedWithPlacement: (place: number) => string;
   /** Registration / check-in area. */
   registration: string;
@@ -58,7 +58,7 @@ const NURSERY: Terminology = {
   matchWin: "gold star",
   earnedMatchWin: (subject) => `${subject} earned a gold star`,
   eliminated: (subject) => `${subject} was sent for a nap`,
-  eliminatedWithPlacement: (place) => `Naptime — you finished ${ordinal(place)}. Good baby.`,
+  eliminatedWithPlacement: (place) => `Naptime: you finished ${ordinal(place)}. Good baby.`,
   registration: "the nursery",
   waitingForMatch: "quiet time",
   champion: "Best Baby",
@@ -76,7 +76,7 @@ const PLAIN: Terminology = {
   matchWin: "win",
   earnedMatchWin: (subject) => `${subject} won the match`,
   eliminated: (subject) => `${subject} was eliminated`,
-  eliminatedWithPlacement: (place) => `Eliminated — you finished ${ordinal(place)}.`,
+  eliminatedWithPlacement: (place) => `Eliminated: you finished ${ordinal(place)}.`,
   registration: "check-in",
   waitingForMatch: "waiting",
   champion: "Champion",

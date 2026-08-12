@@ -18,7 +18,9 @@ import { Card } from "@/components/ui/card";
  *
  * Each QR + its caption sits inside the real Card component (not
  * hand-rolled classes) so the border/rounding/shadow always match every
- * other card in the app exactly.
+ * other card in the app exactly. Both captions get the same min-height
+ * (sized for the longer one) so the two cards stay the same height
+ * regardless of which caption's text happens to wrap to more lines.
  *
  * Wraps to a stacked layout (flex-wrap) rather than overflowing the
  * viewport when the container's too narrow for both QR codes side by
@@ -53,7 +55,7 @@ export function JoinQrPair({
             </Badge>
             <Card className="flex flex-col items-center gap-2">
               <StyledQrCode data={telegramLink} size={size} logoSrc="/telegram-logo.svg" />
-              <p className="max-w-[240px] text-center text-base text-foreground-muted">
+              <p className="flex min-h-[72px] max-w-[240px] items-center text-center text-base text-foreground-muted">
                 Telegram gives you notifications a bit before and when it&rsquo;s your turn.
               </p>
             </Card>
@@ -62,8 +64,8 @@ export function JoinQrPair({
         {websiteLink && (
           <Card className="flex flex-col items-center gap-2">
             <StyledQrCode data={websiteLink} size={size} logoSrc="/website-signup-badge.svg" />
-            <p className="max-w-[240px] text-center text-base text-foreground-muted">
-              <strong className="underline">No notifications</strong> — you&rsquo;ll need to watch this page
+            <p className="flex min-h-[72px] max-w-[240px] items-center text-center text-base text-foreground-muted">
+              <strong className="underline">No notifications.</strong> You&rsquo;ll need to watch this page
               yourself.
             </p>
           </Card>

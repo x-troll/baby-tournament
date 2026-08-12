@@ -20,14 +20,14 @@ export async function GET(request: NextRequest) {
 
   const babyId = await verifyMagicLinkToken(token);
   if (!babyId) {
-    return new NextResponse("This link has expired — ask the bot for a fresh one with /start.", { status: 400 });
+    return new NextResponse("This link has expired. Ask the bot for a fresh one with /start.", { status: 400 });
   }
 
   const baby = await prisma.baby.findUnique({ where: { id: babyId }, include: { playtime: true } });
   if (!baby) {
     // No baby found at all — nobody's own /profile preference to read, so
     // this falls back to the deployment-wide term (see baby-terminology.ts).
-    return new NextResponse(`Couldn't find your registration — ask a ${getTerminology().admin} for help.`, {
+    return new NextResponse(`Couldn't find your registration. Ask a ${getTerminology().admin} for help.`, {
       status: 404,
     });
   }

@@ -35,7 +35,7 @@ export default async function NotSignedInPage({
             </p>
           ) : (
             <p className="text-sm text-foreground-muted">
-              Scan the QR code at check-in and open it in Telegram to join — or ask a {t.admin} to preview your
+              Scan the QR code at check-in and open it in Telegram to join, or ask a {t.admin} to preview your
               screen from the admin panel.
             </p>
           )}

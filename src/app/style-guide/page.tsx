@@ -32,7 +32,7 @@ export default function StyleGuidePage() {
         <div>
           <h1 className="text-3xl font-bold">Playtime style guide</h1>
           <p className="text-sm text-foreground-muted">
-            Design-system reference — skin: <strong>{skin}</strong>
+            Design-system reference, skin: <strong>{skin}</strong>
           </p>
         </div>
         <ThemeToggle />

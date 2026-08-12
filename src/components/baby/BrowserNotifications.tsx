@@ -13,10 +13,10 @@ const POLL_INTERVAL_MS = 4000;
 const NOTIFIABLE_KINDS = new Set(["PLAYING", "AWAITING_YOUR_CONFIRMATION", "NAPPED", "CHAMPION"]);
 
 const NOTIFICATION_COPY: Record<string, { title: string; body: string }> = {
-  PLAYING: { title: "Your match is live! 🎮", body: "Head back to your screen — it's time to play." },
-  AWAITING_YOUR_CONFIRMATION: { title: "Confirm your result ✅", body: "Someone reported a result — take a look." },
-  NAPPED: { title: "Nap time 😴", body: "Your run's over for tonight — come see how you placed." },
-  CHAMPION: { title: "🌟 Best Baby! 🌟", body: "You won it all — congratulations!" },
+  PLAYING: { title: "Your match is live! 🎮", body: "Head back to your screen, it's time to play." },
+  AWAITING_YOUR_CONFIRMATION: { title: "Confirm your result ✅", body: "Someone reported a result, take a look." },
+  NAPPED: { title: "Nap time 😴", body: "Your run's over for tonight, come see how you placed." },
+  CHAMPION: { title: "🌟 Best Baby! 🌟", body: "You won it all, congratulations!" },
 };
 
 /**

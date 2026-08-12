@@ -16,7 +16,7 @@ export function DeleteAllPlaytimesButton() {
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="Delete every playtime?">
         <p className="text-sm text-foreground-muted">
-          This permanently deletes every playtime, baby, match, and help request — everything. There&rsquo;s no undo.
+          This permanently deletes every playtime, baby, match, and help request, everything. There&rsquo;s no undo.
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>

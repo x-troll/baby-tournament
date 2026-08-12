@@ -27,7 +27,7 @@ export default async function HelpRequestsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">
-                    {req.baby.displayName ?? "Unnamed baby"} — {req.reason}
+                    {req.baby.displayName ?? "Unnamed baby"}: {req.reason}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-2">

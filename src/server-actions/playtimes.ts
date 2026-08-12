@@ -82,7 +82,7 @@ export async function removeBabyAction(playtimeId: string, babyId: string): Prom
 
   const playtime = await prisma.playtime.findUniqueOrThrow({ where: { id: playtimeId } });
   if (playtime.status !== "NURSERY_OPEN") {
-    throw new Error("Can't remove babies once the playtime has started — that's a forfeit, not a removal.");
+    throw new Error("Can't remove babies once the playtime has started, that's a forfeit, not a removal.");
   }
 
   await prisma.baby.delete({ where: { id: babyId } });

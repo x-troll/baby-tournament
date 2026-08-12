@@ -16,9 +16,9 @@ import { createBabySession, createMagicLinkToken, WEB_BOOKMARK_LINK_DURATION_SEC
 // via requireBaby's gate in baby-auth.ts.
 export async function joinViaWebsiteAction(joinToken: string): Promise<void> {
   const playtime = await prisma.playtime.findUnique({ where: { joinToken } });
-  if (!playtime) throw new Error("This invite link isn't valid — ask for a fresh QR code.");
+  if (!playtime) throw new Error("This invite link isn't valid. Ask for a fresh QR code.");
   if (playtime.status !== "NURSERY_OPEN") {
-    throw new Error("Registration's closed — this tournament has already started.");
+    throw new Error("Registration's closed, this tournament has already started.");
   }
 
   const lastBaby = await prisma.baby.findFirst({

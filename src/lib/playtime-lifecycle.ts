@@ -130,7 +130,7 @@ export async function startPlaytime(playtimeId: string): Promise<void> {
 
     const aliveCount = await tx.baby.count({ where: { playtimeId, status: "ACTIVE" } });
     if (aliveCount < 3) {
-      throw new Error(`Need at least 3 babies to start a playtime — only ${aliveCount} checked in.`);
+      throw new Error(`Need at least 3 babies to start a playtime, only ${aliveCount} checked in.`);
     }
 
     await tx.playtime.update({ where: { id: playtimeId }, data: { status: "IN_PROGRESS" } });
@@ -228,7 +228,7 @@ export async function reportMatchResult(matchId: string, orderedBabyIds: string[
   await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUniqueOrThrow({ where: { id: matchId }, include: { participants: true } });
     if (match.status === "CONFIRMED") throw new Error("This match has already been confirmed.");
-    if (match.status === "REPORTED") throw new Error("Someone already reported this match — confirm or dispute it instead.");
+    if (match.status === "REPORTED") throw new Error("Someone already reported this match, confirm or dispute it instead.");
 
     const participantIds = new Set(match.participants.map((p) => p.babyId));
     if (!participantIds.has(reporterBabyId)) {
@@ -279,7 +279,7 @@ export async function confirmReportedMatch(matchId: string, actor: ConfirmReport
       // safety-net exception (a REPORTED+disputed match reaching this
       // code path at all is already the unusual case), not worth a DB
       // round-trip to resolve one specific baby's /profile preference for.
-      throw new Error(`This match is disputed — a ${getTerminology().admin} needs to resolve it first.`);
+      throw new Error(`This match is disputed, a ${getTerminology().admin} needs to resolve it first.`);
     }
 
     await tx.match.update({ where: { id: matchId }, data: { status: "CONFIRMED", deadlineAt: null } });
@@ -435,7 +435,7 @@ export async function undoLastMatchResult(matchId: string, adminId: string): Pro
     // Playtime rows without necessarily creating a new Match row, so the
     // laterMatchExists check below wouldn't catch it on its own.
     if (match.playtime.status === "COMPLETE") {
-      throw new Error("Can't undo — this result already completed the playtime.");
+      throw new Error("Can't undo, this result already completed the playtime.");
     }
 
     const mostRecentEvent = await tx.matchEvent.findFirst({
@@ -446,7 +446,7 @@ export async function undoLastMatchResult(matchId: string, adminId: string): Pro
       orderBy: { id: "desc" },
     });
     if (!mostRecentEvent || mostRecentEvent.matchId !== matchId) {
-      throw new Error("Only the most recently confirmed result in this playtime can be undone — undo that one first.");
+      throw new Error("Only the most recently confirmed result in this playtime can be undone, undo that one first.");
     }
 
     // Catches "this confirmation spawned new matches" (next playpen
@@ -457,7 +457,7 @@ export async function undoLastMatchResult(matchId: string, adminId: string): Pro
     });
     if (laterMatchExists) {
       throw new Error(
-        "Can't undo — this result already advanced the tournament (started the next round or Phase 2).",
+        "Can't undo, this result already advanced the tournament (started the next round or Phase 2).",
       );
     }
 
@@ -469,7 +469,7 @@ export async function undoLastMatchResult(matchId: string, adminId: string): Pro
     const participants = await tx.matchParticipant.findMany({ where: { matchId }, include: { baby: true } });
     if (participants.some((p) => p.baby.status !== "ACTIVE")) {
       throw new Error(
-        "Can't undo — this result already changed a baby's status (napped/crowned). Full cascading undo isn't supported yet.",
+        "Can't undo, this result already changed a baby's status (napped/crowned). Full cascading undo isn't supported yet.",
       );
     }
 
@@ -605,7 +605,7 @@ async function processCompletedPlaypenRound(
     await startPhase2(tx, playtimeId);
   } else if (newAliveCount < 4) {
     throw new Error(
-      `processCompletedPlaypenRound: alive count dropped to ${newAliveCount}, below the Phase 2 threshold — even-survivor invariant violated.`,
+      `processCompletedPlaypenRound: alive count dropped to ${newAliveCount}, below the Phase 2 threshold, even-survivor invariant violated.`,
     );
   } else {
     await createNextPlaypenRound(tx, playtimeId, false);

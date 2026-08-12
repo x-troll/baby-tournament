@@ -15,7 +15,7 @@ export default async function RulesPreviewPage() {
       <header>
         <h1 className="text-3xl font-bold">Rules content pipeline preview</h1>
         <p className="text-sm text-foreground-muted">
-          Phase 3 — parsed from content/rules/*.md, rendered server-side, sanitized. Tap a bar to expand, tap a
+          Phase 3, parsed from content/rules/*.md, rendered server-side, sanitized. Tap a bar to expand, tap a
           screenshot to zoom.
         </p>
       </header>
@@ -27,7 +27,7 @@ export default async function RulesPreviewPage() {
           summary={rules[Game.MARIO_KART].summary}
           bodyHtml={rules[Game.MARIO_KART].bodyHtml}
           screenshots={rules[Game.MARIO_KART].screenshots}
-          overrideNote="3 races per match tonight, not 1 — we've got time."
+          overrideNote="3 races per match tonight, not 1, we've got time."
         />
       </section>
 

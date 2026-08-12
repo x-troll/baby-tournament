@@ -128,7 +128,7 @@ export function BabyProfileForm({
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" name="acceptedWaiver" required className="mt-0.5 h-5 w-5 shrink-0" />
               <span>
-                I understand no one will remind me — if I&rsquo;m not back here and ready when it&rsquo;s my turn, I
+                I understand no one will remind me, if I&rsquo;m not back here and ready when it&rsquo;s my turn, I
                 lose by default.
               </span>
             </label>

@@ -36,5 +36,5 @@ export async function ensureWebhookRegistered(opts: { force?: boolean } = {}): P
   const ok = await setWebhook(targetUrl, webhookSecret);
   return ok
     ? { ok: true, message: "Webhook registered." }
-    : { ok: false, message: "Failed to register — check TELEGRAM_BOT_TOKEN and the server logs." };
+    : { ok: false, message: "Failed to register. Check TELEGRAM_BOT_TOKEN and the server logs." };
 }

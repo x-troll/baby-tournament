@@ -225,7 +225,7 @@ function computeStageBanner(
   const current = sortMatchesByPriority(matches.filter((m) => m.status !== "CONFIRMED"))[0];
   if (!current) return "Between rounds…";
 
-  if (current.kind === MatchKind.ROUND_ROBIN) return "ROUND ROBIN — 3 babies";
-  if (current.kind === MatchKind.PLAYPEN) return `PLAYPEN ROUND ${current.round} — ${aliveCount} babies left`;
+  if (current.kind === MatchKind.ROUND_ROBIN) return "ROUND ROBIN, 3 babies";
+  if (current.kind === MatchKind.PLAYPEN) return `PLAYPEN ROUND ${current.round}, ${aliveCount} babies left`;
   return PHASE2_LABELS[current.kind] ?? current.kind;
 }

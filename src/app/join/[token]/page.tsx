@@ -28,7 +28,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
           </CardHeader>
           <CardContent>
             <p className="text-sm text-foreground-muted">
-              This invite link isn&rsquo;t valid — ask for a fresh QR code.
+              This invite link isn&rsquo;t valid. Ask for a fresh QR code.
             </p>
           </CardContent>
         </Card>
@@ -45,7 +45,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
           </CardHeader>
           <CardContent>
             <p className="text-sm text-foreground-muted">
-              {playtime.name} has already started — check with whoever&rsquo;s running it.
+              {playtime.name} has already started. Check with whoever&rsquo;s running it.
             </p>
           </CardContent>
         </Card>
@@ -63,7 +63,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
         </CardHeader>
         <CardContent>
           <p className="mb-4 text-sm text-foreground-muted">
-            Signing up here (instead of via Telegram) means no notifications — you won&rsquo;t get a heads-up before
+            Signing up here (instead of via Telegram) means no notifications, you won&rsquo;t get a heads-up before
             or when it&rsquo;s your turn for {gameLabel}. You&rsquo;ll need to keep this page open and check it
             yourself. Next step: pick your name and a picture.
           </p>

@@ -170,8 +170,8 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
                   <td className="py-1 pr-2">
                     {baby.status === "CHAMPION" ? "🌟 Best Baby" : baby.status === "NAPPED" ? "Napping" : "Active"}
                   </td>
-                  <td className="py-1 pr-2">{baby.seed ?? "—"}</td>
-                  <td className="py-1 pr-2">{baby.finalPlacement ?? "—"}</td>
+                  <td className="py-1 pr-2">{baby.seed ?? "-"}</td>
+                  <td className="py-1 pr-2">{baby.finalPlacement ?? "-"}</td>
                   <td className="py-1">
                     <form action={previewAsBabyAction.bind(null, baby.id)}>
                       <Button type="submit" variant="ghost" size="sm">

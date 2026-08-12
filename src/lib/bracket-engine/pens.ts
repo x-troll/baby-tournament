@@ -41,7 +41,7 @@ export function computeRoundLayout(aliveCount: number, isTournamentStart: boolea
     if (!isTournamentStart) {
       throw new Error(
         "computeRoundLayout: N=3 mid-tournament violates the even-survivor invariant " +
-          "(every pen advances exactly 2) — this should only ever happen as a starting count",
+          "(every pen advances exactly 2), this should only ever happen as a starting count",
       );
     }
     return { kind: "ROUND_ROBIN" };
@@ -51,7 +51,7 @@ export function computeRoundLayout(aliveCount: number, isTournamentStart: boolea
     if (!isTournamentStart) {
       throw new Error(
         "computeRoundLayout: N=5 mid-tournament violates the even-survivor invariant " +
-          "(every pen advances exactly 2) — this should only ever happen as a starting count",
+          "(every pen advances exactly 2), this should only ever happen as a starting count",
       );
     }
     return { kind: "BYE_ROUND", penSize: 3, byeCount: 2 };

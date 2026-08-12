@@ -9,7 +9,7 @@ export function SpectatorStarChart({
 }) {
   return (
     <table className="w-full text-lg">
-      <caption className="sr-only">Live standings — gold stars and status per baby.</caption>
+      <caption className="sr-only">Live standings: gold stars and status per baby.</caption>
       <thead>
         <tr className="border-b-2 border-border text-left text-foreground-muted">
           <th scope="col" className="py-2 pr-3">
@@ -29,7 +29,7 @@ export function SpectatorStarChart({
             row.status === "CHAMPION"
               ? `🌟 Best Baby`
               : row.status === "NAPPED"
-                ? `Napped — ${row.finalPlacement ?? "?"}`
+                ? `Napped: ${row.finalPlacement ?? "?"}`
                 : "Active";
           const justEarned = justEarnedStarBabyIds.has(row.babyId);
           return (

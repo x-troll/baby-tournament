@@ -16,7 +16,7 @@ const SESSION_DURATION_SECONDS = 60 * 60 * 12; // 12h, same reasoning as admin s
 
 function getSecretKey(): Uint8Array {
   const secret = process.env.AUTH_SECRET;
-  if (!secret) throw new Error("AUTH_SECRET is not set — required to sign/verify baby sessions");
+  if (!secret) throw new Error("AUTH_SECRET is not set, required to sign/verify baby sessions");
   return new TextEncoder().encode(secret);
 }
 

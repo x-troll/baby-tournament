@@ -134,7 +134,7 @@ async function handleBabyStart(chatId: string, joinToken: string): Promise<void>
 async function handleStatusCommand(chatId: string): Promise<void> {
   const baby = await prisma.baby.findFirst({ where: { telegramChatId: chatId }, orderBy: { createdAt: "desc" } });
   if (!baby?.displayName) {
-    await sendMessage(chatId, "I don't have you checked in yet — use your invite link to join first.");
+    await sendMessage(chatId, "I don't have you checked in yet, use your invite link to join first.");
     return;
   }
   const state = await computeBabyStatus(baby.id);

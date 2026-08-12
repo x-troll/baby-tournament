@@ -17,7 +17,7 @@ export function StartPlaytimeButton({ playtimeId, babyCount }: { playtimeId: str
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="Start the tournament?">
         <p className="text-sm text-foreground-muted">
-          {babyCount} babies are registered. Once started, check-in closes and the bracket begins — there&rsquo;s no
+          {babyCount} babies are registered. Once started, check-in closes and the bracket begins. There&rsquo;s no
           going back to the nursery.
         </p>
         <div className="flex justify-end gap-2">

@@ -16,7 +16,7 @@ export function NukeDatabaseButton() {
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="Wipe everything and start fresh?">
         <p className="text-sm text-foreground-muted">
-          This permanently deletes every playtime, baby, match, and help request — plus every admin
+          This permanently deletes every playtime, baby, match, and help request, plus every admin
           account, including yours. A fresh admin is immediately re-created from this deployment&rsquo;s
           ADMIN_USERNAME/ADMIN_PASSWORD, and you&rsquo;ll be signed out. There&rsquo;s no undo.
         </p>

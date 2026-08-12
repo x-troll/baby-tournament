@@ -74,7 +74,7 @@ export async function sendMessage(
     text,
     success: Boolean(result?.result),
     error: !isConfigured()
-      ? "TELEGRAM_BOT_TOKEN not configured — logged only, nothing actually sent"
+      ? "TELEGRAM_BOT_TOKEN not configured, logged only, nothing actually sent"
       : !result?.result
         ? (result?.description ?? "Unknown error")
         : undefined,

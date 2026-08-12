@@ -43,7 +43,7 @@ export default async function PlaytimesListPage() {
         <CardContent>
           {playtimes.length === 0 ? (
             <p className="text-sm text-foreground-muted">
-              {admin ? "No playtimes yet — create one above." : "Nothing running right now — check back soon."}
+              {admin ? "No playtimes yet, create one above." : "Nothing running right now, check back soon."}
             </p>
           ) : (
             <ul className="flex flex-col gap-2">

@@ -17,7 +17,7 @@ const t = getTerminology();
 // this chat — see src/app/(baby)/play/[slug]/register/page.tsx — so
 // this just hands over a magic link instead of asking a question here.
 export function finishSignupOnWeb(playtimeName: string, gameLabel: string, magicLink: string): string {
-  return `Welcome to ${playtimeName} (${gameLabel})! 🍼 Tap below to finish signing up — pick your name and a picture:\n${magicLink}\n\nKeep this chat open — I'll ping you here when it's your turn.`;
+  return `Welcome to ${playtimeName} (${gameLabel})! 🍼 Tap below to finish signing up, pick your name and a picture:\n${magicLink}\n\nKeep this chat open, I'll ping you here when it's your turn.`;
 }
 
 export function alreadyRegistered(playtimeName: string, displayName: string, magicLink: string): string {
@@ -33,7 +33,7 @@ export function adminLinked(name: string): string {
 }
 
 export function unknownAdminToken(): string {
-  return "That admin link doesn't look right — check the QR code in your profile page.";
+  return "That admin link doesn't look right. Check the QR code in your profile page.";
 }
 
 export function statusReply(displayName: string, summary: string): string {
@@ -53,11 +53,11 @@ export function adminHelpRequestAlert(babyName: string, matchLabel: string, reas
 }
 
 export function adminDisputeAlert(babyName: string, matchLabel: string): string {
-  return `⚠️ ${babyName} disputed a result (${matchLabel}) — the match is frozen until you resolve it.`;
+  return `⚠️ ${babyName} disputed a result (${matchLabel}). The match is frozen until you resolve it.`;
 }
 
 export function adminOnMyWaySent(): string {
-  return `Sent — the baby now sees "${t.admin} is coming 💫".`;
+  return `Sent, the baby now sees "${t.admin} is coming 💫".`;
 }
 
 export function adminAlreadyResolved(): string {

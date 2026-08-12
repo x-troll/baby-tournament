@@ -97,7 +97,7 @@ export default async function PlayPage({
         // bookmark: it still logs them back in even with no cookie
         // (cleared, or a different device) — see requireBabyWithToken.
         <div className="rounded-card border-2 border-border bg-background-sunken p-3 text-center text-sm font-semibold">
-          📌 This is your personal link — bookmark this page now so you can get back in later.
+          📌 This is your personal link, bookmark this page now so you can get back in later.
         </div>
       )}
 
@@ -111,7 +111,7 @@ export default async function PlayPage({
 
       <div className="flex items-center justify-between gap-2">
         <h1 className="sr-only">
-          {playtime.name} — {t.player} screen
+          {playtime.name}, {t.player} screen
         </h1>
         {resolveAvatarSrc(baby.avatarId) && (
           <Image

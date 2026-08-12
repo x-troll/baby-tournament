@@ -27,7 +27,7 @@ export async function createHelpRequestAction(
     const elapsedMs = Date.now() - baby.lastHelpRequestAt.getTime();
     if (elapsedMs < HELP_REQUEST_COOLDOWN_SECONDS * 1000) {
       const waitSeconds = Math.ceil((HELP_REQUEST_COOLDOWN_SECONDS * 1000 - elapsedMs) / 1000);
-      return { error: `Hang tight — you can ask again in ${waitSeconds}s.` };
+      return { error: `Hang tight, you can ask again in ${waitSeconds}s.` };
     }
   }
 

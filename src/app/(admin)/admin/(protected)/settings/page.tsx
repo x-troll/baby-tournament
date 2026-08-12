@@ -46,7 +46,7 @@ export default async function AdminProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>Bot setup</CardTitle>
-          <CardDescription>Run once per environment — not per deploy, the URL is stable.</CardDescription>
+          <CardDescription>Run once per environment, not per deploy, the URL is stable.</CardDescription>
         </CardHeader>
         <CardContent>
           <RegisterWebhookButton />
@@ -56,7 +56,7 @@ export default async function AdminProfilePage() {
       <Card className="border-danger">
         <CardHeader>
           <CardTitle>Danger zone</CardTitle>
-          <CardDescription>Destructive, confirmed before anything happens — there&rsquo;s no undo.</CardDescription>
+          <CardDescription>Destructive, confirmed before anything happens, there&rsquo;s no undo.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <DeleteAllPlaytimesButton />

@@ -15,7 +15,7 @@ export async function seedFirstAdminFromEnv(): Promise<Admin> {
   const username = process.env.ADMIN_USERNAME;
   const password = process.env.ADMIN_PASSWORD;
   if (!username || !password) {
-    throw new Error("ADMIN_USERNAME/ADMIN_PASSWORD are not both set — cannot seed the first Daddy.");
+    throw new Error("ADMIN_USERNAME/ADMIN_PASSWORD are not both set, cannot seed the first Daddy.");
   }
 
   const passwordHash = await hashPassword(password);
