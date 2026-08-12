@@ -14,7 +14,9 @@ import QRCodeStyling from "qr-code-styling";
  *
  * Style values below match the config you generated with qr-code-styling
  * .com — the `*Helper` keys in that export are generator-UI-only state,
- * not real constructor options, so they're dropped here.
+ * not real constructor options, so they're dropped here. `backgroundOptions.round`
+ * gives the QR's own white square subtly rounded corners baked into the
+ * rendered image itself, rather than a separately-added wrapper/border.
  */
 export function StyledQrCode({ data, size = 300, logoSrc }: { data: string; size?: number; logoSrc?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,7 +53,7 @@ export function StyledQrCode({ data, size = 300, logoSrc }: { data: string; size
           ],
         },
       },
-      backgroundOptions: { round: 0, color: "#ffffff" },
+      backgroundOptions: { round: 0.05, color: "#ffffff" },
       cornersSquareOptions: { type: "extra-rounded", color: "#7B8FEE" },
       cornersDotOptions: { type: "dot", color: "#b92d5d" },
     });

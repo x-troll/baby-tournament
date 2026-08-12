@@ -46,9 +46,7 @@ export function JoinQrPair({
             >
               RECOMMENDED
             </Badge>
-            <div className="rounded-card border-2 border-border bg-background-elevated p-3 shadow-soft">
-              <StyledQrCode data={telegramLink} size={size} logoSrc="/telegram-logo.svg" />
-            </div>
+            <StyledQrCode data={telegramLink} size={size} logoSrc="/telegram-logo.svg" />
             <p className="max-w-[240px] text-center text-base text-foreground-muted">
               Telegram gives you notifications a bit before and when it&rsquo;s your turn.
             </p>
@@ -56,9 +54,7 @@ export function JoinQrPair({
         )}
         {websiteLink && (
           <div className="flex flex-col items-center gap-2">
-            <div className="rounded-card border-2 border-border bg-background-elevated p-3 shadow-soft">
-              <StyledQrCode data={websiteLink} size={size} logoSrc="/website-signup-badge.svg" />
-            </div>
+            <StyledQrCode data={websiteLink} size={size} logoSrc="/website-signup-badge.svg" />
             <p className="max-w-[240px] text-center text-base text-foreground-muted">
               <strong className="underline">No notifications</strong> — you&rsquo;ll need to watch this page
               yourself.
