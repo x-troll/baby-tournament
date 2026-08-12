@@ -15,11 +15,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
-import { JoinQrPair } from "@/components/ui/JoinQrPair";
 import { AddBabyManuallyButton } from "@/components/admin/AddBabyManuallyButton";
 import { StartPlaytimeButton } from "@/components/admin/StartPlaytimeButton";
 import { SpectatorPoller } from "@/components/spectator/SpectatorPoller";
 import { RulesFooter } from "@/components/spectator/RulesFooter";
+import { NurseryCheckIn } from "@/components/spectator/NurseryCheckIn";
 import { PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
 import { removeBabyAction } from "@/server-actions/playtimes";
 import { reportMatchResultFormAction, undoMatchResultAction } from "@/server-actions/matches";
@@ -296,52 +296,50 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {joinLink || websiteLink ? (
-              <div className="flex flex-col items-center gap-2 self-center">
-                <JoinQrPair telegramLink={joinLink} websiteLink={websiteLink} />
+              <NurseryCheckIn telegramLink={joinLink} websiteLink={websiteLink}>
                 {joinLink && <code className="break-all text-xs text-foreground-muted">{joinLink}</code>}
-              </div>
+                <div className="w-full max-w-xl">
+                  <h3 className="mb-2 text-sm font-semibold">
+                    Registered babies ({playtime.babies.length})
+                  </h3>
+                  {playtime.babies.length === 0 ? (
+                    <p className="text-sm text-foreground-muted">Nobody yet.</p>
+                  ) : (
+                    <ul className="flex flex-col gap-1">
+                      {playtime.babies.map((baby) => (
+                        <li
+                          key={baby.id}
+                          className="flex items-center justify-between rounded-card border border-border bg-background px-3 py-2 text-sm"
+                        >
+                          <span>
+                            {baby.registrationOrder}. {baby.displayName ?? "(no name yet)"}
+                            {!baby.telegramChatId && (
+                              <span className="ml-2 text-xs text-foreground-muted">no Telegram</span>
+                            )}
+                          </span>
+                          <span className="flex gap-2">
+                            <form action={previewAsBabyAction.bind(null, baby.id)}>
+                              <Button type="submit" variant="secondary" size="sm">
+                                Preview
+                              </Button>
+                            </form>
+                            <form action={removeBabyAction.bind(null, playtime.id, baby.id)}>
+                              <Button type="submit" variant="ghost" size="sm">
+                                Remove
+                              </Button>
+                            </form>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </NurseryCheckIn>
             ) : (
               <p className="text-sm text-foreground-muted">
                 Set TELEGRAM_BOT_USERNAME and/or NEXT_PUBLIC_APP_URL to show a join QR.
               </p>
             )}
-
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">
-                Registered babies ({playtime.babies.length})
-              </h3>
-              {playtime.babies.length === 0 ? (
-                <p className="text-sm text-foreground-muted">Nobody yet.</p>
-              ) : (
-                <ul className="flex flex-col gap-1">
-                  {playtime.babies.map((baby) => (
-                    <li
-                      key={baby.id}
-                      className="flex items-center justify-between rounded-card border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <span>
-                        {baby.registrationOrder}. {baby.displayName ?? "(no name yet)"}
-                        {!baby.telegramChatId && (
-                          <span className="ml-2 text-xs text-foreground-muted">no Telegram</span>
-                        )}
-                      </span>
-                      <span className="flex gap-2">
-                        <form action={previewAsBabyAction.bind(null, baby.id)}>
-                          <Button type="submit" variant="secondary" size="sm">
-                            Preview
-                          </Button>
-                        </form>
-                        <form action={removeBabyAction.bind(null, playtime.id, baby.id)}>
-                          <Button type="submit" variant="ghost" size="sm">
-                            Remove
-                          </Button>
-                        </form>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </CardContent>
         </Card>
       )}

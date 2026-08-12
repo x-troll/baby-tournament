@@ -20,8 +20,16 @@ export default async function PlaytimesListPage() {
     include: { _count: { select: { babies: true } } },
   });
 
+  // Signed-in admins already get a padded, max-w-5xl <main> from the
+  // layout — this page's own root only needs to add that itself for
+  // the unauthenticated case, where the layout deliberately renders a
+  // bare, unpadded full-width wrapper instead (so /playtimes/[slug]'s
+  // public spectator screen can go edge-to-edge on a projector). Adding
+  // it here rather than in the layout keeps that full-bleed behavior
+  // for the spectator screen while still giving this list page real
+  // margins.
   return (
-    <div className="flex flex-col gap-6">
+    <div className={admin ? "flex flex-col gap-6" : "mx-auto flex max-w-5xl flex-col gap-6 p-6"}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Playtimes</h1>
         {admin && (

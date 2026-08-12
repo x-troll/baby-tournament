@@ -5,8 +5,8 @@ import { StageBanner } from "./StageBanner";
 import { CurrentMatches } from "./CurrentMatches";
 import { HelpIndicator } from "./HelpIndicator";
 import { RegisteredBabies } from "./RegisteredBabies";
+import { NurseryCheckIn } from "./NurseryCheckIn";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
-import { JoinQrPair } from "@/components/ui/JoinQrPair";
 import { GAME_LOGO_SRC } from "@/lib/game-assets";
 import type { SpectatorState } from "@/lib/spectator-state";
 
@@ -74,10 +74,9 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
       <StageBanner text={state.stageBanner} logoSrc={GAME_LOGO_SRC[state.game]} />
 
       {state.status === "NURSERY_OPEN" && (
-        <div className="flex flex-col items-center gap-6 py-4">
-          <JoinQrPair telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} size={400} />
+        <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink}>
           <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
-        </div>
+        </NurseryCheckIn>
       )}
 
       <CurrentMatches matches={state.activeMatches} onDeck={state.onDeck} />
