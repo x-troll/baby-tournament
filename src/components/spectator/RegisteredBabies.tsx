@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Avatar } from "@/components/ui/Avatar";
 import type { SpectatorParticipant } from "@/lib/spectator-state";
 
 /**
@@ -31,13 +31,7 @@ export function RegisteredBabies({
             newlyJoinedIds.has(b.babyId) ? "animate-badge-bounce-in motion-reduce:animate-none" : ""
           }`}
         >
-          {b.avatarSrc ? (
-            <Image src={b.avatarSrc} alt="" width={32} height={32} className="shrink-0 rounded-full" />
-          ) : (
-            <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background-sunken text-lg">
-              🍼
-            </span>
-          )}
+          <Avatar src={b.avatarSrc} size={56} />
           <span className="font-display text-lg font-bold">{b.name}</span>
         </div>
       ))}

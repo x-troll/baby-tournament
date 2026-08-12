@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Avatar } from "@/components/ui/Avatar";
 import { AVATAR_OPTIONS } from "@/lib/avatars";
 import { SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,7 +65,7 @@ export function BabyProfileForm({
                 defaultChecked={baby.avatarId === a.id}
                 className="sr-only"
               />
-              <Image src={a.src} alt="" width={48} height={48} />
+              <Avatar src={a.src} size={84} />
               {a.label}
             </label>
           ))}

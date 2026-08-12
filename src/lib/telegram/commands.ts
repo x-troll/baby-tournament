@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { createMagicLinkToken } from "@/lib/baby-auth";
 import { loadRules } from "@/lib/rules-content";
 import { computeBabyStatus } from "@/lib/baby-status";
-import { confirmReportedMatch, disputeMatch, markMatchInProgress } from "@/lib/playtime-lifecycle";
+import { markMatchInProgress } from "@/lib/playtime-lifecycle";
 import { acknowledgeHelpRequest, resolveHelpRequest } from "@/lib/help-requests";
 import { GAME_DISPLAY } from "@/lib/enum-display";
 import * as playerCopy from "@/lib/player-copy";
@@ -162,26 +162,6 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
 
   if (!id) {
     await answerCallbackQuery(query.id);
-    return;
-  }
-
-  if (action === "confirm" || action === "dispute") {
-    const baby = chatId ? await prisma.baby.findFirst({ where: { telegramChatId: chatId } }) : null;
-    if (!baby) {
-      await answerCallbackQuery(query.id, "Couldn't find your registration.");
-      return;
-    }
-    try {
-      if (action === "confirm") {
-        await confirmReportedMatch(id, { type: "BABY", babyId: baby.id });
-        await answerCallbackQuery(query.id, "Confirmed ✅");
-      } else {
-        await disputeMatch(id, baby.id);
-        await answerCallbackQuery(query.id, playerCopy.disputeSentReply(baby));
-      }
-    } catch (err) {
-      await answerCallbackQuery(query.id, err instanceof Error ? err.message : "Something went wrong.");
-    }
     return;
   }
 

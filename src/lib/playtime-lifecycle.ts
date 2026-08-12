@@ -10,14 +10,13 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { MatchKind, MatchStatus } from "@/generated/prisma/enums";
-import { getTerminology } from "@/lib/terminology";
 import {
   notifyBabyCrowned,
   notifyBabyNapped,
   notifyBabyResultConfirmed,
   notifyBabyUpNext,
   notifyBabyUpSoon,
-  notifyMatchReported,
+  notifyMatchStarted,
 } from "@/lib/telegram/notify";
 import type { Phase2MatchId, Phase2Result, Phase2Seeds, PenResult, EliminatedRoundEntry } from "@/lib/bracket-engine";
 import {
@@ -160,13 +159,13 @@ export interface ConfirmMatchResultInput {
 /**
  * The one code path for both playpen results (3-4 finishers) and Phase 2
  * 1v1 results (2 finishers) — same function, same validation, same
- * cascade. Admin calls this directly (instant CONFIRMED, no waiting
- * window) — used by admin override (Phase 4) and by the auto-no-show/
- * forfeit resolution paths (Phase 5/6), which don't go through the
- * report → wait-for-confirm dance either. For baby self-report with the
- * 60s confirm window, see `reportMatchResult` / `confirmReportedMatch`
- * below — they share this function's cascade logic but not its
- * immediate-CONFIRMED behavior.
+ * cascade. Always instant CONFIRMED, no waiting window: used by admin
+ * override, by the auto-no-show/forfeit resolution paths, and by a
+ * baby's own self-report (`actor: { type: "BABY", ... }` — see
+ * `babyReportResultAction`). A baby's report finalizes the match
+ * immediately; there's no separate confirm-from-the-other-participants
+ * step. A wrong result gets corrected afterward via the admin panel's
+ * "Undo last result", same as any admin correction.
  */
 export async function confirmMatchResult(input: ConfirmMatchResultInput): Promise<void> {
   const collector = newCollector();
@@ -215,135 +214,6 @@ export async function confirmMatchResult(input: ConfirmMatchResultInput): Promis
   await dispatchCollectedNotifications(collector);
 }
 
-const CONFIRM_WINDOW_SECONDS = 60;
-
-/**
- * A baby submits the finishing order (pens: drag-to-reorder; 1v1: "I got
- * the gold star"). This does *not* confirm the match — it starts the 60s
- * confirm window. Everyone else gets Confirm/Dispute; the match becomes
- * final via `confirmReportedMatch` (another participant explicitly
- * confirming, or `ensureMatchNotExpired` firing the lazy auto-confirm).
- */
-export async function reportMatchResult(matchId: string, orderedBabyIds: string[], reporterBabyId: string): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const match = await tx.match.findUniqueOrThrow({ where: { id: matchId }, include: { participants: true } });
-    if (match.status === "CONFIRMED") throw new Error("This match has already been confirmed.");
-    if (match.status === "REPORTED") throw new Error("Someone already reported this match, confirm or dispute it instead.");
-
-    const participantIds = new Set(match.participants.map((p) => p.babyId));
-    if (!participantIds.has(reporterBabyId)) {
-      throw new Error("Only a participant in this match can report its result.");
-    }
-    setOrderedFinishPositions(match, orderedBabyIds);
-
-    for (let i = 0; i < orderedBabyIds.length; i++) {
-      await tx.matchParticipant.updateMany({
-        where: { matchId, babyId: orderedBabyIds[i] },
-        data: { finishPosition: i + 1 },
-      });
-    }
-
-    await tx.match.update({
-      where: { id: matchId },
-      data: {
-        status: "REPORTED",
-        reportedById: reporterBabyId,
-        deadlineAt: new Date(Date.now() + CONFIRM_WINDOW_SECONDS * 1000),
-      },
-    });
-    await tx.matchEvent.create({
-      data: {
-        matchId,
-        type: "REPORTED",
-        payload: { orderedBabyIds },
-        actorType: "BABY",
-        actorBabyId: reporterBabyId,
-      },
-    });
-  });
-  await notifyMatchReported(matchId, reporterBabyId);
-}
-
-export type ConfirmReportedActor = { type: "BABY"; babyId: string } | { type: "SYSTEM" };
-
-/** A REPORTED match becomes final — another participant confirming, or the lazy auto-confirm check. */
-export async function confirmReportedMatch(matchId: string, actor: ConfirmReportedActor): Promise<void> {
-  const collector = newCollector();
-  await prisma.$transaction(async (tx) => {
-    const match = await tx.match.findUniqueOrThrow({ where: { id: matchId }, include: { participants: true } });
-    if (match.status !== "REPORTED") {
-      throw new Error("Only a reported match awaiting confirmation can be confirmed this way.");
-    }
-    if (match.disputed) {
-      // Deployment-wide term, not a per-baby one — this is an internal
-      // safety-net exception (a REPORTED+disputed match reaching this
-      // code path at all is already the unusual case), not worth a DB
-      // round-trip to resolve one specific baby's /profile preference for.
-      throw new Error(`This match is disputed, a ${getTerminology().admin} needs to resolve it first.`);
-    }
-
-    await tx.match.update({ where: { id: matchId }, data: { status: "CONFIRMED", deadlineAt: null } });
-    await tx.matchEvent.create({
-      data: {
-        matchId,
-        type: actor.type === "SYSTEM" ? "AUTO_CONFIRMED" : "CONFIRMED",
-        payload: {},
-        actorType: actor.type,
-        actorBabyId: actor.type === "BABY" ? actor.babyId : null,
-      },
-    });
-
-    for (const p of match.participants) collector.confirmedParticipantBabyIds.add(p.babyId);
-    await runPostConfirmationCascade(tx, match.playtimeId, match.kind, match.round, match.id, collector);
-  });
-  await dispatchCollectedNotifications(collector);
-}
-
-/**
- * A non-reporting participant disputes the result. Freezes the match
- * (auto-confirm skips disputed matches) and alerts the Daddies exactly
- * like a help request — literally reuses the HelpRequest model/inbox
- * rather than inventing a parallel notification path.
- */
-export async function disputeMatch(matchId: string, babyId: string): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const match = await tx.match.findUniqueOrThrow({ where: { id: matchId }, include: { participants: true } });
-    if (match.status !== "REPORTED") {
-      throw new Error("Only a reported match awaiting confirmation can be disputed.");
-    }
-    if (!match.participants.some((p) => p.babyId === babyId)) {
-      throw new Error("Only a participant in this match can dispute its result.");
-    }
-
-    await tx.match.update({ where: { id: matchId }, data: { disputed: true } });
-    await tx.matchEvent.create({
-      data: { matchId, type: "DISPUTED", payload: {}, actorType: "BABY", actorBabyId: babyId },
-    });
-    await tx.helpRequest.create({
-      data: {
-        playtimeId: match.playtimeId,
-        babyId,
-        matchId,
-        reason: "score dispute",
-        threadKey: `match-dispute-${matchId}`,
-      },
-    });
-  });
-}
-
-/**
- * The lazy-deadline check (see file header) — call this before trusting
- * any REPORTED match's status. If the 60s window has passed and nobody
- * disputed it, this finalizes it (same cascade as an explicit confirm)
- * before returning. A no-op otherwise, safe to call on every read.
- */
-export async function ensureMatchNotExpired(matchId: string): Promise<void> {
-  const match = await prisma.match.findUnique({ where: { id: matchId } });
-  if (!match || match.status !== "REPORTED" || match.disputed || !match.deadlineAt) return;
-  if (Date.now() < match.deadlineAt.getTime()) return;
-  await confirmReportedMatch(matchId, { type: "SYSTEM" });
-}
-
 /**
  * READY -> IN_PROGRESS: any participant heading to the console taps this.
  * Distinguishes "up next, go find your station" from "playing now, report
@@ -358,12 +228,12 @@ export async function ensureMatchNotExpired(matchId: string): Promise<void> {
  * only ever forward from READY.
  */
 export async function markMatchInProgress(matchId: string, babyId: string): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+  const justStarted = await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUniqueOrThrow({ where: { id: matchId }, include: { participants: true } });
     if (!match.participants.some((p) => p.babyId === babyId)) {
       throw new Error("Only a participant in this match can start it.");
     }
-    if (match.status === "IN_PROGRESS") return; // already started — no-op
+    if (match.status === "IN_PROGRESS") return false; // already started — no-op
     if (match.status !== "READY") {
       throw new Error("Only a READY match can be marked in progress.");
     }
@@ -371,7 +241,12 @@ export async function markMatchInProgress(matchId: string, babyId: string): Prom
     await tx.matchEvent.create({
       data: { matchId, type: "STARTED", payload: {}, actorType: "BABY", actorBabyId: babyId },
     });
+    return true;
   });
+  // Only on the real READY -> IN_PROGRESS transition — a double-tap (see
+  // the idempotency note above) shouldn't re-send the "good job, go
+  // play" push a second time.
+  if (justStarted) await notifyMatchStarted(matchId);
 }
 
 function setOrderedFinishPositions(

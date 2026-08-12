@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Avatar } from "@/components/ui/Avatar";
 
 /** "Small discreet indicator" per spec — not alarming, just present when it matters. */
 export function HelpIndicator({ count, adminTerm }: { count: number; adminTerm: string }) {
@@ -11,7 +11,7 @@ export function HelpIndicator({ count, adminTerm }: { count: number; adminTerm: 
       role="status"
       className="fixed right-4 top-4 flex items-center gap-2 rounded-pill border border-active bg-accent-yellow py-1 pl-1 pr-3 text-sm font-semibold text-on-accent shadow-soft"
     >
-      <Image src="/admin-avatar.svg" alt="" width={24} height={24} className="rounded-full" />
+      <Avatar src="/admin-avatar.svg" size={42} />
       🆘 {count} baby{count === 1 ? "" : "ies"} need{count === 1 ? "s" : ""} a {adminTerm}
     </div>
   );

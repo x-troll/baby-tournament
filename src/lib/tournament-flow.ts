@@ -131,6 +131,7 @@ export function buildTournamentFlow(
 
   const edges = computeEdges(columns);
   edges.push(...computeQuarterfinalLoserEdges(columns));
+  edges.push(...computeWinnersFinalLoserEdge(columns));
   return { columns, edges };
 }
 
@@ -154,6 +155,27 @@ function computeQuarterfinalLoserEdges(columns: FlowColumn[]): FlowEdge[] {
       if (losersR1.participants.some((tp) => tp.babyId === p.babyId)) {
         edges.push({ from: box.key, to: losersR1.key });
       }
+    }
+  }
+  return edges;
+}
+
+/**
+ * The other loser-track leg the generic pass above misses: Winners
+ * Final's loser drops into Losers Final (alongside the winner-edge
+ * Losers Final already gets from Losers Round 1 via the generic pass),
+ * same pattern as `computeQuarterfinalLoserEdges` above.
+ */
+function computeWinnersFinalLoserEdge(columns: FlowColumn[]): FlowEdge[] {
+  const winnersFinal = columns.flatMap((c) => c.boxes).find((b) => b.key === "phase2-WINNERS_FINAL");
+  const losersFinal = columns.flatMap((c) => c.boxes).find((b) => b.key === "phase2-LOSERS_FINAL");
+  if (!winnersFinal || !losersFinal) return [];
+
+  const edges: FlowEdge[] = [];
+  for (const p of winnersFinal.participants) {
+    if (p.advancing || !p.babyId) continue; // only the loser leg
+    if (losersFinal.participants.some((tp) => tp.babyId === p.babyId)) {
+      edges.push({ from: winnersFinal.key, to: losersFinal.key });
     }
   }
   return edges;

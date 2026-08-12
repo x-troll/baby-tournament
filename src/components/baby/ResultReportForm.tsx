@@ -160,7 +160,7 @@ function SortableRow({ babyId, place, name }: { babyId: string; place: number; n
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex min-h-11 cursor-grab items-center gap-3 rounded-pill border border-border bg-background-elevated px-4 py-2 active:cursor-grabbing ${isDragging ? "opacity-60" : ""}`}
+      className={`flex min-h-11 cursor-grab touch-none items-center gap-3 rounded-pill border border-border bg-background-elevated px-4 py-2 active:cursor-grabbing ${isDragging ? "opacity-60" : ""}`}
     >
       <span aria-hidden className="font-display text-lg font-bold text-star-gold">
         {place}

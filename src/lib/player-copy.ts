@@ -102,12 +102,13 @@ export function readyCheckReply(baby: CopyBaby, displayName: string): string {
   });
 }
 
-export function needsYourConfirmation(baby: CopyBaby, reporterName: string, rulesSummary: string): string {
+/** Fired once a match flips READY -> IN_PROGRESS (see notifyMatchStarted). */
+export function matchStarted(baby: CopyBaby, displayName: string): string {
   return pick(baby, {
-    littlePlayful: `${reporterName} says they got the ${t.matchWin}, do you agree, sweetie?\n\n📋 ${rulesSummary}`,
-    littleExplicit: `${reporterName} says they got the ${t.matchWin}. Fess up if it's true, little one, since fibbing earns a time-out. 😏\n\n📋 ${rulesSummary}`,
-    grownupPlayful: `${reporterName} says they got the ${t.matchWin}, sound right to you?\n\n📋 ${rulesSummary}`,
-    grownupExplicit: `${reporterName} says they got the ${t.matchWin}. Confirm it, or admit you got outplayed by a toddler.\n\n📋 ${rulesSummary}`,
+    littlePlayful: `Good job, ${displayName}! 🎮 Come back here when you're done to submit your result.`,
+    littleExplicit: `Good job, ${displayName}! 🎮 Toddle back here when you're done, no fibbing on the result.`,
+    grownupPlayful: `Nice going, ${displayName}! 🎮 Come back here when you're done to submit your result.`,
+    grownupExplicit: `Get in there, ${displayName}. 🎮 Come back and report it honestly when you're done.`,
   });
 }
 
@@ -145,15 +146,6 @@ export function organizerIsComing(baby: CopyBaby): string {
     littleExplicit: `${t.admin} is coming for you 💫 Better be a good little one.`,
     grownupPlayful: `${t.admin} is on the way 💫`,
     grownupExplicit: `${t.admin} is coming, act like a grown-up about it. 💫`,
-  });
-}
-
-export function disputeSentReply(baby: CopyBaby): string {
-  return pick(baby, {
-    littlePlayful: `Dispute sent, a ${t.admin} will sort it out.`,
-    littleExplicit: `Dispute sent, little one, ${t.admin} will sort it out. Hope you're not fibbing.`,
-    grownupPlayful: `Dispute sent, a ${t.admin} will sort it out.`,
-    grownupExplicit: `Dispute sent. ${t.admin} will decide who's actually right.`,
   });
 }
 
@@ -197,22 +189,6 @@ export function describeState(baby: CopyBaby, state: BabyStatusState): string {
         grownupPlayful: `You're playing now, report your result when you're done.`,
         grownupExplicit: `You're playing now. Report it honestly, the babies always tattle anyway.`,
       });
-    case "WAITING_ON_PLAYMATES":
-      return pick(baby, {
-        littlePlayful: `Waiting on your playmates to confirm your result.`,
-        littleExplicit: `Waiting on your playmates to confirm, little one, patience.`,
-        grownupPlayful: `Waiting on the others to confirm your result.`,
-        grownupExplicit: `Waiting on everyone else to confirm. Try not to sulk.`,
-      });
-    case "AWAITING_YOUR_CONFIRMATION": {
-      const reporter = state.reporterName ?? "Someone";
-      return pick(baby, {
-        littlePlayful: `${reporter} says they got the ${t.matchWin}, do you agree?`,
-        littleExplicit: `${reporter} says they got the ${t.matchWin}. Be honest, little one, no pouting if it's true.`,
-        grownupPlayful: `${reporter} says they got the ${t.matchWin}, sound right?`,
-        grownupExplicit: `${reporter} says they got the ${t.matchWin}. Confirm it, or admit you lost to them.`,
-      });
-    }
   }
 }
 
@@ -290,25 +266,6 @@ export function cardPlaying(baby: CopyBaby): string {
     littleExplicit: `You're playing now, sweetie, report your result when you're done.`,
     grownupPlayful: `You're playing now, report your result when you're done.`,
     grownupExplicit: `You're playing now. Report it honestly.`,
-  });
-}
-
-export function cardWaitingOnPlaymates(baby: CopyBaby): string {
-  return pick(baby, {
-    littlePlayful: `Waiting on your playmates to confirm…`,
-    littleExplicit: `Waiting on your playmates, little one, patience.`,
-    grownupPlayful: `Waiting on the others to confirm…`,
-    grownupExplicit: `Waiting on everyone else. Try not to sulk.`,
-  });
-}
-
-export function cardConfirmationAsk(baby: CopyBaby, reporterName: string | null): string {
-  const reporter = reporterName ?? "Someone";
-  return pick(baby, {
-    littlePlayful: `${reporter} says they got the ${t.matchWin}, do you agree?`,
-    littleExplicit: `${reporter} says they got the ${t.matchWin}. Be honest, little one.`,
-    grownupPlayful: `${reporter} says they got the ${t.matchWin}, sound right?`,
-    grownupExplicit: `${reporter} says they got the ${t.matchWin}. Confirm it or admit defeat.`,
   });
 }
 

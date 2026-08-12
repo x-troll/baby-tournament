@@ -60,30 +60,27 @@ export async function notifyBabyUpSoon(babyId: string): Promise<void> {
   });
 }
 
-export async function notifyMatchReported(matchId: string, reporterBabyId: string): Promise<void> {
+/**
+ * Fired once a match flips READY -> IN_PROGRESS (see
+ * `markMatchInProgress`) — every other transition already has a push,
+ * this was the one gap. Goes to every participant with Telegram linked,
+ * not just whoever tapped "we're playing" — the whole match just
+ * started for all of them, and they'll all need the same "submit your
+ * result when you're done" link back to the dashboard.
+ */
+export async function notifyMatchStarted(matchId: string): Promise<void> {
   const match = await prisma.match.findUnique({
     where: { id: matchId },
     include: { participants: { include: { baby: true } }, playtime: true },
   });
   if (!match) return;
-  const reporter = match.participants.find((p) => p.babyId === reporterBabyId);
-  const summary = await rulesSummaryFor(match.playtimeId);
-
-  const keyboard: InlineKeyboard = [
-    [
-      { text: "✅ Confirm", callback_data: `confirm:${matchId}` },
-      { text: "❌ Dispute", callback_data: `dispute:${matchId}` },
-    ],
-  ];
+  const keyboard: InlineKeyboard = [[{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/play/${match.playtime.slugNumber}`) }]];
 
   for (const p of match.participants) {
-    if (p.babyId === reporterBabyId) continue;
     if (!p.baby.telegramChatId) continue;
-    await sendMessage(
-      p.baby.telegramChatId,
-      playerCopy.needsYourConfirmation(p.baby, reporter?.baby.displayName ?? "Someone", summary),
-      { replyMarkup: keyboard },
-    );
+    await sendMessage(p.baby.telegramChatId, playerCopy.matchStarted(p.baby, p.baby.displayName ?? "baby"), {
+      replyMarkup: keyboard,
+    });
   }
 }
 

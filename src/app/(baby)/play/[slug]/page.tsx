@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { Avatar } from "@/components/ui/Avatar";
 import { prisma } from "@/lib/prisma";
 import { requireBabyWithToken } from "@/lib/baby-auth";
 import { parseSlugNumber } from "@/lib/slug-number";
@@ -79,11 +79,6 @@ export default async function PlayPage({
     upNextLine: playerCopy.cardUpNext(baby),
     startMatchButtonLabel: playerCopy.cardStartMatchButtonLabel(baby),
     playingLine: playerCopy.cardPlaying(baby),
-    waitingOnPlaymatesLine: playerCopy.cardWaitingOnPlaymates(baby),
-    confirmationAskLine: playerCopy.cardConfirmationAsk(
-      baby,
-      state.kind === "AWAITING_YOUR_CONFIRMATION" ? state.reporterName : null,
-    ),
   };
 
   return (
@@ -113,15 +108,7 @@ export default async function PlayPage({
         <h1 className="sr-only">
           {playtime.name}, {t.player} screen
         </h1>
-        {resolveAvatarSrc(baby.avatarId) && (
-          <Image
-            src={resolveAvatarSrc(baby.avatarId)!}
-            alt=""
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
-        )}
+        {resolveAvatarSrc(baby.avatarId) && <Avatar src={resolveAvatarSrc(baby.avatarId)} size={70} />}
         <Link href={`/play/${slug}/settings`} className="ml-auto text-sm font-semibold text-foreground-muted underline">
           ⚙️ Settings
         </Link>

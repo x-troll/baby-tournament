@@ -4,7 +4,7 @@
 // deliberately centralized here rather than scattered across components
 // so the baby page and (later) Telegram push copy can both drive off it.
 import { prisma } from "@/lib/prisma";
-import { ensureMatchNotExpired, sortMatchesByPriority } from "@/lib/playtime-lifecycle";
+import { sortMatchesByPriority } from "@/lib/playtime-lifecycle";
 
 export type BabyStatusState =
   | { kind: "DADDY_COMING" }
@@ -13,9 +13,7 @@ export type BabyStatusState =
   | { kind: "NOT_STARTED" }
   | { kind: "QUIET_TIME"; etaMinutes: number | null }
   | { kind: "UP_NEXT"; matchId: string }
-  | { kind: "PLAYING"; matchId: string }
-  | { kind: "WAITING_ON_PLAYMATES"; matchId: string; deadlineAt: Date }
-  | { kind: "AWAITING_YOUR_CONFIRMATION"; matchId: string; deadlineAt: Date; reporterName: string | null };
+  | { kind: "PLAYING"; matchId: string };
 
 export async function computeBabyStatus(babyId: string, _depth = 0): Promise<BabyStatusState> {
   const baby = await prisma.baby.findUniqueOrThrow({ where: { id: babyId }, include: { playtime: true } });
@@ -39,14 +37,12 @@ export async function computeBabyStatus(babyId: string, _depth = 0): Promise<Bab
   });
   if (!participation) return { kind: "QUIET_TIME", etaMinutes: null };
 
-  await ensureMatchNotExpired(participation.matchId);
   const match = await prisma.match.findUniqueOrThrow({ where: { id: participation.matchId } });
 
   if (match.status === "CONFIRMED") {
-    // Just got lazily auto-confirmed by the check above — re-derive once
-    // (the cascade may have crowned/napped this baby, or queued a new
-    // match). Guarded against runaway recursion; in practice this never
-    // goes past depth 1.
+    // The cascade may have crowned/napped this baby, or queued a new
+    // match — re-derive once. Guarded against runaway recursion; in
+    // practice this never goes past depth 1.
     if (_depth > 2) return { kind: "QUIET_TIME", etaMinutes: null };
     return computeBabyStatus(babyId, _depth + 1);
   }
@@ -61,17 +57,11 @@ export async function computeBabyStatus(babyId: string, _depth = 0): Promise<Bab
     return { kind: "PLAYING", matchId: match.id };
   }
 
-  // REPORTED
-  if (match.reportedById === babyId) {
-    return { kind: "WAITING_ON_PLAYMATES", matchId: match.id, deadlineAt: match.deadlineAt! };
-  }
-  const reporter = match.reportedById ? await prisma.baby.findUnique({ where: { id: match.reportedById } }) : null;
-  return {
-    kind: "AWAITING_YOUR_CONFIRMATION",
-    matchId: match.id,
-    deadlineAt: match.deadlineAt!,
-    reporterName: reporter?.displayName ?? null,
-  };
+  // REPORTED is no longer reachable in practice — a baby's own report
+  // instantly confirms the match (see confirmMatchResult) — but the
+  // enum value still exists in the schema, so fall back to a generic
+  // waiting state rather than assuming this branch can't run.
+  return { kind: "QUIET_TIME", etaMinutes: null };
 }
 
 /** "matches queued ahead x rolling average duration for this game" — same priority order the scheduler uses. */

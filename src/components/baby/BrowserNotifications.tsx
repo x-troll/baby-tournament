@@ -5,16 +5,15 @@ import { useEffect, useRef, useState } from "react";
 const POLL_INTERVAL_MS = 4000;
 
 // Kinds worth interrupting someone for — the same moments Telegram
-// already pushes for (needsYourConfirmation, napped, crowned) plus
-// "your match just went live" (PLAYING), which matters most for a baby
-// who isn't looking at this tab right now. Anything else (QUIET_TIME,
-// UP_NEXT, DADDY_COMING, ...) is either not actionable from here or
-// already visible the moment they glance at the tab.
-const NOTIFIABLE_KINDS = new Set(["PLAYING", "AWAITING_YOUR_CONFIRMATION", "NAPPED", "CHAMPION"]);
+// already pushes for (napped, crowned) plus "your match just went live"
+// (PLAYING), which matters most for a baby who isn't looking at this
+// tab right now. Anything else (QUIET_TIME, UP_NEXT, DADDY_COMING, ...)
+// is either not actionable from here or already visible the moment
+// they glance at the tab.
+const NOTIFIABLE_KINDS = new Set(["PLAYING", "NAPPED", "CHAMPION"]);
 
 const NOTIFICATION_COPY: Record<string, { title: string; body: string }> = {
   PLAYING: { title: "Your match is live! 🎮", body: "Head back to your screen, it's time to play." },
-  AWAITING_YOUR_CONFIRMATION: { title: "Confirm your result ✅", body: "Someone reported a result, take a look." },
   NAPPED: { title: "Nap time 😴", body: "Your run's over for tonight, come see how you placed." },
   CHAMPION: { title: "🌟 Best Baby! 🌟", body: "You won it all, congratulations!" },
 };

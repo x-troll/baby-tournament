@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Avatar } from "@/components/ui/Avatar";
 
 export function StageBanner({
   text,
@@ -38,14 +39,7 @@ export function StageBanner({
           </div>
         )}
         <p className="font-display text-3xl font-bold tracking-wide text-active sm:text-4xl">{text}</p>
-        {trailingAvatarSrc !== undefined &&
-          (trailingAvatarSrc ? (
-            <Image src={trailingAvatarSrc} alt="" width={40} height={40} className="rounded-full" />
-          ) : (
-            <span aria-hidden className="text-3xl">
-              🍼
-            </span>
-          ))}
+        {trailingAvatarSrc !== undefined && <Avatar src={trailingAvatarSrc} size={70} />}
       </div>
       <div aria-hidden />
     </div>

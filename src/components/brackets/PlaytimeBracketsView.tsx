@@ -1,8 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import { StatusBadge } from "./StatusBadge";
+import { Avatar } from "@/components/ui/Avatar";
 import { buildTournamentFlow, type FlowBox, type FlowParticipant } from "@/lib/tournament-flow";
 import type { PlaypenSection } from "@/lib/playpen-view";
 import type { Phase2BracketData } from "@/lib/bracket-view";
@@ -43,28 +43,19 @@ function sortParticipants(p: FlowParticipant[]): FlowParticipant[] {
 }
 
 function ParticipantRow({ p }: { p: FlowParticipant }) {
-  return (
+  const row = (
     <p
-      className={`flex min-w-0 items-center gap-1 text-sm ${p.advancing ? "font-bold text-active" : "text-foreground-muted"}`}
+      className={`flex min-w-0 items-center gap-1 text-sm ${p.advancing ? "font-bold text-white" : "text-foreground-muted"}`}
     >
-      {p.avatarSrc ? (
-        <Image src={p.avatarSrc} alt="" width={16} height={16} className="shrink-0 rounded-full" />
-      ) : (
-        <span
-          aria-hidden
-          className="flex h-4 w-4 shrink-0 items-center justify-center text-[10px] leading-none"
-        >
-          🍼
-        </span>
-      )}
+      <Avatar src={p.avatarSrc} size={28} />
       <span className="min-w-0 truncate">{p.name ?? "????"}</span>
-      {p.advancing && (
-        <span aria-hidden className="shrink-0">
-          👑
-        </span>
-      )}
     </p>
   );
+  // A winner gets its own small gold-bordered card — separate per
+  // winner (a playpen box routinely has two, 1st and 2nd place both
+  // advancing) rather than one wrapper around the whole box.
+  if (!p.advancing) return row;
+  return <div className="rounded-pill border-2 border-star-gold bg-star-gold/10 px-2 py-0.5">{row}</div>;
 }
 
 function BoxCard({
@@ -93,7 +84,7 @@ function BoxCard({
       ref={boxRef}
       data-key={box.key}
       style={{ transform: `translateY(${offsetY}px)` }}
-      className={`flex w-48 flex-col gap-2 rounded-card border-2 p-3 shadow-soft transition-opacity ${borderClasses}`}
+      className={`flex w-52 flex-col gap-2 rounded-card border-2 p-3 shadow-soft transition-opacity ${borderClasses}`}
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">{box.label}</p>
@@ -122,10 +113,14 @@ function BoxCard({
  * top-down natural position for a genuine root (the very first column,
  * or an isolated box with nothing feeding it). This is *why* it comes
  * out looking like a sideways pyramid — later columns naturally
- * converge toward the middle. Losers Round 1 / Losers Final also get a
- * deliberate extra downward nudge (`LOSER_TRACK_OFFSET_PX`) and a red
- * tint so the losers track reads as visually distinct from the winners
- * track above it. Connector elbows sit a fixed short distance
+ * converge toward the middle. Siblings that land on the same (or an
+ * overlapping) target get resolved as a group, centered as a whole on
+ * their shared point rather than stacked down from whichever one
+ * sorts first — see the grouping pass below. Losers Round 1 / Losers
+ * Final still get a red tint so the losers track reads as visually
+ * distinct from the winners track above it, just no separate vertical
+ * nudge — they're positioned by the same feeder-averaging as every
+ * other box. Connector elbows sit a fixed short distance
  * (`OUT_NUB_PX`) out from the source box rather than at the geometric
  * midpoint — that's what keeps a skip-connector (Winners Final → Grand
  * Final, which skips the Losers Final column entirely) from stretching
@@ -270,23 +265,42 @@ export function PlaytimeBracketsView({
             // block against the shared axis instead.
             target = (naturalCenter.get(box.key) ?? 0) + columnOffset;
           }
-          if (box.isLoserTrack) target += LOSER_TRACK_OFFSET_PX;
           raw.push({ key: box.key, height: h, target });
           prevKey = box.key;
         }
 
-        // Phase 2: resolve overlaps — sort by raw target and push any
-        // box that's too close to its now-settled predecessor straight
-        // down, just far enough to clear it. This is the actual
-        // guarantee against collisions; Phase 1 only produces a good
-        // starting guess, not a promise of no overlap.
+        // Phase 2: resolve overlaps by grouping, not by top-down
+        // stacking. Sort by raw target, then collect maximal runs of
+        // boxes whose raw (pre-resolution) extents would overlap into
+        // one group each — two siblings landing on the *same* raw
+        // target is expected (e.g. Quarterfinal 1 and 2 both averaging
+        // the same pair of Round 2 pens), and simply stacking the
+        // second one down from the first would bias the pair toward
+        // its top box instead of keeping it centered on the shared
+        // point both were aiming for. Each group instead gets laid out
+        // top-down starting from `avgTarget - totalHeight / 2`, i.e.
+        // the whole cluster is centered on its members' average target
+        // — a lone box is just a group of one, so today's already-
+        // correct single-box case is unchanged.
         raw.sort((a, b) => a.target - b.target);
-        let prevBottom = -Infinity;
+        const groups: (typeof raw)[] = [];
         for (const box of raw) {
-          const top = Math.max(box.target - box.height / 2, prevBottom + (prevBottom === -Infinity ? 0 : BOX_GAP_PX));
-          const resolved = top + box.height / 2;
-          centerY.set(box.key, resolved);
-          prevBottom = top + box.height;
+          const lastGroup = groups.at(-1);
+          const lastBox = lastGroup?.at(-1);
+          if (lastBox && box.target - box.height / 2 < lastBox.target + lastBox.height / 2 + BOX_GAP_PX) {
+            lastGroup!.push(box);
+          } else {
+            groups.push([box]);
+          }
+        }
+        for (const group of groups) {
+          const totalHeight = group.reduce((sum, b) => sum + b.height, 0) + BOX_GAP_PX * (group.length - 1);
+          const avgTarget = group.reduce((sum, b) => sum + b.target, 0) / group.length;
+          let top = avgTarget - totalHeight / 2;
+          for (const box of group) {
+            centerY.set(box.key, top + box.height / 2);
+            top += box.height + BOX_GAP_PX;
+          }
         }
       }
 
@@ -358,6 +372,19 @@ export function PlaytimeBracketsView({
 
   if (!flow) return null;
 
+  // A column that repeats the previous column's label (today: Losers
+  // Final continuing Semifinals — see PHASE2_COLUMN_LABELS in
+  // tournament-flow.ts) is still its own real FlowColumn — it can't
+  // merge into the data model, since it genuinely resolves later,
+  // averaging feeders from *both* boxes beside it. But visually it
+  // should read as one continuous column rather than a second boxed
+  // block, so it inherits the same tint instead of alternating.
+  const columnTintGroups: number[] = [];
+  for (let i = 0; i < flow.columns.length; i++) {
+    const continuesFromPrev = flow.columns[i]!.label === flow.columns[i - 1]?.label;
+    columnTintGroups.push(continuesFromPrev ? columnTintGroups[i - 1]! : (columnTintGroups[i - 1] ?? -1) + 1);
+  }
+
   return (
     <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background p-4 pb-1">
       <div ref={containerRef} className="relative flex w-full items-stretch">
@@ -415,8 +442,14 @@ export function PlaytimeBracketsView({
           // column — skip printing the label a second time in a row so
           // it reads as one heading spanning both columns.
           const showLabel = col.label !== flow.columns[i - 1]?.label;
+          const continuesToNext = col.label === flow.columns[i + 1]?.label;
+          // Tighten the padding at a shared seam (a continuing column's
+          // own left edge, or the trailing edge of the column right
+          // before one) so the two read as flush/continuous instead of
+          // leaving the usual full column-gap between them.
+          const paddingClass = `${showLabel ? "pl-6" : "pl-2"} ${continuesToNext ? "pr-2" : "pr-6"}`;
           return (
-            <div key={col.id} className={`flex shrink-0 flex-col gap-3 px-6 py-2 ${columnTintClass(i)}`}>
+            <div key={col.id} className={`flex shrink-0 flex-col gap-3 py-2 ${paddingClass} ${columnTintClass(columnTintGroups[i]!)}`}>
               <h3 className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">
                 {showLabel ? col.label : " "}
               </h3>

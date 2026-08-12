@@ -1,12 +1,11 @@
 "use client";
 
 import { useTransition } from "react";
-import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CountdownTimer } from "./CountdownTimer";
+import { Avatar } from "@/components/ui/Avatar";
 import { ResultReportForm, type ReportableParticipant, type ResultReportFormCopy } from "./ResultReportForm";
-import { babyConfirmResultAction, babyDisputeResultAction, babyStartMatchAction } from "@/server-actions/baby-matches";
+import { babyStartMatchAction } from "@/server-actions/baby-matches";
 import type { BabyStatusState } from "@/lib/baby-status";
 
 // Plain strings only — a client component can't receive functions across
@@ -22,8 +21,6 @@ export interface StatusCardCopy {
   upNextLine: string;
   startMatchButtonLabel: string;
   playingLine: string;
-  waitingOnPlaymatesLine: string;
-  confirmationAskLine: string;
 }
 
 export interface StatusCardProps {
@@ -64,7 +61,7 @@ function renderBody(
     case "DADDY_COMING":
       return (
         <div className="flex items-center gap-3">
-          <Image src="/admin-avatar.svg" alt="" width={40} height={40} className="rounded-full" />
+          <Avatar src="/admin-avatar.svg" size={70} />
           <Headline>{copy.organizerComing}</Headline>
         </div>
       );
@@ -103,23 +100,6 @@ function renderBody(
           )}
         </>
       );
-
-    case "WAITING_ON_PLAYMATES":
-      return (
-        <>
-          <Headline>{copy.waitingOnPlaymatesLine}</Headline>
-          <CountdownTimer deadline={state.deadlineAt} doneLabel="Confirming automatically now" />
-        </>
-      );
-
-    case "AWAITING_YOUR_CONFIRMATION":
-      return (
-        <>
-          <Headline>{copy.confirmationAskLine}</Headline>
-          <CountdownTimer deadline={state.deadlineAt} doneLabel="Confirming automatically now" />
-          <ConfirmDisputeButtons slug={slug} matchId={state.matchId} />
-        </>
-      );
   }
 }
 
@@ -137,23 +117,5 @@ function StartMatchButton({ slug, matchId, label }: { slug: string; matchId: str
     >
       {label}
     </Button>
-  );
-}
-
-function ConfirmDisputeButtons({ slug, matchId }: { slug: string; matchId: string }) {
-  const [isPending, startTransition] = useTransition();
-  return (
-    <div className="flex gap-2">
-      <Button onClick={() => startTransition(() => babyConfirmResultAction(slug, matchId))} disabled={isPending}>
-        Confirm
-      </Button>
-      <Button
-        variant="destructive"
-        onClick={() => startTransition(() => babyDisputeResultAction(slug, matchId))}
-        disabled={isPending}
-      >
-        Dispute
-      </Button>
-    </div>
   );
 }

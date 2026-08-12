@@ -4,7 +4,7 @@
 // logic over live data), but centralized here rather than duplicated
 // between the initial server render and the poll endpoint.
 import { prisma } from "@/lib/prisma";
-import { ensureMatchNotExpired, sortMatchesByPriority } from "@/lib/playtime-lifecycle";
+import { sortMatchesByPriority } from "@/lib/playtime-lifecycle";
 import { buildPhase2Bracket, type Phase2BracketData } from "@/lib/bracket-view";
 import { buildPlaypenSection, type PlaypenSection } from "@/lib/playpen-view";
 import { getTerminology } from "@/lib/terminology";
@@ -81,15 +81,6 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
   if (slugNumber === null) return null;
   const playtime = await prisma.playtime.findUnique({ where: { slugNumber } });
   if (!playtime) return null;
-
-  // Lazily settle any expired-but-unconfirmed matches before rendering —
-  // the spectator screen polls constantly, so this is exactly the read
-  // path that makes the "no worker" auto-confirm design work in practice.
-  const unconfirmed = await prisma.match.findMany({
-    where: { playtimeId: playtime.id, status: "REPORTED" },
-    select: { id: true },
-  });
-  for (const m of unconfirmed) await ensureMatchNotExpired(m.id);
 
   const [matches, babies, helpRequestCount, lastEvent] = await Promise.all([
     prisma.match.findMany({
