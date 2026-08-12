@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getCurrentAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminNav } from "@/components/AdminNav";
@@ -7,24 +6,16 @@ import { AdminNav } from "@/components/AdminNav";
 // admin who happens to be signed in gets the same nav + width as the
 // rest of the admin panel; anyone else gets a bare, full-width surface
 // (no nav at all — this is what an unauthenticated spectator's
-// /playtimes/[slug] view needs to fill a projector screen edge-to-edge),
-// plus a small fixed "Login" link in the corner so a Daddy who lands
-// here signed out has a way in without knowing the URL.
+// /playtimes/[slug] view needs to fill a projector screen edge-to-edge).
+// A signed-out Daddy's way back in is a "Login" link, but that only
+// belongs on the /playtimes list itself, not the [slug] detail page (a
+// TV/projector screen shouldn't show one at all) — see playtimes/page.tsx
+// and the "All playtimes" link inside [slug]'s own header card instead.
 export default async function PlaytimesLayout({ children }: { children: React.ReactNode }) {
   const admin = await getCurrentAdmin();
 
   if (!admin) {
-    return (
-      <div className="min-h-screen w-full">
-        <Link
-          href="/login"
-          className="fixed top-3 right-3 z-20 text-sm font-semibold text-foreground-muted hover:opacity-80"
-        >
-          Login
-        </Link>
-        {children}
-      </div>
-    );
+    return <div className="min-h-screen w-full">{children}</div>;
   }
 
   const openRequestCount = await prisma.helpRequest.count({

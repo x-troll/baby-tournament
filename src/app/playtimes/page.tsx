@@ -32,10 +32,14 @@ export default async function PlaytimesListPage() {
     <div className={admin ? "flex flex-col gap-6" : "mx-auto flex max-w-5xl flex-col gap-6 p-6"}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Playtimes</h1>
-        {admin && (
+        {admin ? (
           <div className="flex gap-2">
             <CreatePlaytimeButton />
           </div>
+        ) : (
+          <Link href="/login" className="text-sm font-semibold text-foreground-muted hover:opacity-80">
+            Login
+          </Link>
         )}
       </header>
 

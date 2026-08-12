@@ -18,7 +18,6 @@ import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView
 import { AddBabyManuallyButton } from "@/components/admin/AddBabyManuallyButton";
 import { StartPlaytimeButton } from "@/components/admin/StartPlaytimeButton";
 import { SpectatorPoller } from "@/components/spectator/SpectatorPoller";
-import { RulesFooter } from "@/components/spectator/RulesFooter";
 import { NurseryCheckIn } from "@/components/spectator/NurseryCheckIn";
 import { PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
 import { removeBabyAction } from "@/server-actions/playtimes";
@@ -54,16 +53,14 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
     return (
       <>
         <script dangerouslySetInnerHTML={{ __html: FORCE_DARK_SCRIPT }} />
-        <main className="min-h-screen pb-20">
-          <div className="mx-auto max-w-[1920px] px-8 pt-6">
-            <Link href="/playtimes" className="text-sm font-semibold text-foreground-muted hover:opacity-80">
-              ← All playtimes
-            </Link>
-          </div>
-          <SpectatorPoller slug={slug} initial={state} />
-          <div className="fixed inset-x-0 bottom-0 p-4">
-            <RulesFooter summary={rules.summary} overrideNote={playtime.rulesOverrideNote} />
-          </div>
+        <main className="min-h-screen pb-8">
+          <SpectatorPoller
+            slug={slug}
+            initial={state}
+            backHref="/playtimes"
+            rulesSummary={rules.summary}
+            rulesOverrideNote={playtime.rulesOverrideNote}
+          />
         </main>
       </>
     );

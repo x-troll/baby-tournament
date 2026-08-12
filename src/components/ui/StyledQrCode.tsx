@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import QRCodeStyling from "qr-code-styling";
 
 /**
- * Light/dark palettes for the QR itself. A plain white square (and a
- * center logo baking in its own hardcoded white background, e.g.
- * website-signup-badge.svg) reads as a jarring bright hole dropped into
- * an otherwise dark page, so dark mode moves the background to the same
- * elevated-dark surface color the QR already sits inside (its
- * containing Card).
+ * Light/dark palettes for the QR itself. A plain white square reads as
+ * a jarring bright hole dropped into an otherwise dark page, so dark
+ * mode moves the background to the same elevated-dark surface color the
+ * QR already sits inside (its containing Card) — the center logo needs
+ * no theme split of its own to match, since `imageOptions.hideBackgroundDots`
+ * cuts its hole straight through to this same background color either way.
  *
  * The main dot gradient stays the same purple/pink in both modes
  * deliberately, not just for brand consistency — those medium-brightness
@@ -66,20 +66,10 @@ export function StyledQrCode({
   data,
   size = 300,
   logoSrc,
-  logoSrcDark,
 }: {
   data: string;
   size?: number;
   logoSrc?: string;
-  /**
-   * Dark-mode counterpart for logoSrc — only needed for a center image
-   * that bakes in its own fixed light background (see
-   * website-signup-badge.svg / website-signup-badge-dark.svg). Falls
-   * back to logoSrc when omitted, which is exactly right for a logo that
-   * has no fixed background of its own (the Telegram badge already
-   * reads fine against either QR background).
-   */
-  logoSrcDark?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const qrRef = useRef<QRCodeStyling | null>(null);
@@ -109,7 +99,6 @@ export function StyledQrCode({
   }, []);
 
   const palette = isDark ? QR_PALETTE.dark : QR_PALETTE.light;
-  const effectiveLogoSrc = isDark ? (logoSrcDark ?? logoSrc) : logoSrc;
 
   // Constructed once, on mount — style options never change shape after
   // that, only their values do (handled below via .update(), the API
@@ -126,7 +115,7 @@ export function StyledQrCode({
       height: size,
       data,
       margin: 4,
-      image: effectiveLogoSrc,
+      image: logoSrc,
       qrOptions: { typeNumber: 0, mode: "Byte", errorCorrectionLevel: "Q" },
       imageOptions: { hideBackgroundDots: true, imageSize: 0.5, margin: 3 },
       dotsOptions: {
@@ -160,7 +149,7 @@ export function StyledQrCode({
   useEffect(() => {
     qrRef.current?.update({
       data,
-      image: effectiveLogoSrc,
+      image: logoSrc,
       width: size,
       height: size,
       dotsOptions: {
@@ -180,7 +169,7 @@ export function StyledQrCode({
       cornersSquareOptions: { type: "extra-rounded", color: palette.cornersSquare },
       cornersDotOptions: { type: "dot", color: palette.cornersDot },
     });
-  }, [data, effectiveLogoSrc, size, palette]);
+  }, [data, logoSrc, size, palette]);
 
   return <div ref={containerRef} />;
 }

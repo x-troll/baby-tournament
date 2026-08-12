@@ -1,33 +1,63 @@
-import { StyledQrCode } from "@/components/ui/StyledQrCode";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { QrJoinCard } from "@/components/ui/QrJoinCard";
+
+/**
+ * Builds the (up to two) QR card definitions shared by every place a
+ * playtime's check-in QR appears — `JoinQrPair` below (two side by side,
+ * admin panel + the old spectator layout) and the spectator screen's
+ * three-up grid (these two plus a third "who's here" card), so the
+ * title/caption/badge on each card can never drift between call sites.
+ * Either link can be null (no TELEGRAM_BOT_USERNAME / no
+ * NEXT_PUBLIC_APP_URL configured) — the missing one is just omitted.
+ * "Scan me" only shows on the website card when Telegram is also
+ * present to be the recommended alternative; with no Telegram at all,
+ * the website QR is the only option and doesn't need a nudge toward
+ * itself.
+ */
+export function buildJoinQrCards(
+  telegramLink: string | null,
+  websiteLink: string | null,
+  size: number,
+): React.ComponentProps<typeof QrJoinCard>[] {
+  const cards: React.ComponentProps<typeof QrJoinCard>[] = [];
+  if (telegramLink) {
+    cards.push({
+      title: "Telegram signup",
+      data: telegramLink,
+      size,
+      logoSrc: "/telegram-logo.svg",
+      badge: "recommended",
+      caption: "Telegram gives you notifications a bit before and when it’s your turn.",
+    });
+  }
+  if (websiteLink) {
+    cards.push({
+      title: "Website signup",
+      data: websiteLink,
+      size,
+      logoSrc: "/website-signup-badge.svg",
+      badge: telegramLink ? "scan-me" : undefined,
+      caption: (
+        <>
+          <strong className="underline">No notifications.</strong> You&rsquo;ll need to watch this page yourself.
+        </>
+      ),
+    });
+  }
+  return cards;
+}
 
 /**
  * The join QR(s) shown wherever a playtime's check-in QR appears (admin
  * panel + spectator screen) — Telegram alongside a website-only
- * alternative for people who don't want to use Telegram at all. Each
- * QR's center image identifies the *method* (Telegram logo / "Website
- * signup" badge) rather than the game — the game itself is shown by
- * `StageBanner` above this component now, so this just says "Scan to
- * join!" and nothing else.
- *
- * Either link can be null (no TELEGRAM_BOT_USERNAME / no
- * NEXT_PUBLIC_APP_URL configured) — degrades to showing just the other
- * one, same graceful-degradation spirit as the single-QR display this
- * replaced. Renders nothing if both are null.
- *
- * Each QR + its caption sits inside the real Card component (not
- * hand-rolled classes) so the border/rounding/shadow always match every
- * other card in the app exactly. Both captions get the same min-height
- * (sized for the longer one) so the two cards stay the same height
- * regardless of which caption's text happens to wrap to more lines.
+ * alternative for people who don't want to use Telegram at all. Renders
+ * nothing if both links are null.
  *
  * Wraps to a stacked layout (flex-wrap) rather than overflowing the
  * viewport when the container's too narrow for both QR codes side by
- * side at the requested `size` — the admin panel's column and the
- * spectator screen naturally wrap at different widths since they're
- * genuinely different widths, which is fine; both render this exact
- * same component, so the QR display itself never drifts between them.
+ * side at the requested `size` — the admin panel's column naturally
+ * wraps at a different width than a wide screen would, which is fine;
+ * every card renders via the same `QrJoinCard`, so the QR display
+ * itself never drifts between them.
  */
 export function JoinQrPair({
   telegramLink,
@@ -38,44 +68,14 @@ export function JoinQrPair({
   websiteLink: string | null;
   size?: number;
 }) {
-  if (!telegramLink && !websiteLink) return null;
+  const cards = buildJoinQrCards(telegramLink, websiteLink, size);
+  if (cards.length === 0) return null;
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <p className="text-2xl font-semibold text-foreground-muted">Scan to join!</p>
-
-      <div className="flex flex-wrap items-start justify-center gap-24">
-        {telegramLink && (
-          <div className="relative flex flex-col items-center">
-            <Badge
-              variant="yellow"
-              className="absolute -top-4 -left-6 z-10 rotate-[-10deg] px-3 py-1.5 text-base animate-splash-bounce motion-reduce:animate-none"
-            >
-              RECOMMENDED
-            </Badge>
-            <Card className="flex flex-col items-center gap-2">
-              <StyledQrCode data={telegramLink} size={size} logoSrc="/telegram-logo.svg" />
-              <p className="flex min-h-[72px] max-w-[240px] items-center text-center text-base text-foreground-muted">
-                Telegram gives you notifications a bit before and when it&rsquo;s your turn.
-              </p>
-            </Card>
-          </div>
-        )}
-        {websiteLink && (
-          <Card className="flex flex-col items-center gap-2">
-            <StyledQrCode
-              data={websiteLink}
-              size={size}
-              logoSrc="/website-signup-badge.svg"
-              logoSrcDark="/website-signup-badge-dark.svg"
-            />
-            <p className="flex min-h-[72px] max-w-[240px] items-center text-center text-base text-foreground-muted">
-              <strong className="underline">No notifications.</strong> You&rsquo;ll need to watch this page
-              yourself.
-            </p>
-          </Card>
-        )}
-      </div>
+    <div className="flex flex-wrap items-start justify-center gap-24">
+      {cards.map((card) => (
+        <QrJoinCard key={card.title} {...card} />
+      ))}
     </div>
   );
 }
