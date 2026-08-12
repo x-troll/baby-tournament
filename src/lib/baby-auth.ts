@@ -45,6 +45,15 @@ export async function clearBabySession(): Promise<void> {
 const MAGIC_LINK_DURATION_SECONDS = 60 * 10; // 10 minutes — the bot can always send a fresh one
 
 /**
+ * A website-signup baby has no chat to request a fresh link from —
+ * their one bookmarkable link (see requireBabyWithToken below) has to
+ * outlive a single 10-minute window on its own, so it gets a much
+ * longer-lived token instead: 24h comfortably covers one all-night
+ * session without ever going stale mid-event.
+ */
+export const WEB_BOOKMARK_LINK_DURATION_SECONDS = 60 * 60 * 24;
+
+/**
  * The Telegram bot can't set a cookie in the baby's browser directly —
  * it's a completely separate connection (Telegram's servers hitting our
  * webhook, not the baby's phone). Instead it sends a short-lived link;
@@ -60,11 +69,14 @@ const MAGIC_LINK_DURATION_SECONDS = 60 * 10; // 10 minutes — the bot can alway
  * Overwrites any previous token/expiry — stays valid and reusable from
  * any device until it naturally expires (not consumed on first use).
  */
-export async function createMagicLinkToken(babyId: string): Promise<string> {
+export async function createMagicLinkToken(
+  babyId: string,
+  durationSeconds: number = MAGIC_LINK_DURATION_SECONDS,
+): Promise<string> {
   const token = shortId();
   await prisma.baby.update({
     where: { id: babyId },
-    data: { magicLinkToken: token, magicLinkExpiresAt: new Date(Date.now() + MAGIC_LINK_DURATION_SECONDS * 1000) },
+    data: { magicLinkToken: token, magicLinkExpiresAt: new Date(Date.now() + durationSeconds * 1000) },
   });
   return token;
 }
@@ -115,4 +127,51 @@ export async function requireBaby(playtimeSlug: string): Promise<Baby> {
     redirect(`/play/${playtimeSlug}/not-signed-in?otherPlaytime=1`);
   }
   return baby;
+}
+
+/**
+ * Same idea as requireBaby, but also accepts a bookmarked-link `?token=`
+ * fallback for when there's no session cookie yet (a fresh browser, a
+ * cleared cookie jar, or a different device) — see
+ * WEB_BOOKMARK_LINK_DURATION_SECONDS above. A cookie that already
+ * resolves *this* playtime always wins and skips the token lookup
+ * entirely: that's the "caching" behavior — a bookmarked token gets
+ * verified against the DB once, then every later visit on that same
+ * device is back on the plain cookie fast-path below.
+ *
+ * Used only by the one page a website-signup baby is told to bookmark
+ * (`/play/[slug]`) — every other baby-facing page keeps using plain
+ * requireBaby, since by the time a baby reaches them a session cookie
+ * already exists either way.
+ */
+export async function requireBabyWithToken(playtimeSlug: string, token: string | undefined): Promise<Baby> {
+  const slugNumber = parseSlugNumber(playtimeSlug);
+  const playtime = slugNumber === null ? null : await prisma.playtime.findUnique({ where: { slugNumber } });
+  if (!playtime) {
+    redirect(`/play/${playtimeSlug}/not-signed-in`);
+  }
+
+  const existing = await getCurrentBaby();
+  if (existing && existing.playtimeId === playtime.id) {
+    return existing;
+  }
+
+  if (token) {
+    // A Server Component's render can't set a cookie itself (Next
+    // throws "Cookies can only be modified in a Server Action or Route
+    // Handler") — /nursery/verify already does exactly this
+    // token-for-session exchange for Telegram's magic links, so
+    // redirecting there reuses that one code path instead of a second
+    // one. It strips the token from the URL on its way back to
+    // /play/<slug>, which is fine: the token only needs to survive in
+    // whatever URL got *bookmarked*, not in every subsequent address bar.
+    redirect(`/nursery/verify?token=${encodeURIComponent(token)}`);
+  }
+
+  if (existing) {
+    // A valid session exists, just for a different playtime — same
+    // distinction requireBaby draws above.
+    redirect(`/play/${playtimeSlug}/not-signed-in?otherPlaytime=1`);
+  }
+  redirect(`/play/${playtimeSlug}/not-signed-in`);
 }

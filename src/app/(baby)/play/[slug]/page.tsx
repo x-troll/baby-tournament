@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { requireBaby } from "@/lib/baby-auth";
+import { requireBabyWithToken } from "@/lib/baby-auth";
 import { parseSlugNumber } from "@/lib/slug-number";
 import { computeBabyStatus } from "@/lib/baby-status";
 import { getTerminology } from "@/lib/terminology";
@@ -15,9 +15,16 @@ import { StarChart, type StarChartRow } from "@/components/baby/StarChart";
 import { RequestHelpButton } from "@/components/baby/RequestHelpButton";
 import type { ReportableParticipant } from "@/components/baby/ResultReportForm";
 
-export default async function PlayPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PlayPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ token?: string }>;
+}) {
   const { slug } = await params;
-  const baby = await requireBaby(slug);
+  const { token } = await searchParams;
+  const baby = await requireBabyWithToken(slug, token);
   // requireBaby already redirected away if `slug` weren't a valid, existing
   // playtime — safe to assert non-null here.
   const playtime = await prisma.playtime.findUniqueOrThrow({ where: { slugNumber: parseSlugNumber(slug)! } });
@@ -81,6 +88,17 @@ export default async function PlayPage({ params }: { params: Promise<{ slug: str
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-4 pb-32">
       <AutoRefresh />
+
+      {token && (
+        // Only babies who arrived via the website join flow ever land
+        // here with ?token= — Telegram's magic link already strips it
+        // via /nursery/verify's redirect. This is exactly the URL to
+        // bookmark: it still logs them back in even with no cookie
+        // (cleared, or a different device) — see requireBabyWithToken.
+        <div className="rounded-card border-2 border-border bg-background-sunken p-3 text-center text-sm font-semibold">
+          📌 This is your personal link — bookmark this page now so you can get back in later.
+        </div>
+      )}
 
       <RulesBar
         game={playtime.game}
