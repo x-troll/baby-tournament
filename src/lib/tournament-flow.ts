@@ -129,7 +129,34 @@ export function buildTournamentFlow(
     if (preview) columns.push(preview);
   }
 
-  return { columns, edges: computeEdges(columns) };
+  const edges = computeEdges(columns);
+  edges.push(...computeQuarterfinalLoserEdges(columns));
+  return { columns, edges };
+}
+
+/**
+ * The one loser-track leg drawn despite the generic pass above only
+ * following `advancing` (winner) participants: Quarterfinal losers drop
+ * into Losers Round 1, and that's worth showing even though they're
+ * still rendered unbolded in their Quarterfinal box (losing there, not
+ * advancing as a winner). Matched by real shared baby id, same as every
+ * other edge, so it only ever draws what the data actually shows.
+ */
+function computeQuarterfinalLoserEdges(columns: FlowColumn[]): FlowEdge[] {
+  const losersR1 = columns.flatMap((c) => c.boxes).find((b) => b.key === "phase2-LOSERS_R1");
+  if (!losersR1) return [];
+
+  const edges: FlowEdge[] = [];
+  for (const box of columns.flatMap((c) => c.boxes)) {
+    if (!box.key.startsWith("phase2-QF")) continue;
+    for (const p of box.participants) {
+      if (p.advancing || !p.babyId) continue; // only the loser leg
+      if (losersR1.participants.some((tp) => tp.babyId === p.babyId)) {
+        edges.push({ from: box.key, to: losersR1.key });
+      }
+    }
+  }
+  return edges;
 }
 
 /**

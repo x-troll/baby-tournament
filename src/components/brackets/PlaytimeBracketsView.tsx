@@ -44,7 +44,7 @@ function ParticipantRow({ p }: { p: FlowParticipant }) {
       ) : (
         <span
           aria-hidden
-          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-background-sunken text-[10px] leading-none"
+          className="flex h-4 w-4 shrink-0 items-center justify-center text-[10px] leading-none"
         >
           🍼
         </span>
