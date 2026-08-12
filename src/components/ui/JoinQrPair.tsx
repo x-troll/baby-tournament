@@ -22,7 +22,17 @@ export function JoinQrPair({
 }: {
   telegramLink: string | null;
   websiteLink: string | null;
-  /** 360 fits both call sites side-by-side without wrapping — the admin panel's max-w-5xl content column is the tighter of the two (~1024px, vs. the spectator screen's 1600px). */
+  /**
+   * Deliberately never wraps to a stacked layout (see the pair's
+   * container below) — letting it wrap made the two QRs (and the
+   * RECOMMENDED badge's position) land in genuinely different spots
+   * between the admin panel's narrower column and the spectator
+   * screen's full-width one, at whatever browser width happened to
+   * cross each container's own wrap threshold. No contained
+   * `overflow-x` either — a narrow viewport lets the whole page scroll
+   * horizontally instead, so the RECOMMENDED badge's own negative
+   * offset never gets clipped by a scroll container edge.
+   */
   size?: number;
 }) {
   if (!telegramLink && !websiteLink) return null;
@@ -31,7 +41,7 @@ export function JoinQrPair({
     <div className="flex flex-col items-center gap-4">
       <p className="text-lg font-semibold text-foreground-muted">Scan to join!</p>
 
-      <div className="flex flex-wrap items-start justify-center gap-12">
+      <div className="flex items-start justify-center gap-24">
         {telegramLink && (
           <div className="relative flex flex-col items-center gap-2">
             <Badge
