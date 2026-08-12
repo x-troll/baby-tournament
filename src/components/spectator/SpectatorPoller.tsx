@@ -107,10 +107,23 @@ export function SpectatorPoller({
       <RulesFooter summary={rulesSummary} overrideNote={rulesOverrideNote} />
 
       {state.status === "NURSERY_OPEN" && (
-        <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-3">
+        <div
+          className={`grid grid-cols-1 items-stretch gap-8 ${
+            qrCards.length === 2
+              ? "lg:grid-cols-[auto_auto_1fr]"
+              : qrCards.length === 1
+                ? "lg:grid-cols-[auto_1fr]"
+                : ""
+          }`}
+        >
           {qrCards.map((card) => (
             <QrJoinCard key={card.title} {...card} />
           ))}
+          {/* The QR cards are only ever as wide as their fixed-size QR
+              image needs — this one grows to soak up whatever's left
+              (the `1fr` track above) so the row still reaches the
+              screen's full width instead of leaving a gap past the
+              second QR card. */}
           <Card className="flex h-full flex-col items-center gap-4">
             <h3 className="text-xl font-semibold text-foreground-muted">Littles and bigs</h3>
             <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
