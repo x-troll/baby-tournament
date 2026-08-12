@@ -23,7 +23,7 @@ export function StageBanner({
   backLabel?: string;
 }) {
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-card border-2 border-active bg-background-elevated px-6 py-4 shadow-soft">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-card border-2 border-active bg-[#2a2e58] px-6 py-4 shadow-soft">
       <div className="justify-self-start">
         {backHref && (
           <Link href={backHref} className="text-sm font-semibold text-foreground-muted hover:opacity-80">

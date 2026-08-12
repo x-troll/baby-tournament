@@ -53,7 +53,7 @@ export function QrJoinCard({
           {scanMe && (
             <Badge
               variant="yellow"
-              className="absolute -bottom-2 -right-2 z-10 rotate-[10deg] px-2 py-1 text-xs animate-splash-bounce-reverse motion-reduce:animate-none"
+              className="absolute -bottom-4 -right-2 z-10 rotate-[10deg] px-2 py-1 text-xs animate-splash-bounce-reverse motion-reduce:animate-none"
             >
               SCAN ME
             </Badge>

@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { getTerminology, getThemeSkin } from "@/lib/terminology";
 
 const SWATCHES = [
@@ -28,14 +27,11 @@ export default function StyleGuidePage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 p-6">
-      <header className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Playtime style guide</h1>
-          <p className="text-sm text-foreground-muted">
-            Design-system reference, skin: <strong>{skin}</strong>
-          </p>
-        </div>
-        <ThemeToggle />
+      <header>
+        <h1 className="text-3xl font-bold">Playtime style guide</h1>
+        <p className="text-sm text-foreground-muted">
+          Design-system reference, skin: <strong>{skin}</strong>
+        </p>
       </header>
 
       <Card

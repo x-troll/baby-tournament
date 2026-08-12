@@ -24,12 +24,6 @@ import { removeBabyAction } from "@/server-actions/playtimes";
 import { reportMatchResultFormAction, undoMatchResultAction } from "@/server-actions/matches";
 import { previewAsBabyAction } from "@/server-actions/baby-auth";
 
-// Projectors wash out dusty pastels badly (spec) — force dark regardless
-// of the room's system/localStorage preference, same no-flash pattern as
-// layout.tsx's theme script. Only applies to the public (no-admin)
-// branch below — an admin viewing this same URL keeps their own theme.
-const FORCE_DARK_SCRIPT = `document.documentElement.setAttribute("data-mode", "dark");`;
-
 /**
  * Replaces both the old /live/[slug] (public spectator screen) and
  * /admin/playtimes/[id] (admin control panel) — one URL, keyed on the
@@ -51,18 +45,15 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
     if (!state) notFound();
 
     return (
-      <>
-        <script dangerouslySetInnerHTML={{ __html: FORCE_DARK_SCRIPT }} />
-        <main className="min-h-screen pb-8">
-          <SpectatorPoller
-            slug={slug}
-            initial={state}
-            backHref="/playtimes"
-            rulesSummary={rules.summary}
-            rulesOverrideNote={playtime.rulesOverrideNote}
-          />
-        </main>
-      </>
+      <main className="min-h-screen pb-8">
+        <SpectatorPoller
+          slug={slug}
+          initial={state}
+          backHref="/playtimes"
+          rulesSummary={rules.summary}
+          rulesOverrideNote={playtime.rulesOverrideNote}
+        />
+      </main>
     );
   }
 
