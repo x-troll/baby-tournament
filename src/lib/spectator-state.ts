@@ -8,6 +8,7 @@ import { ensureMatchNotExpired, sortMatchesByPriority } from "@/lib/playtime-lif
 import { buildPhase2Bracket, type Phase2BracketData } from "@/lib/bracket-view";
 import { buildPlaypenSection, type PlaypenSection } from "@/lib/playpen-view";
 import { getTerminology } from "@/lib/terminology";
+import { resolveSelfTerm } from "@/lib/baby-terminology";
 import { parseSlugNumber } from "@/lib/slug-number";
 import { resolveAvatarSrc } from "@/lib/avatars";
 import { babyJoinDeepLink, websiteJoinLink } from "@/lib/qr";
@@ -155,7 +156,7 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
   const champion = babies.find((b) => b.status === "CHAMPION");
   const aliveCount = babies.filter((b) => b.status === "ACTIVE").length;
 
-  const stageBanner = computeStageBanner(playtime.status, matches, aliveCount);
+  const stageBanner = computeStageBanner(playtime.status, matches, aliveCount, champion ?? null);
 
   const phase2Bracket = buildPhase2Bracket(
     matches.map((m) => ({
@@ -218,8 +219,12 @@ function computeStageBanner(
   status: PlaytimeStatus,
   matches: { kind: MatchKind; round: number; status: MatchStatus; penIndex: number | null; createdAt: Date }[],
   aliveCount: number,
+  champion: { selfRoleLabel: string | null } | null,
 ): string {
-  if (status === "COMPLETE") return "🌟 BEST BABY CROWNED 🌟";
+  if (status === "COMPLETE") {
+    const term = champion ? resolveSelfTerm(champion) : getTerminology().player;
+    return `🌟 ${term.toUpperCase()} CROWNED 🌟`;
+  }
   if (status !== "IN_PROGRESS") return "Getting ready…";
 
   const current = sortMatchesByPriority(matches.filter((m) => m.status !== "CONFIRMED"))[0];
