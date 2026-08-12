@@ -1,5 +1,6 @@
 import { StyledQrCode } from "@/components/ui/StyledQrCode";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 /**
  * The join QR(s) shown wherever a playtime's check-in QR appears (admin
@@ -14,6 +15,10 @@ import { Badge } from "@/components/ui/badge";
  * NEXT_PUBLIC_APP_URL configured) — degrades to showing just the other
  * one, same graceful-degradation spirit as the single-QR display this
  * replaced. Renders nothing if both are null.
+ *
+ * Each QR + its caption sits inside the real Card component (not
+ * hand-rolled classes) so the border/rounding/shadow always match every
+ * other card in the app exactly.
  *
  * Wraps to a stacked layout (flex-wrap) rather than overflowing the
  * viewport when the container's too narrow for both QR codes side by
@@ -39,27 +44,29 @@ export function JoinQrPair({
 
       <div className="flex flex-wrap items-start justify-center gap-24">
         {telegramLink && (
-          <div className="relative flex flex-col items-center gap-2">
+          <div className="relative flex flex-col items-center">
             <Badge
               variant="yellow"
               className="absolute -top-4 -left-6 z-10 rotate-[-10deg] px-3 py-1.5 text-base animate-splash-bounce motion-reduce:animate-none"
             >
               RECOMMENDED
             </Badge>
-            <StyledQrCode data={telegramLink} size={size} logoSrc="/telegram-logo.svg" />
-            <p className="max-w-[240px] text-center text-base text-foreground-muted">
-              Telegram gives you notifications a bit before and when it&rsquo;s your turn.
-            </p>
+            <Card className="flex flex-col items-center gap-2">
+              <StyledQrCode data={telegramLink} size={size} logoSrc="/telegram-logo.svg" />
+              <p className="max-w-[240px] text-center text-base text-foreground-muted">
+                Telegram gives you notifications a bit before and when it&rsquo;s your turn.
+              </p>
+            </Card>
           </div>
         )}
         {websiteLink && (
-          <div className="flex flex-col items-center gap-2">
+          <Card className="flex flex-col items-center gap-2">
             <StyledQrCode data={websiteLink} size={size} logoSrc="/website-signup-badge.svg" />
             <p className="max-w-[240px] text-center text-base text-foreground-muted">
               <strong className="underline">No notifications</strong> — you&rsquo;ll need to watch this page
               yourself.
             </p>
-          </div>
+          </Card>
         )}
       </div>
     </div>
