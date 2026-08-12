@@ -124,7 +124,7 @@ function renderBody(
 }
 
 function Headline({ children }: { children: React.ReactNode }) {
-  return <p className="text-xl font-bold">{children}</p>;
+  return <p className="font-display text-xl font-bold">{children}</p>;
 }
 
 function StartMatchButton({ slug, matchId, label }: { slug: string; matchId: string; label: string }) {

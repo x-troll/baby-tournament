@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fredoka, Nunito } from "next/font/google";
+import { Fredoka, Comfortaa } from "next/font/google";
 import "./globals.css";
 
 const fredoka = Fredoka({
@@ -8,7 +8,7 @@ const fredoka = Fredoka({
   display: "swap",
 });
 
-const nunito = Nunito({
+const comfortaa = Comfortaa({
   subsets: ["latin"],
   variable: "--next-font-body",
   display: "swap",
@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${fredoka.variable} ${nunito.variable}`}>
+    <html lang="en" className={`${fredoka.variable} ${comfortaa.variable}`}>
       <body>{children}</body>
     </html>
   );
