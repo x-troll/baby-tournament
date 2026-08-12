@@ -23,5 +23,5 @@ export async function nukeDatabaseAction(): Promise<void> {
   await seedFirstAdminFromEnv();
 
   await clearAdminSession();
-  redirect("/admin/login");
+  redirect("/login");
 }

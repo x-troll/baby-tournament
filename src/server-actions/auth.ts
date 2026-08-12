@@ -31,5 +31,5 @@ export async function loginAction(_prevState: LoginActionState, formData: FormDa
 
 export async function logoutAction(): Promise<void> {
   await clearAdminSession();
-  redirect("/admin/login");
+  redirect("/login");
 }
