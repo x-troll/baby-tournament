@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StageBanner } from "./StageBanner";
 import { CurrentMatches } from "./CurrentMatches";
 import { HelpIndicator } from "./HelpIndicator";
@@ -27,6 +27,13 @@ const POLL_INTERVAL_MS = 3000;
  */
 export function SpectatorPoller({ slug, initial }: { slug: string; initial: SpectatorState }) {
   const [state, setState] = useState(initial);
+  const [newlyJoinedIds, setNewlyJoinedIds] = useState<Set<string>>(new Set());
+  // Whatever babyIds were already known as of the last render — not
+  // component state itself (a ref update shouldn't trigger a re-render
+  // on its own), just the comparison point each poll diffs against.
+  // Seeded from the initial server-rendered list so babies who joined
+  // before this page ever loaded don't bounce in on first paint.
+  const knownBabyIdsRef = useRef<Set<string>>(new Set(initial.registeredBabies.map((b) => b.babyId)));
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +45,14 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
         const json = await res.json();
         if (json.unchanged || cancelled) return;
 
-        setState(json.state);
+        const nextState: SpectatorState = json.state;
+        const freshlyJoined = new Set(
+          nextState.registeredBabies.map((b) => b.babyId).filter((id) => !knownBabyIdsRef.current.has(id)),
+        );
+        knownBabyIdsRef.current = new Set(nextState.registeredBabies.map((b) => b.babyId));
+
+        setState(nextState);
+        setNewlyJoinedIds(freshlyJoined);
       } catch {
         // Network hiccup — just try again next tick, nothing to surface on a TV.
       }
@@ -69,7 +83,7 @@ export function SpectatorPoller({ slug, initial }: { slug: string; initial: Spec
             gameLogoSrc={GAME_LOGO_SRC[state.game]}
             size={400}
           />
-          <RegisteredBabies babies={state.registeredBabies} />
+          <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
         </div>
       )}
 
