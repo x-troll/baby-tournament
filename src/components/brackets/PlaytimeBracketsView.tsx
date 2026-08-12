@@ -352,7 +352,7 @@ export function PlaytimeBracketsView({
 
   return (
     <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background-sunken p-4">
-      <div ref={containerRef} className="relative flex w-fit items-start gap-8">
+      <div ref={containerRef} className="relative flex w-fit items-stretch gap-8">
         <svg
           className="pointer-events-none absolute left-0 top-0 overflow-visible"
           width={canvas.width}
