@@ -11,8 +11,8 @@ export interface AvatarOption {
 }
 
 export const AVATAR_OPTIONS: AvatarOption[] = [
-  { id: "bear", label: "Bear", src: "/avatars/bear.svg" },
-  { id: "bunny", label: "Bunny", src: "/avatars/bunny.svg" },
+  { id: "giraffe", label: "Giraffe", src: "/avatars/peekabu_giraffe.png" },
+  { id: "little_king", label: "Little King", src: "/avatars/little_kings.png" },
 ];
 
 export function resolveAvatarSrc(avatarId: string | null | undefined): string | null {
