@@ -159,48 +159,64 @@ function computeQuarterfinalLoserEdges(columns: FlowColumn[]): FlowEdge[] {
   return edges;
 }
 
+/** A pen always advances exactly 2 (bracket-engine/pens.ts) — the one invariant this preview leans on. */
+const PREVIEW_WINNERS_PER_PEN = 2;
+/** Mirrors the real next round's own cap (bracket-engine/pens.ts's 4-then-3 split maximizes 4-baby pens) — keeps a preview box from turning into an ever-growing wall of "????". */
+const MAX_PREVIEW_BOX_SIZE = 4;
+
 /**
- * Exactly one column previewing whoever's already known to be advancing
- * out of the last real round — not a guess at the *next* round's actual
- * pen layout (who ends up grouped with whom isn't decided until that
- * round is seeded and created). The only thing this relies on is the
- * one true invariant that holds regardless of pen size: every pen
- * advances exactly 2 (bracket-engine/pens.ts), so the total headcount
- * is just `pens.length * 2` — no engine call needed. As pens finish,
- * their winners fill in real names here; anything not yet decided shows
- * as "????". Nothing after a round-robin (N=3 start) — that decides the
- * whole tournament directly.
+ * Previews whoever's already known to be advancing out of the last real
+ * round — not a guess at the *next* round's actual pen layout (who ends
+ * up grouped with whom isn't decided until that round is seeded and
+ * created). As pens finish, their winners fill in real names here;
+ * anything not yet decided shows as "????". Nothing after a round-robin
+ * (N=3 start) — that decides the whole tournament directly.
+ *
+ * Each pen contributes exactly 2 slots (real winners, sorted by finish
+ * position, once it's done — otherwise two placeholders), and those
+ * pairs get packed in original pen order into boxes capped at
+ * `MAX_PREVIEW_BOX_SIZE`: pen 1 + pen 2 fill the first box, pen 3 + pen
+ * 4 the next, and so on (a trailing box of just 2 if the pen count is
+ * odd). This is what keeps each box's connector arrows anchored to only
+ * the couple of pens that actually feed it — `computeEdges` below
+ * matches purely on real shared baby ids, so splitting the target boxes
+ * this way is what narrows the arrows; there's no separate arrow rule.
  */
 function buildNextRoundPreview(lastRound: PlaypenViewRound): FlowColumn | null {
   if (lastRound.isRoundRobin) return null;
 
-  const knownWinners = lastRound.pens
-    .flatMap((pen) => pen.participants)
-    .filter((p) => p.finishPosition != null && p.finishPosition <= 2)
-    .map((p) => ({ babyId: p.babyId, name: p.name, avatarSrc: p.avatarSrc }));
-  if (knownWinners.length === 0) return null; // nothing decided yet — nothing to preview
+  const penSlots = lastRound.pens.map((pen) => {
+    const winners: FlowParticipant[] = pen.participants
+      .filter((p) => p.finishPosition != null && p.finishPosition <= 2)
+      .sort((a, b) => a.finishPosition! - b.finishPosition!)
+      .map((p) => ({ babyId: p.babyId, name: p.name, advancing: false, finishPosition: null, avatarSrc: p.avatarSrc }));
+    while (winners.length < PREVIEW_WINNERS_PER_PEN) {
+      winners.push({ babyId: null, name: null, advancing: false, finishPosition: null, avatarSrc: null });
+    }
+    return winners;
+  });
 
-  const totalAdvancing = lastRound.pens.length * 2;
-  const slots = [
-    ...knownWinners,
-    ...Array.from({ length: Math.max(0, totalAdvancing - knownWinners.length) }, () => ({
-      babyId: null,
-      name: null,
-      avatarSrc: null,
-    })),
-  ];
+  if (!penSlots.some((pair) => pair.some((s) => s.babyId))) return null; // nothing decided yet — nothing to preview
+
+  const boxSlots: FlowParticipant[][] = [];
+  for (const pair of penSlots) {
+    const current = boxSlots.at(-1);
+    if (current && current.length < MAX_PREVIEW_BOX_SIZE) {
+      current.push(...pair);
+    } else {
+      boxSlots.push([...pair]);
+    }
+  }
 
   return {
     id: "next-round-preview",
     label: "Up next",
-    boxes: [
-      {
-        key: "next-round-preview-box",
-        label: "Next round",
-        status: "NOT_YET_PLAYED",
-        participants: slots.map((s) => ({ ...s, advancing: false, finishPosition: null })),
-      },
-    ],
+    boxes: boxSlots.map((participants, i) => ({
+      key: `next-round-preview-box-${i}`,
+      label: boxSlots.length > 1 ? `Next round ${i + 1}` : "Next round",
+      status: "NOT_YET_PLAYED",
+      participants,
+    })),
   };
 }
 

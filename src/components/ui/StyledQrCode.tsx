@@ -7,9 +7,12 @@ import QRCodeStyling from "qr-code-styling";
  * The QR's own palette — a plain white square would read as a jarring
  * bright hole dropped into this app's always-dark page, so the
  * background matches the same elevated-dark surface color the QR
- * already sits inside (its containing Card). The center logo needs no
- * background of its own to match, since `imageOptions.hideBackgroundDots`
- * cuts its hole straight through to this same background color.
+ * already sits inside (its containing Card). `imageOptions.hideBackgroundDots`
+ * is off (dots render everywhere, logo drawn on top) so the dots read as
+ * continuous through the QR's non-logo area; the center logo images
+ * themselves each bake in a round backdrop circle in this same
+ * background color (see public/telegram-logo.svg, public/website-signup-badge.svg)
+ * so dots don't poke into their square image footprint's corners.
  */
 const QR_PALETTE = {
   background: "#20234a",
@@ -64,7 +67,7 @@ export function StyledQrCode({
       margin: 4,
       image: logoSrc,
       qrOptions: { typeNumber: 0, mode: "Byte", errorCorrectionLevel: "Q" },
-      imageOptions: { hideBackgroundDots: true, imageSize: 0.5, margin: 3 },
+      imageOptions: { hideBackgroundDots: false, imageSize: 0.5, margin: 3 },
       dotsOptions: {
         type: "extra-rounded",
         color: QR_PALETTE.dotsColor,
