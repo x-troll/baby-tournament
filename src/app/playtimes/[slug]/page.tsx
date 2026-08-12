@@ -11,7 +11,7 @@ import { resolveAvatarSrc } from "@/lib/avatars";
 import { buildPlaypenSection } from "@/lib/playpen-view";
 import { buildPhase2Bracket } from "@/lib/bracket-view";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
@@ -268,6 +268,9 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
               {playtime.stationCount === 1 ? "" : "s"}
             </span>
           </p>
+          {playtime.status === "NURSERY_OPEN" && joinLink && (
+            <p className="mt-1 break-all text-xs text-foreground-muted">Telegram: {joinLink}</p>
+          )}
         </div>
         {playtime.status === "NURSERY_OPEN" && (
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -277,68 +280,60 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
         )}
       </header>
 
-      {playtime.status === "NURSERY_OPEN" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>The nursery (check-in)</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {joinLink || websiteLink ? (
-              <>
-                {/* Extra bottom margin, not just the CardContent gap — the
-                    "Recommended" pill pokes up and left past the QR
-                    card's own top edge (rotated, so more than its plain
-                    -top-2 offset suggests), and this line sits directly
-                    above it. */}
-                {joinLink && (
-                  <code className="mb-4 break-all text-xs text-foreground-muted">{joinLink}</code>
+      {playtime.status === "NURSERY_OPEN" &&
+        (joinLink || websiteLink ? (
+          // Breaks out of the admin layout's centered `max-w-5xl` column
+          // (see playtimes/layout.tsx) so this grid gets the same full
+          // screen width the public spectator view renders it at — inside
+          // that narrower column the QR-pair + players grid never had
+          // room to lay out as three columns and instead broke onto its
+          // own cramped, wrapped stack.
+          <div className="relative left-1/2 w-screen -translate-x-1/2 px-6 sm:px-8">
+            <div className="mx-auto max-w-[1920px]">
+              <NurseryCheckIn
+                telegramLink={joinLink}
+                websiteLink={websiteLink}
+                playersTitle={`Registered babies (${playtime.babies.length})`}
+              >
+                {playtime.babies.length === 0 ? (
+                  <p className="text-sm text-foreground-muted">Nobody yet.</p>
+                ) : (
+                  <ul className="flex w-full flex-col gap-1">
+                    {playtime.babies.map((baby) => (
+                      <li
+                        key={baby.id}
+                        className="flex items-center justify-between rounded-card border border-border bg-background px-3 py-2 text-sm"
+                      >
+                        <span>
+                          {baby.registrationOrder}. {baby.displayName ?? "(no name yet)"}
+                          {!baby.telegramChatId && (
+                            <span className="ml-2 text-xs text-foreground-muted">no Telegram</span>
+                          )}
+                        </span>
+                        <span className="flex gap-2">
+                          <form action={previewAsBabyAction.bind(null, baby.id)}>
+                            <Button type="submit" variant="secondary" size="sm">
+                              Preview
+                            </Button>
+                          </form>
+                          <form action={removeBabyAction.bind(null, playtime.id, baby.id)}>
+                            <Button type="submit" variant="ghost" size="sm">
+                              Remove
+                            </Button>
+                          </form>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-                <NurseryCheckIn
-                  telegramLink={joinLink}
-                  websiteLink={websiteLink}
-                  playersTitle={`Registered babies (${playtime.babies.length})`}
-                >
-                  {playtime.babies.length === 0 ? (
-                    <p className="text-sm text-foreground-muted">Nobody yet.</p>
-                  ) : (
-                    <ul className="flex w-full flex-col gap-1">
-                      {playtime.babies.map((baby) => (
-                        <li
-                          key={baby.id}
-                          className="flex items-center justify-between rounded-card border border-border bg-background px-3 py-2 text-sm"
-                        >
-                          <span>
-                            {baby.registrationOrder}. {baby.displayName ?? "(no name yet)"}
-                            {!baby.telegramChatId && (
-                              <span className="ml-2 text-xs text-foreground-muted">no Telegram</span>
-                            )}
-                          </span>
-                          <span className="flex gap-2">
-                            <form action={previewAsBabyAction.bind(null, baby.id)}>
-                              <Button type="submit" variant="secondary" size="sm">
-                                Preview
-                              </Button>
-                            </form>
-                            <form action={removeBabyAction.bind(null, playtime.id, baby.id)}>
-                              <Button type="submit" variant="ghost" size="sm">
-                                Remove
-                              </Button>
-                            </form>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </NurseryCheckIn>
-              </>
-            ) : (
-              <p className="text-sm text-foreground-muted">
-                Set TELEGRAM_BOT_USERNAME and/or NEXT_PUBLIC_APP_URL to show a join QR.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              </NurseryCheckIn>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-foreground-muted">
+            Set TELEGRAM_BOT_USERNAME and/or NEXT_PUBLIC_APP_URL to show a join QR.
+          </p>
+        ))}
 
       {(playtime.status === "IN_PROGRESS" || playtime.status === "COMPLETE") && (
         <>
