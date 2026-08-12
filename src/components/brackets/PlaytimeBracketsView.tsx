@@ -420,7 +420,7 @@ export function PlaytimeBracketsView({
           // it reads as one heading spanning both columns.
           const showLabel = col.label !== flow.columns[i - 1]?.label;
           return (
-            <div key={col.id} className={`flex shrink-0 flex-col gap-3 px-3 py-2 ${columnTintClass(i)}`}>
+            <div key={col.id} className={`flex shrink-0 flex-col gap-3 px-6 py-2 ${columnTintClass(i)}`}>
               <h3 className="text-center text-xs font-semibold uppercase tracking-wide text-foreground-muted">
                 {showLabel ? col.label : " "}
               </h3>
