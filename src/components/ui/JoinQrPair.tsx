@@ -63,7 +63,12 @@ export function JoinQrPair({
         )}
         {websiteLink && (
           <Card className="flex flex-col items-center gap-2">
-            <StyledQrCode data={websiteLink} size={size} logoSrc="/website-signup-badge.svg" />
+            <StyledQrCode
+              data={websiteLink}
+              size={size}
+              logoSrc="/website-signup-badge.svg"
+              logoSrcDark="/website-signup-badge-dark.svg"
+            />
             <p className="flex min-h-[72px] max-w-[240px] items-center text-center text-base text-foreground-muted">
               <strong className="underline">No notifications.</strong> You&rsquo;ll need to watch this page
               yourself.

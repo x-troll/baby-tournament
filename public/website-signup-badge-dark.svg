@@ -1,0 +1,5 @@
+<svg width="220" height="140" viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="4" width="212" height="132" rx="24" fill="#20234A" stroke="#A8B8F0" stroke-width="6"/>
+  <text x="110" y="66" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#E3B8C9">Website</text>
+  <text x="110" y="102" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#E3B8C9">signup</text>
+</svg>
