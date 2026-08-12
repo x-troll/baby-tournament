@@ -8,6 +8,8 @@
 // isn't set — keeps local dev, the Vitest suite, and the Phase 8
 // rehearsal seed script working without a real bot registered.
 
+import { logNotification } from "@/lib/notification-log";
+
 const API_BASE = "https://api.telegram.org";
 
 // Either a callback button (round-trips through the webhook as a
@@ -59,7 +61,25 @@ export async function sendMessage(
     text,
     parse_mode: opts.parseMode,
     reply_markup: opts.replyMarkup ? { inline_keyboard: opts.replyMarkup } : undefined,
-  })) as { ok: boolean; result?: { message_id: number } } | null;
+  })) as { ok: boolean; description?: string; result?: { message_id: number } } | null;
+
+  // Logged here, not inside callTelegramApi — sendMessage is the one
+  // function every notification path (notify.ts's pushes, the help-ack/
+  // resolve core, admin-link/join-flow copy) funnels through, so this is
+  // the single point that captures all of them without also logging the
+  // lower-level keyboard-editing/webhook-management calls nobody needs
+  // to audit here.
+  logNotification({
+    chatId,
+    text,
+    success: Boolean(result?.result),
+    error: !isConfigured()
+      ? "TELEGRAM_BOT_TOKEN not configured — logged only, nothing actually sent"
+      : !result?.result
+        ? (result?.description ?? "Unknown error")
+        : undefined,
+  });
+
   return result?.result ? { messageId: result.result.message_id } : null;
 }
 

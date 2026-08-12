@@ -32,6 +32,7 @@ export function AdminNav({ openRequestCount }: { openRequestCount: number }) {
             Requests
             {openRequestCount > 0 && <Badge variant="danger">{openRequestCount}</Badge>}
           </NavLink>
+          <NavLink href="/admin/notification-logs">Notification Logs</NavLink>
         </nav>
       </div>
       <div className="flex items-center gap-3 text-sm font-semibold">
