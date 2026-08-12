@@ -5,13 +5,14 @@ import { QrJoinCard } from "@/components/ui/QrJoinCard";
  * playtime's check-in QR appears — `JoinQrPair` below (two side by side,
  * admin panel + the old spectator layout) and the spectator screen's
  * three-up grid (these two plus a third "who's here" card), so the
- * title/caption/badge on each card can never drift between call sites.
+ * title/caption/badge(s) on each card can never drift between call sites.
  * Either link can be null (no TELEGRAM_BOT_USERNAME / no
  * NEXT_PUBLIC_APP_URL configured) — the missing one is just omitted.
- * "Scan me" only shows on the website card when Telegram is also
- * present to be the recommended alternative; with no Telegram at all,
- * the website QR is the only option and doesn't need a nudge toward
- * itself.
+ * Both nudges (the bouncing "Recommended" pill and the "Scan me" pill
+ * on the QR itself) land on the Telegram card when it's present —
+ * that's the one everyone should actually pick — and neither shows on
+ * the website fallback, which only exists for people who can't use
+ * Telegram at all and don't need to be sold on it further.
  */
 export function buildJoinQrCards(
   telegramLink: string | null,
@@ -25,7 +26,8 @@ export function buildJoinQrCards(
       data: telegramLink,
       size,
       logoSrc: "/telegram-logo.svg",
-      badge: "recommended",
+      recommended: true,
+      scanMe: true,
       caption: "Telegram gives you notifications a bit before and when it’s your turn.",
     });
   }
@@ -35,7 +37,6 @@ export function buildJoinQrCards(
       data: websiteLink,
       size,
       logoSrc: "/website-signup-badge.svg",
-      badge: telegramLink ? "scan-me" : undefined,
       caption: "No notifications, you’ll need to watch this page yourself.",
     });
   }

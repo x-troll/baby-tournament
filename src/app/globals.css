@@ -139,38 +139,22 @@ h4 {
   animation: splash-bounce 1s ease-in-out infinite;
 }
 
-@keyframes arrow-draw {
-  /* Path length is normalized to 1 via the SVG's own `pathLength={1}`
-     attribute, so this dash range works regardless of the path's real
-     geometric length. Opacity fades out right where the dash offset
-     resets, so the "rewind" between loops is invisible instead of
-     reading as the line snapping backward. */
+@keyframes splash-bounce-reverse {
+  /* Same pulse as splash-bounce, mirrored to a positive rotation so a
+     second pill on the same card (e.g. "Scan me" alongside
+     "Recommended") reads as visually distinct rather than a duplicate
+     of the first. */
   0%,
-  8% {
-    stroke-dashoffset: 1;
-    opacity: 0;
-  }
-  22% {
-    opacity: 1;
-  }
-  65%,
-  88% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
   100% {
-    stroke-dashoffset: 0;
-    opacity: 0;
+    transform: rotate(8deg) scale(1);
+  }
+  50% {
+    transform: rotate(8deg) scale(1.12);
   }
 }
 
-.animate-arrow-draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  /* Another deliberate infinite exception, same reasoning as
-     splash-bounce above — this keeps nudging toward the QR for as long
-     as the card's on screen. */
-  animation: arrow-draw 2.6s ease-in-out infinite;
+.animate-splash-bounce-reverse {
+  animation: splash-bounce-reverse 1s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
