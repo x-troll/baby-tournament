@@ -416,6 +416,22 @@ export function PlaytimeBracketsView({
     columnTintGroups.push(continuesFromPrev ? columnTintGroups[i - 1]! : (columnTintGroups[i - 1] ?? -1) + 1);
   }
 
+  // How many consecutive columns (including this one) share this same
+  // label, counted only at the group's first column — every sub-column
+  // in a merged group renders at the same outer width (padding/margin
+  // pairs below are deliberately mirrored so `pl-6 + pr-2` and
+  // `pl-2 + pr-6` sum to the same total), so the label can be centered
+  // across the *whole* merged band just by widening its own box to
+  // `size * 100%` and letting text-align: center do the rest — instead
+  // of sitting centered only within its own first sub-column, off-center
+  // from the true middle of the band it visually heads.
+  const labelGroupSize: number[] = flow.columns.map((col, i) => {
+    if (col.label === flow.columns[i - 1]?.label) return 0;
+    let size = 1;
+    while (flow.columns[i + size]?.label === col.label) size++;
+    return size;
+  });
+
   return (
     <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background">
       <div ref={containerRef} className="relative flex w-full items-stretch">
@@ -488,10 +504,21 @@ export function PlaytimeBracketsView({
           const headerBleedClass = `${showLabel ? "-ml-6" : "-ml-2"} ${continuesToNext ? "-mr-2" : "-mr-6"}`;
           return (
             <div key={col.id} className={`flex shrink-0 flex-col gap-3 ${paddingClass} ${columnTintClass(columnTintGroups[i]!)}`}>
-              <div className={`bg-black/30 py-2 ${headerBleedClass}`}>
-                <h3 className="text-center text-sm font-semibold uppercase tracking-wide text-foreground-muted">
-                  {showLabel ? col.label : " "}
+              <div className={`relative bg-black/30 py-2 ${headerBleedClass}`}>
+                {/* Invisible, always in flow — holds the band's height
+                    (py-2 + line box) on every sub-column, whether or not
+                    it owns the visible label. */}
+                <h3 aria-hidden className="text-center text-sm font-semibold uppercase tracking-wide opacity-0">
+                  {" "}
                 </h3>
+                {showLabel && (
+                  <h3
+                    className="pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center text-center text-sm font-semibold uppercase tracking-wide text-foreground-muted"
+                    style={{ width: `${labelGroupSize[i]! * 100}%` }}
+                  >
+                    {col.label}
+                  </h3>
+                )}
               </div>
               <div
                 className="flex flex-col gap-3 pt-1 pb-6"
