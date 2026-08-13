@@ -64,16 +64,61 @@ export async function computeBabyStatus(babyId: string, _depth = 0): Promise<Bab
   return { kind: "QUIET_TIME", etaMinutes: null };
 }
 
-/** "matches queued ahead x rolling average duration for this game" — same priority order the scheduler uses. */
+// The buffer added on top of a match's normal expected duration before
+// it's considered overdue — see `stationFreeInSec` below.
+const OVERTIME_BUFFER_SEC = 5 * 60;
+
+/**
+ * Simulates each station freeing up and picking the next match in
+ * priority order (same order the scheduler itself uses), rather than the
+ * old flat "matches ahead / station count x average duration" estimate —
+ * that ignored whichever matches are already under way. A station
+ * currently mid-match doesn't free up in a fresh `avgSec` from now; it
+ * frees up in whatever's left of (normal expected duration + 5 minute
+ * grace) *counted from the actual moment that match's players tapped
+ * "We're playing"* (its `STARTED` event), not from whenever it was
+ * created or made READY — a match that's run long already eats into that
+ * grace window instead of pushing the estimate out further. A READY
+ * match (station assigned, nobody's tapped start yet) has no such
+ * timestamp to count down from, so it's treated as freeing up in a full
+ * `avgSec` from now, same as the old model implicitly assumed for a
+ * match "in flight".
+ */
 async function computeEtaMinutes(playtimeId: string, matchId: string): Promise<number> {
   const playtime = await prisma.playtime.findUniqueOrThrow({ where: { id: playtimeId } });
   const avgSec = playtime.rollingAvgMatchDurationSec ?? playtime.defaultMatchDurationSec;
 
-  const pending = await prisma.match.findMany({ where: { playtimeId, status: "PENDING" } });
+  const [pending, active] = await Promise.all([
+    prisma.match.findMany({ where: { playtimeId, status: "PENDING" } }),
+    prisma.match.findMany({
+      where: { playtimeId, status: { in: ["IN_PROGRESS", "READY"] } },
+      include: { events: { where: { type: "STARTED" }, orderBy: { id: "desc" }, take: 1 } },
+    }),
+  ]);
+
+  const now = Date.now();
+  const maxSec = avgSec + OVERTIME_BUFFER_SEC;
+  const stationFreeInSec = active.map((m) => {
+    const startedAt = m.status === "IN_PROGRESS" ? m.events[0]?.createdAt : null;
+    if (!startedAt) return avgSec; // READY, not actually started yet — no real elapsed time to subtract
+    const elapsedSec = (now - startedAt.getTime()) / 1000;
+    return Math.max(0, maxSec - elapsedSec);
+  });
+  while (stationFreeInSec.length < playtime.stationCount) stationFreeInSec.push(0);
+
   const sorted = sortMatchesByPriority(pending);
   const myIndex = sorted.findIndex((m) => m.id === matchId);
-  const matchesAhead = Math.max(0, myIndex);
+  if (myIndex === -1) return Math.max(1, Math.round(Math.min(...stationFreeInSec) / 60));
 
-  const etaSeconds = Math.ceil((matchesAhead + 1) / playtime.stationCount) * avgSec;
-  return Math.max(1, Math.round(etaSeconds / 60));
+  let myEtaSec = 0;
+  for (let i = 0; i <= myIndex; i++) {
+    let soonestStation = 0;
+    for (let s = 1; s < stationFreeInSec.length; s++) {
+      if (stationFreeInSec[s]! < stationFreeInSec[soonestStation]!) soonestStation = s;
+    }
+    const freeInSec = stationFreeInSec[soonestStation]!;
+    if (i === myIndex) myEtaSec = freeInSec;
+    stationFreeInSec[soonestStation] = freeInSec + avgSec;
+  }
+  return Math.max(1, Math.round(myEtaSec / 60));
 }
