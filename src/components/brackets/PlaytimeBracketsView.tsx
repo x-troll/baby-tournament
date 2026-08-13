@@ -55,31 +55,30 @@ function ParticipantRow({ p }: { p: FlowParticipant }) {
   // A winner gets its own small gold pill — separate per winner (a
   // playpen box routinely has two, 1st and 2nd place both advancing)
   // rather than one wrapper around the whole box. The pill itself is a
-  // decorative `absolute` sibling that bleeds outward past the row's
-  // own box (via negative inset) instead of wrapping the row in real
-  // padding/border — that would shift the avatar+name rightward
-  // relative to a plain (non-winner) row in the same box, breaking
-  // alignment between the two. `animate-sparkle` re-plays whenever this
-  // element's class list newly includes it — on first paint if already
-  // a winner, and again if a poll update flips someone into first/second
-  // place — no diffing needed (see globals.css). The crown is the same
-  // kind of decorative absolute overlay, pinned to the pill's own right
-  // edge — it rides along on the bled background rather than sitting in
-  // the row's own flex flow, so it never pushes the truncated name/avatar
-  // pair around either.
-  //
-  // Left edge is flush with the row's own left (not bled outward like
-  // the other three sides) — the row starts with the avatar, so this
-  // puts the pill's rounded-full left cap right at the avatar's own
-  // left edge. Its curvature radius (half the pill's height) lands
-  // close enough to the avatar's own radius that the two circles read
-  // as one continuous shape instead of the avatar just sitting on a
-  // flat gold background.
+  // decorative `absolute` sibling (`inset-0`, no bleed on any side)
+  // instead of wrapping the row in real padding/border — that would
+  // shift the avatar+name rightward relative to a plain (non-winner)
+  // row in the same box, breaking alignment between the two. Zero bleed
+  // on every side (not just symmetric, but literally none) keeps the
+  // gap from the pill's edge to the box's own border equal left and
+  // right — this wrapper is itself stretched to the full row width by
+  // the participant list's flex column (default align-items: stretch),
+  // so the pill already spans edge-to-edge without needing to bleed
+  // past its own box to do it. On the left that puts the pill's
+  // rounded-full cap right at the avatar's own left edge (close enough
+  // in radius that the two circles read as one continuous shape).
+  // `animate-sparkle` re-plays whenever this element's class list newly
+  // includes it — on first paint if already a winner, and again if a
+  // poll update flips someone into first/second place — no diffing
+  // needed (see globals.css). The crown is the same kind of decorative
+  // absolute overlay, pinned to the pill's own right edge — it rides
+  // along on the pill rather than sitting in the row's own flex flow,
+  // so it never pushes the truncated name/avatar pair around either.
   return (
     <div className="relative">
       <span
         aria-hidden
-        className="absolute inset-y-0 left-0 -right-2 -z-10 rounded-pill border-2 border-star-gold bg-star-gold-fill/30 animate-sparkle motion-reduce:animate-none"
+        className="absolute inset-0 -z-10 rounded-pill border-2 border-star-gold bg-star-gold-fill/30 animate-sparkle motion-reduce:animate-none"
       />
       {row}
       <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-lg">
