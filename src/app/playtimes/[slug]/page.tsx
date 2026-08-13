@@ -252,7 +252,14 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/playtimes" className="text-sm font-semibold text-foreground-muted hover:opacity-80">
+      {/* self-start: a direct child of this flex-col container otherwise
+          gets blockified + stretched to the full row width (a flex
+          item's display is blockified per spec), so without this the
+          link's own clickable area is the whole row, not just its text. */}
+      <Link
+        href="/playtimes"
+        className="self-start text-sm font-semibold text-foreground-muted hover:opacity-80"
+      >
         ← All playtimes
       </Link>
 

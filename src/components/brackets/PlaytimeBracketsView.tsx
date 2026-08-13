@@ -81,7 +81,11 @@ function ParticipantRow({ p }: { p: FlowParticipant }) {
         className="absolute inset-0 -z-10 rounded-pill border-2 border-star-gold bg-star-gold-fill/30 animate-sparkle motion-reduce:animate-none"
       />
       {row}
-      <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-lg">
+      {/* Perched up and to the right, tilted, so it hangs half outside
+          the pill's own top edge instead of sitting centered inside it —
+          reads as "crowning" the pill rather than just another icon in
+          the row. */}
+      <span aria-hidden className="pointer-events-none absolute -top-2.5 right-0 rotate-[20deg] text-lg">
         👑
       </span>
     </div>
@@ -504,7 +508,17 @@ export function PlaytimeBracketsView({
           const headerBleedClass = `${showLabel ? "-ml-6" : "-ml-2"} ${continuesToNext ? "-mr-2" : "-mr-6"}`;
           return (
             <div key={col.id} className={`flex shrink-0 flex-col gap-3 ${paddingClass} ${columnTintClass(columnTintGroups[i]!)}`}>
-              <div className={`relative bg-black/30 py-2 ${headerBleedClass}`}>
+              {/* `relative` only on the label-owning sub-column, not every
+                  one — a continuing sub-column's header div must stay a
+                  plain non-positioned block. Positioning it too would
+                  "blockify" it into the same later-painted stacking
+                  category as the label's absolutely-positioned overlay
+                  below, and since it's a later DOM sibling it would then
+                  paint its own bg-black/30 on top of the tail end of the
+                  overflowing label text instead of underneath it --
+                  visibly darkening exactly the letters that spill past
+                  the first sub-column's own width. */}
+              <div className={`${showLabel ? "relative " : ""}bg-black/30 py-2 ${headerBleedClass}`}>
                 {/* Invisible, always in flow — holds the band's height
                     (py-2 + line box) on every sub-column, whether or not
                     it owns the visible label. */}
@@ -513,7 +527,7 @@ export function PlaytimeBracketsView({
                 </h3>
                 {showLabel && (
                   <h3
-                    className="pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center text-center text-sm font-semibold uppercase tracking-wide text-foreground-muted"
+                    className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center justify-center text-center text-sm font-semibold uppercase tracking-wide text-foreground-muted"
                     style={{ width: `${labelGroupSize[i]! * 100}%` }}
                   >
                     {col.label}
