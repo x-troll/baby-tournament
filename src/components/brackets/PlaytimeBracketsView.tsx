@@ -62,7 +62,11 @@ function ParticipantRow({ p }: { p: FlowParticipant }) {
   // alignment between the two. `animate-sparkle` re-plays whenever this
   // element's class list newly includes it — on first paint if already
   // a winner, and again if a poll update flips someone into first/second
-  // place — no diffing needed (see globals.css).
+  // place — no diffing needed (see globals.css). The crown is the same
+  // kind of decorative absolute overlay, pinned to the pill's own right
+  // edge — it rides along on the bled background rather than sitting in
+  // the row's own flex flow, so it never pushes the truncated name/avatar
+  // pair around either.
   return (
     <div className="relative">
       <span
@@ -70,6 +74,9 @@ function ParticipantRow({ p }: { p: FlowParticipant }) {
         className="absolute -inset-x-2 -inset-y-0.5 -z-10 rounded-pill border-2 border-star-gold bg-star-gold-fill/30 animate-sparkle motion-reduce:animate-none"
       />
       {row}
+      <span aria-hidden className="pointer-events-none absolute -right-1 top-1/2 -translate-y-1/2 text-xs">
+        👑
+      </span>
     </div>
   );
 }
