@@ -67,14 +67,12 @@ export interface SpectatorState {
   registeredBabies: SpectatorParticipant[];
 }
 
-const PHASE2_LABELS: Partial<Record<MatchKind, string>> = {
-  [MatchKind.QF1]: "QUARTERFINALS",
-  [MatchKind.QF2]: "QUARTERFINALS",
-  [MatchKind.LOSERS_R1]: "LOSERS ROUND 1",
-  [MatchKind.WINNERS_FINAL]: "WINNERS FINAL",
-  [MatchKind.LOSERS_FINAL]: "LOSERS SEMI-FINAL",
-  [MatchKind.GRAND_FINAL]: "GRAND FINAL",
-};
+// Skin is a whole-process/deployment setting, not per-request — same
+// module-level resolution bracket-view.ts/tournament-flow.ts/
+// player-copy.ts already use, shared here by both computeSpectatorState
+// and computeStageBanner (a separate top-level function below) instead
+// of each calling getTerminology() on its own.
+const t = getTerminology();
 
 export async function computeSpectatorState(slug: string): Promise<SpectatorState | null> {
   const slugNumber = parseSlugNumber(slug);
@@ -172,7 +170,6 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
         }))
       : [];
 
-  const t = getTerminology();
   const playpens = buildPlaypenSection(
     matches.map((m) => ({
       id: m.id,
@@ -182,8 +179,7 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
       status: m.status,
       participants: m.participants.map(toParticipant),
     })),
-    t.groupStageHeat,
-    t.groupStageHeatPlural,
+    t,
   );
 
   return {
@@ -215,7 +211,7 @@ function computeStageBanner(
   champion: { selfRoleLabel: string | null; displayName: string | null } | null,
 ): string {
   if (status === "COMPLETE") {
-    const term = champion ? resolveSelfTerm(champion) : getTerminology().player;
+    const term = champion ? resolveSelfTerm(champion) : t.player;
     const name = champion?.displayName ?? "Unnamed baby";
     return `The very best ${term} won, ${name}`;
   }
@@ -226,5 +222,5 @@ function computeStageBanner(
 
   if (current.kind === MatchKind.ROUND_ROBIN) return "ROUND ROBIN, 3 babies";
   if (current.kind === MatchKind.PLAYPEN) return `PLAYPEN ROUND ${current.round}, ${aliveCount} babies left`;
-  return PHASE2_LABELS[current.kind] ?? current.kind;
+  return (t.phase2BannerLabel as Partial<Record<MatchKind, string>>)[current.kind] ?? current.kind;
 }

@@ -11,6 +11,11 @@
 import type { PlaypenSection, PlaypenViewRound } from "./playpen-view";
 import type { Phase2BracketData } from "./bracket-view";
 import { toDisplayStatus, type DisplayStatus } from "./match-status";
+import { getTerminology } from "./terminology";
+
+// Skin is a whole-process/deployment setting, not per-request — same
+// module-level resolution as bracket-view.ts/player-copy.ts.
+const t = getTerminology();
 
 export interface FlowParticipant {
   babyId: string | null;
@@ -27,6 +32,8 @@ export interface FlowBox {
   key: string;
   label: string;
   status: DisplayStatus;
+  /** Pre-resolved display text for `status` — see Phase2Box.statusLabel (bracket-view.ts) for why this is resolved here instead of inside the client-rendered StatusBadge. */
+  statusLabel: string;
   participants: FlowParticipant[];
   /** Losers Round 1 / Losers Final — rendered lower and red-tinted so the losers track visually reads as distinct from the winners track. */
   isLoserTrack?: boolean;
@@ -48,18 +55,13 @@ export interface TournamentFlow {
   edges: FlowEdge[];
 }
 
-const PHASE2_COLUMN_LABELS: Record<number, string> = {
-  1: "Quarterfinals",
-  2: "Semifinals",
-  // Same label as col 2 on purpose — Losers Final is a genuinely separate
-  // column (it depends on *both* Semifinal results, so it can't share
-  // their column without misrepresenting timing), but conceptually it's
-  // still part of the semifinal round. The renderer suppresses a header
-  // that repeats the previous column's, so this reads as one "Semifinals"
-  // heading spanning both columns rather than two stacked identical ones.
-  3: "Semifinals",
-  4: "Grand final",
-};
+// Column 3 (Losers Final) deliberately shares column 2's label on purpose
+// — it's a genuinely separate column (it depends on *both* Semifinal
+// results, so it can't share their column without misrepresenting
+// timing), but conceptually it's still part of the semifinal round. The
+// renderer suppresses a header that repeats the previous column's, so
+// this reads as one "Semifinals" heading spanning both columns rather
+// than two stacked identical ones. See terminology.ts's phase2ColumnLabel.
 
 const LOSER_TRACK_KINDS = new Set(["LOSERS_R1", "LOSERS_FINAL"]);
 
@@ -76,18 +78,22 @@ export function buildTournamentFlow(
     columns.push({
       id: `round-${round.round}`,
       label: round.label,
-      boxes: round.pens.map((pen) => ({
-        key: `pen-${pen.matchId}`,
-        label: pen.label,
-        status: toDisplayStatus(pen.status, pen.isNextUp),
-        participants: pen.participants.map((p) => ({
-          babyId: p.babyId,
-          name: p.name,
-          advancing: p.finishPosition != null && p.finishPosition <= advancingThreshold,
-          finishPosition: p.finishPosition,
-          avatarSrc: p.avatarSrc,
-        })),
-      })),
+      boxes: round.pens.map((pen) => {
+        const status = toDisplayStatus(pen.status, pen.isNextUp);
+        return {
+          key: `pen-${pen.matchId}`,
+          label: pen.label,
+          status,
+          statusLabel: t.matchStatusLabel[status],
+          participants: pen.participants.map((p) => ({
+            babyId: p.babyId,
+            name: p.name,
+            advancing: p.finishPosition != null && p.finishPosition <= advancingThreshold,
+            finishPosition: p.finishPosition,
+            avatarSrc: p.avatarSrc,
+          })),
+        };
+      }),
     });
   }
 
@@ -101,11 +107,12 @@ export function buildTournamentFlow(
       if (boxesInCol.length === 0) continue;
       columns.push({
         id: `phase2-col-${col}`,
-        label: PHASE2_COLUMN_LABELS[col]!,
+        label: t.phase2ColumnLabel[col],
         boxes: boxesInCol.map((box) => ({
           key: `phase2-${box.kind}`,
           label: box.label,
           status: box.status,
+          statusLabel: box.statusLabel,
           isLoserTrack: LOSER_TRACK_KINDS.has(box.kind),
           // Only the winner counts as "advancing" — the loser still
           // appears (in whatever box the DB says they landed in, e.g.
@@ -232,11 +239,12 @@ function buildNextRoundPreview(lastRound: PlaypenViewRound): FlowColumn | null {
 
   return {
     id: "next-round-preview",
-    label: "Up next",
+    label: t.upNextColumnLabel,
     boxes: boxSlots.map((participants, i) => ({
       key: `next-round-preview-box-${i}`,
-      label: boxSlots.length > 1 ? `Next round ${i + 1}` : "Next round",
+      label: boxSlots.length > 1 ? t.nextRoundLabel(i + 1) : t.nextRoundLabel(),
       status: "NOT_YET_PLAYED",
+      statusLabel: t.matchStatusLabel.NOT_YET_PLAYED,
       participants,
     })),
   };

@@ -122,7 +122,7 @@ function BoxCard({
     >
       <div className="flex flex-col gap-0.5">
         <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">{box.label}</p>
-        <StatusBadge status={box.status} />
+        <StatusBadge status={box.status} label={box.statusLabel} />
       </div>
       <div className="flex flex-col gap-2">
         {sortParticipants(box.participants).map((p, i) => (

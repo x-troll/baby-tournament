@@ -10,6 +10,13 @@
 // via computeSpectatorState, and by the admin page directly.
 import type { MatchKind, MatchStatus } from "@/generated/prisma/enums";
 import type { DisplayStatus } from "./match-status";
+import { getTerminology, type Phase2StageKind } from "./terminology";
+
+// Skin is a whole-process/deployment setting (THEME env var), not
+// per-request, so resolving it once at module load — same pattern
+// player-copy.ts uses — is safe; no need to thread it through as a
+// function parameter.
+const t = getTerminology();
 
 export interface Phase2BracketParticipantInput {
   babyId: string;
@@ -38,6 +45,8 @@ export interface Phase2Box {
   kind: string;
   label: string;
   status: Phase2BoxStatus;
+  /** Pre-resolved display text for `status` — resolved here (server-side) rather than in the client-rendered StatusBadge, since getTerminology() reads a non-NEXT_PUBLIC_ env var that's unavailable once bundled into client code (see StatusBadge.tsx). */
+  statusLabel: string;
   /** Purely for layout — two visual tracks so QF1→WINNERS_FINAL and QF2→LOSERS_R1 read as distinct paths that later merge. */
   row: "a" | "b";
   col: 1 | 2 | 3 | 4;
@@ -48,13 +57,13 @@ export interface Phase2BracketData {
   boxes: Phase2Box[];
 }
 
-const STAGES: { kind: MatchKind; label: string; row: "a" | "b"; col: 1 | 2 | 3 | 4 }[] = [
-  { kind: "QF1" as MatchKind, label: "Playpen 1", row: "a", col: 1 },
-  { kind: "QF2" as MatchKind, label: "Playpen 2", row: "b", col: 1 },
-  { kind: "WINNERS_FINAL" as MatchKind, label: "Winner playpen", row: "a", col: 2 },
-  { kind: "LOSERS_R1" as MatchKind, label: "Losers playpen", row: "b", col: 2 },
-  { kind: "LOSERS_FINAL" as MatchKind, label: "Losers semi-final", row: "b", col: 3 },
-  { kind: "GRAND_FINAL" as MatchKind, label: "Grand final", row: "a", col: 4 },
+const STAGES: { kind: Phase2StageKind; row: "a" | "b"; col: 1 | 2 | 3 | 4 }[] = [
+  { kind: "QF1", row: "a", col: 1 },
+  { kind: "QF2", row: "b", col: 1 },
+  { kind: "WINNERS_FINAL", row: "a", col: 2 },
+  { kind: "LOSERS_R1", row: "b", col: 2 },
+  { kind: "LOSERS_FINAL", row: "b", col: 3 },
+  { kind: "GRAND_FINAL", row: "a", col: 4 },
 ];
 
 /**
@@ -92,8 +101,9 @@ export function buildPhase2Bracket(matches: Phase2BracketMatchInput[]): Phase2Br
 
     return {
       kind: stage.kind,
-      label: stage.label,
+      label: t.phase2StageLabel[stage.kind],
       status,
+      statusLabel: t.matchStatusLabel[status],
       row: stage.row,
       col: stage.col,
       participants: [slots[0]!, slots[1]!],

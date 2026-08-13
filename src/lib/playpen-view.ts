@@ -5,6 +5,7 @@
 // no React — computed once in computeSpectatorState and shared by both
 // the initial server render and the poll endpoint.
 import type { MatchKind, MatchStatus } from "@/generated/prisma/enums";
+import type { Terminology } from "./terminology";
 
 export interface PlaypenViewParticipant {
   babyId: string;
@@ -47,22 +48,25 @@ export interface PlaypenSection {
 
 const GROUP_STAGE_KINDS = new Set<MatchKind>(["PLAYPEN", "ROUND_ROBIN"] as MatchKind[]);
 
-/** Returns `null` once no group-stage matches exist yet (before start, or once every round has resolved and left no trace to show — in practice always non-null after `startPlaytime`). */
-export function buildPlaypenSection(
-  matches: PlaypenViewMatchInput[],
-  heatLabel: string,
-  heatLabelPlural: string,
-): PlaypenSection | null {
+/**
+ * Returns `null` once no group-stage matches exist yet (before start, or
+ * once every round has resolved and left no trace to show — in practice
+ * always non-null after `startPlaytime`). Takes the whole `Terminology`
+ * object (rather than calling `getTerminology()` itself) to stay a pure
+ * data transform — same style as its existing `heatLabel`/`heatLabelPlural`
+ * params before this, just extended to cover the round/match labels too.
+ */
+export function buildPlaypenSection(matches: PlaypenViewMatchInput[], t: Terminology): PlaypenSection | null {
   const heatMatches = matches.filter((m) => GROUP_STAGE_KINDS.has(m.kind));
   if (heatMatches.length === 0) return null;
 
-  const heatLabelTitled = heatLabel.charAt(0).toUpperCase() + heatLabel.slice(1);
+  const heatLabelTitled = t.groupStageHeat.charAt(0).toUpperCase() + t.groupStageHeat.slice(1);
   const rounds = [...new Set(heatMatches.map((m) => m.round))].sort((a, b) => a - b);
   const lastRound = rounds.at(-1);
 
   return {
-    heatLabel,
-    heatLabelPlural,
+    heatLabel: t.groupStageHeat,
+    heatLabelPlural: t.groupStageHeatPlural,
     rounds: rounds.map((round) => {
       const inRound = heatMatches.filter((m) => m.round === round);
       const isRoundRobin = inRound.some((m) => m.kind === "ROUND_ROBIN");
@@ -77,10 +81,10 @@ export function buildPlaypenSection(
       return {
         round,
         isRoundRobin,
-        label: isRoundRobin ? "Round-robin" : `Round ${round}`,
+        label: isRoundRobin ? t.roundRobinRoundLabel : t.roundLabel(round),
         pens: sorted.map((m, i) => ({
           matchId: m.id,
-          label: isRoundRobin ? `Match ${i + 1}` : `${heatLabelTitled} ${(m.penIndex ?? 0) + 1}`,
+          label: isRoundRobin ? t.roundRobinMatchLabel(i + 1) : `${heatLabelTitled} ${(m.penIndex ?? 0) + 1}`,
           status: m.status,
           isNextUp: m.id === nextUpMatchId,
           participants: m.participants,

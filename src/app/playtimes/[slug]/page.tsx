@@ -107,8 +107,7 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
       status: m.status,
       participants: m.participants.map(toParticipant),
     })),
-    t.groupStageHeat,
-    t.groupStageHeatPlural,
+    t,
   );
 
   const phase2Bracket = buildPhase2Bracket(
