@@ -190,7 +190,8 @@ export function PlaytimeBracketsView({
   // untransformed stacking order, so without this a column whose boxes
   // get pushed down toward the shared axis would visually spill out
   // past both its own alternating-tint background (which stops at the
-  // untransformed height) and the outer container's bottom padding.
+  // untransformed height) and its own wrapper's bottom padding (`pb-6`
+  // below, in the column render below).
   const [colHeights, setColHeights] = useState<Map<string, number>>(new Map());
 
   useLayoutEffect(() => {
@@ -494,7 +495,7 @@ export function PlaytimeBracketsView({
                 </h3>
               </div>
               <div
-                className="flex flex-col gap-3 pt-1 pb-2"
+                className="flex flex-col gap-3 pt-1 pb-6"
                 style={{ minHeight: colHeights.get(col.id) }}
                 ref={(el) => {
                   if (el) colBoxWrapperEls.current.set(col.id, el);
