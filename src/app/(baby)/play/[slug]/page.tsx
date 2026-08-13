@@ -10,9 +10,10 @@ import { loadRules } from "@/lib/rules-content";
 import * as playerCopy from "@/lib/player-copy";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { StatusCard, type StatusCardCopy } from "@/components/baby/StatusCard";
-import { StarChart, type StarChartRow } from "@/components/baby/StarChart";
 import { RequestHelpButton } from "@/components/baby/RequestHelpButton";
 import { BrowserNotifications } from "@/components/baby/BrowserNotifications";
+import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
+import { computeSpectatorState } from "@/lib/spectator-state";
 import type { ReportableParticipant } from "@/components/baby/ResultReportForm";
 
 export default async function PlayPage({
@@ -45,23 +46,11 @@ export default async function PlayPage({
     }));
   }
 
-  const allBabies = await prisma.baby.findMany({
-    where: { playtimeId: playtime.id },
-    orderBy: [{ status: "asc" }, { finalPlacement: "asc" }, { registrationOrder: "asc" }],
-  });
-  const goldStarCounts = await prisma.matchParticipant.groupBy({
-    by: ["babyId"],
-    where: { babyId: { in: allBabies.map((b) => b.id) }, finishPosition: 1 },
-    _count: { _all: true },
-  });
-  const goldStarMap = new Map(goldStarCounts.map((g) => [g.babyId, g._count._all]));
-  const starChartRows: StarChartRow[] = allBabies.map((b) => ({
-    babyId: b.id,
-    displayName: b.displayName,
-    status: b.status,
-    finalPlacement: b.finalPlacement,
-    goldStars: goldStarMap.get(b.id) ?? 0,
-  }));
+  // Reuses the same view-model the spectator screen/admin panel build
+  // their bracket diagram from (src/lib/spectator-state.ts) — same data,
+  // same PlaytimeBracketsView component, instead of this page keeping
+  // its own standings table in sync separately.
+  const spectatorState = await computeSpectatorState(slug);
 
   const rules = await loadRules(playtime.game);
 
@@ -84,6 +73,13 @@ export default async function PlayPage({
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-4 pb-32">
       <AutoRefresh />
 
+      <div className="flex items-center justify-end gap-3">
+        <BrowserNotifications slug={slug} />
+        <Link href={`/play/${slug}/settings`} className="text-sm font-semibold text-foreground-muted underline">
+          ⚙️ Settings
+        </Link>
+      </div>
+
       {token && (
         // Only babies who arrived via the website join flow ever land
         // here with ?token= — Telegram's magic link already strips it
@@ -103,13 +99,6 @@ export default async function PlayPage({
         <h1 className="font-display text-2xl font-bold">
           Welcome, {baby.selfRoleLabel ? `${baby.selfRoleLabel} ${baby.displayName}` : baby.displayName}
         </h1>
-      </div>
-
-      <div className="flex items-center justify-end gap-3">
-        <BrowserNotifications slug={slug} />
-        <Link href={`/play/${slug}/settings`} className="text-sm font-semibold text-foreground-muted underline">
-          ⚙️ Settings
-        </Link>
       </div>
 
       <StatusCard
@@ -134,7 +123,7 @@ export default async function PlayPage({
         }
       />
 
-      <StarChart rows={starChartRows} currentBabyId={baby.id} viewerBaby={baby} />
+      <PlaytimeBracketsView playpens={spectatorState?.playpens ?? null} phase2Bracket={spectatorState?.phase2Bracket ?? null} />
 
       <RequestHelpButton
         slug={slug}

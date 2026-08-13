@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/Avatar";
 import { RulesBar, type RulesBarProps } from "@/components/rules/RulesBar";
+import { useRulesExpanded } from "@/components/rules/useRulesExpanded";
 import { ResultReportForm, type ReportableParticipant, type ResultReportFormCopy } from "./ResultReportForm";
 import { babyStartMatchAction } from "@/server-actions/baby-matches";
 import type { BabyStatusState } from "@/lib/baby-status";
@@ -87,12 +88,7 @@ function renderBody(
         <>
           <Headline>{copy.upNextLine}</Headline>
           <StartMatchButton slug={slug} matchId={state.matchId} label={copy.startMatchButtonLabel} />
-          {rules && (
-            <div className="flex flex-col gap-1">
-              <RulesBar {...rules} />
-              <p className="text-xs text-foreground-muted">Click to see full rulesets for this match</p>
-            </div>
-          )}
+          {rules && <RulesSection rules={rules} />}
         </>
       );
 
@@ -111,6 +107,22 @@ function renderBody(
         </>
       );
   }
+}
+
+// Own component (not just a conditional block inside renderBody) so
+// useRulesExpanded is only ever called while a rules bar actually
+// exists — renderBody itself isn't a component, and calling a hook
+// conditionally inside it would break the rules of hooks.
+function RulesSection({ rules }: { rules: Omit<RulesBarProps, "initialExpanded" | "instanceId"> }) {
+  const expanded = useRulesExpanded(rules.game);
+  return (
+    <div className="mt-2 flex flex-col gap-1">
+      <RulesBar {...rules} />
+      {/* Redundant once the panel itself is open, so it only shows
+          collapsed — reappears the moment the bar is closed again. */}
+      {!expanded && <p className="text-xs text-foreground-muted">Click to see full rulesets for this match</p>}
+    </div>
+  );
 }
 
 function Headline({ children }: { children: React.ReactNode }) {

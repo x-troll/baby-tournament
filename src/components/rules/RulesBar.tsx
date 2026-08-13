@@ -1,8 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import type { Game } from "@/generated/prisma/enums";
 import { RulesPanel, type RulesPanelScreenshot } from "./RulesPanel";
+import { rulesStorageKey, useRulesExpanded } from "./useRulesExpanded";
 
 export interface RulesBarProps {
   game: Game;
@@ -26,19 +26,6 @@ export interface RulesBarProps {
   instanceId?: string;
 }
 
-function storageKey(game: Game, instanceId?: string): string {
-  return `playtime-rules-expanded-${game}${instanceId ? `-${instanceId}` : ""}`;
-}
-
-function subscribe(onStoreChange: () => void): () => void {
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener("playtime-rules-toggle", onStoreChange);
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener("playtime-rules-toggle", onStoreChange);
-  };
-}
-
 /**
  * Persistent, compact rules bar — the one-line summary, always visible,
  * never behind a menu. Tapping it expands a collapsible accordion panel.
@@ -55,18 +42,10 @@ export function RulesBar({
   initialExpanded,
   instanceId,
 }: RulesBarProps) {
-  const key = storageKey(game, instanceId);
+  const key = rulesStorageKey(game, instanceId);
   const panelId = `rules-panel-${game}${instanceId ? `-${instanceId}` : ""}`;
 
-  const getSnapshot = () => {
-    const stored = window.localStorage.getItem(key);
-    if (stored === "true") return true;
-    if (stored === "false") return false;
-    return initialExpanded ?? false;
-  };
-  const getServerSnapshot = () => initialExpanded ?? false;
-
-  const expanded = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const expanded = useRulesExpanded(game, instanceId, initialExpanded);
 
   function toggle() {
     const next = !expanded;
