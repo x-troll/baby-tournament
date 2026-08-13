@@ -8,6 +8,7 @@ import { getTerminology } from "@/lib/terminology";
 import { resolveAvatarSrc } from "@/lib/avatars";
 import { loadRules } from "@/lib/rules-content";
 import * as playerCopy from "@/lib/player-copy";
+import { buttonVariants } from "@/components/ui/button";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { StatusCard, type StatusCardCopy } from "@/components/baby/StatusCard";
 import { RequestHelpButton } from "@/components/baby/RequestHelpButton";
@@ -73,13 +74,6 @@ export default async function PlayPage({
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-4 pb-32">
       <AutoRefresh />
 
-      <div className="flex items-center justify-end gap-3">
-        <BrowserNotifications slug={slug} />
-        <Link href={`/play/${slug}/settings`} className="text-sm font-semibold text-foreground-muted underline">
-          ⚙️ Settings
-        </Link>
-      </div>
-
       {token && (
         // Only babies who arrived via the website join flow ever land
         // here with ?token= — Telegram's magic link already strips it
@@ -91,7 +85,12 @@ export default async function PlayPage({
         </div>
       )}
 
-      <div className="flex items-center justify-center gap-3">
+      {/* Settings sits in the same row as the welcome title (not its own
+          row above/below) so the two share a height — absolutely
+          positioned against this row rather than a real flex sibling, so
+          its width doesn't throw off the avatar+title group's own
+          centering. */}
+      <div className="relative flex items-center justify-center gap-3">
         <h2 className="sr-only">
           {playtime.name}, {t.player} screen
         </h2>
@@ -99,6 +98,16 @@ export default async function PlayPage({
         <h1 className="font-display text-2xl font-bold">
           Welcome, {baby.selfRoleLabel ? `${baby.selfRoleLabel} ${baby.displayName}` : baby.displayName}
         </h1>
+        <div className="absolute right-0 flex items-center gap-3">
+          <BrowserNotifications slug={slug} />
+          <Link
+            href={`/play/${slug}/settings`}
+            aria-label="Settings"
+            className={buttonVariants({ variant: "secondary", size: "icon" })}
+          >
+            <span aria-hidden>⚙️</span>
+          </Link>
+        </div>
       </div>
 
       <StatusCard

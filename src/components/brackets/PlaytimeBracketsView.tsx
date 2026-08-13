@@ -67,11 +67,19 @@ function ParticipantRow({ p }: { p: FlowParticipant }) {
   // edge — it rides along on the bled background rather than sitting in
   // the row's own flex flow, so it never pushes the truncated name/avatar
   // pair around either.
+  //
+  // Left edge is flush with the row's own left (not bled outward like
+  // the other three sides) — the row starts with the avatar, so this
+  // puts the pill's rounded-full left cap right at the avatar's own
+  // left edge. Its curvature radius (half the pill's height) lands
+  // close enough to the avatar's own radius that the two circles read
+  // as one continuous shape instead of the avatar just sitting on a
+  // flat gold background.
   return (
     <div className="relative">
       <span
         aria-hidden
-        className="absolute -inset-x-2 -inset-y-0.5 -z-10 rounded-pill border-2 border-star-gold bg-star-gold-fill/30 animate-sparkle motion-reduce:animate-none"
+        className="absolute -inset-y-0.5 left-0 -right-2 -z-10 rounded-pill border-2 border-star-gold bg-star-gold-fill/30 animate-sparkle motion-reduce:animate-none"
       />
       {row}
       <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-lg">
@@ -409,7 +417,7 @@ export function PlaytimeBracketsView({
   }
 
   return (
-    <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background p-4 pb-1">
+    <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background">
       <div ref={containerRef} className="relative flex w-full items-stretch">
         <svg
           className="pointer-events-none absolute left-0 top-0 overflow-visible"
