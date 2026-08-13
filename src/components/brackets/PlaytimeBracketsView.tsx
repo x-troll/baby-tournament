@@ -79,7 +79,7 @@ function ParticipantRow({ p }: { p: FlowParticipant }) {
     <div className="relative">
       <span
         aria-hidden
-        className="absolute -inset-y-0.5 left-0 -right-2 -z-10 rounded-pill border-2 border-star-gold bg-star-gold-fill/30 animate-sparkle motion-reduce:animate-none"
+        className="absolute inset-y-0 left-0 -right-2 -z-10 rounded-pill border-2 border-star-gold bg-star-gold-fill/30 animate-sparkle motion-reduce:animate-none"
       />
       {row}
       <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-lg">
