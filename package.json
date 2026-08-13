@@ -22,6 +22,7 @@
     "db:seed": "tsx scripts/ensure-admin-seed.ts",
     "rehearsal": "tsx scripts/rehearsal-seed.ts",
     "rehearsal:telegram": "tsx scripts/rehearsal-with-telegram.ts",
+    "seed:demo": "tsx scripts/seed-demo-tournaments.ts",
     "tunnel": "tsx scripts/dev-tunnel.ts"
   },
   "dependencies": {
