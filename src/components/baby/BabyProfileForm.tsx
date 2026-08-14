@@ -1,5 +1,5 @@
 import { Avatar } from "@/components/ui/Avatar";
-import { AVATAR_OPTIONS } from "@/lib/avatars";
+import { AVATAR_GROUPS } from "@/lib/avatars";
 import { SELF_ROLE_OPTIONS } from "@/lib/baby-terminology";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,23 +51,32 @@ export function BabyProfileForm({
         <CardHeader>
           <CardTitle>Pick a picture</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          {AVATAR_OPTIONS.map((a) => (
-            <label
-              key={a.id}
-              className="flex cursor-pointer flex-col items-center gap-1 rounded-card border border-border p-2 text-xs font-semibold has-checked:border-active has-checked:bg-background-sunken"
-            >
-              <input
-                type="radio"
-                name="avatarId"
-                value={a.id}
-                required={required}
-                defaultChecked={baby.avatarId === a.id}
-                className="sr-only"
-              />
-              <Avatar src={a.src} size={84} />
-              {a.label}
-            </label>
+        <CardContent className="flex flex-col gap-4">
+          {AVATAR_GROUPS.map((group) => (
+            // Each pack is its own row — wraps onto extra rows only if it
+            // doesn't fit one, never mixes with another pack's row.
+            <div key={group.name} className="flex flex-col gap-2">
+              <p className="text-xs font-semibold text-foreground-muted">{group.name}</p>
+              <div className="flex flex-wrap gap-3">
+                {group.options.map((a) => (
+                  <label
+                    key={a.id}
+                    className="flex w-24 shrink-0 cursor-pointer flex-col items-center gap-1 rounded-card border border-border p-2 text-xs font-semibold has-checked:border-active has-checked:bg-background-sunken"
+                  >
+                    <input
+                      type="radio"
+                      name="avatarId"
+                      value={a.id}
+                      required={required}
+                      defaultChecked={baby.avatarId === a.id}
+                      className="sr-only"
+                    />
+                    <Avatar src={a.src} size={84} />
+                    <span className="line-clamp-1">{a.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           ))}
         </CardContent>
       </Card>
