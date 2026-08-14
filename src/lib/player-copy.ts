@@ -55,8 +55,8 @@ function etaText(etaMinutes: number | null): string {
 
 export function upNext(baby: CopyBaby, displayName: string, rulesSummary: string): string {
   return pick(baby, {
-    littlePlayful: `It's your turn, ${displayName}! 🎮 Toddle on over to the console.\n\n📋 ${rulesSummary}`,
-    littleExplicit: `It's your turn, ${displayName}! 🎮 Waddle that diapered bottom over to the console before ${t.admin} comes looking. 😏\n\n📋 ${rulesSummary}`,
+    littlePlayful: `It's your turn, ${displayName}! 🎮 Waddle on over to the console.\n\n📋 ${rulesSummary}`,
+    littleExplicit: `It's your turn, ${displayName}! 🎮 Waddle that diapered bottom over to the console before ${t.admin} gives you a spanking. 😏\n\n📋 ${rulesSummary}`,
     grownupPlayful: `You're up, ${displayName}! 🎮 Head over to the console, and show the little ones how it's done.\n\n📋 ${rulesSummary}`,
     grownupExplicit: `You're up, ${displayName}! 🎮 Time to prove a grown-up like you can still hang with the babies. Don't embarrass yourself. 😉\n\n📋 ${rulesSummary}`,
   });
@@ -65,10 +65,10 @@ export function upNext(baby: CopyBaby, displayName: string, rulesSummary: string
 export function upSoon(baby: CopyBaby, displayName: string, etaMinutes: number): string {
   const mins = `about ${etaMinutes} minute${etaMinutes === 1 ? "" : "s"}`;
   return pick(baby, {
-    littlePlayful: `Heads up, ${displayName}, you're up in ${mins}! 👀`,
+    littlePlayful: `Heads up, ${displayName}, you're up in ${mins}! Better make sure that diaper's fresh before you play. 👀`,
     littleExplicit: `Heads up, ${displayName}, you're up in ${mins}! Better make sure that diaper's fresh before you play. 👀`,
     grownupPlayful: `Just a heads up, ${displayName}, you're up in ${mins}.`,
-    grownupExplicit: `Tick tock, ${displayName}, you're up in ${mins}. Try not to lose to a baby.`,
+    grownupExplicit: `Tick tock, ${displayName}, you're up in ${mins}. Try not to lose to a baby, or you'd de facto belong in diapers too!`,
   });
 }
 
@@ -85,7 +85,7 @@ export function readyCheckButtonLabel(baby: CopyBaby): string {
     littlePlayful: `We're playing, ${t.admin}!`,
     littleExplicit: `Start us, ${t.admin}, before I whine! 🍼`,
     grownupPlayful: `We're ready, ${t.admin}, let's go!`,
-    grownupExplicit: `We're ready. Don't keep us waiting.`,
+    grownupExplicit: `We're ready. Quit stalling.`,
   });
 }
 
@@ -104,7 +104,7 @@ export function matchStarted(baby: CopyBaby, displayName: string): string {
     littlePlayful: `Good job, ${displayName}! 🎮 Come back here when you're done to submit your result.`,
     littleExplicit: `Good job, ${displayName}! 🎮 Toddle back here when you're done, no fibbing on the result.`,
     grownupPlayful: `Nice going, ${displayName}! 🎮 Come back here when you're done to submit your result.`,
-    grownupExplicit: `Get in there, ${displayName}. 🎮 Come back and report it honestly when you're done.`,
+    grownupExplicit: `Get in there, ${displayName}. 🎮 Come back and report it honestly, unless you want to explain yourself to ${t.admin} later.`,
   });
 }
 
@@ -160,7 +160,7 @@ export function describeState(baby: CopyBaby, state: BabyStatusState): string {
         littlePlayful: `The playtime hasn't started yet, sit tight!`,
         littleExplicit: `The playtime hasn't started yet, little one. Sit still and wait like a good baby.`,
         grownupPlayful: `The playtime hasn't started yet.`,
-        grownupExplicit: `Nothing's started yet, patience, big shot.`,
+        grownupExplicit: `Nothing's started yet. Sit tight, or you'll start acting like the babies too.`,
       });
     case "QUIET_TIME": {
       const eta = etaText(state.etaMinutes);
@@ -176,7 +176,7 @@ export function describeState(baby: CopyBaby, state: BabyStatusState): string {
         littlePlayful: `You're up next! Head over to the console.`,
         littleExplicit: `You're up next, little one! Waddle over to the console.`,
         grownupPlayful: `You're up next, head over to the console.`,
-        grownupExplicit: `You're up next. Try to keep up.`,
+        grownupExplicit: `You're up next. Try to keep up with the babies.`,
       });
     case "PLAYING":
       return pick(baby, {
@@ -190,14 +190,11 @@ export function describeState(baby: CopyBaby, state: BabyStatusState): string {
 
 // ── StatusCard (web console) — same moments, calmer on-screen tone ──
 
-export function cardOrganizerComing(baby: CopyBaby): string {
-  return pick(baby, {
-    littlePlayful: `${t.admin} is coming 💫`,
-    littleExplicit: `${t.admin} is coming for you 💫 Better be a good little one.`,
-    grownupPlayful: `${t.admin} is on the way 💫`,
-    grownupExplicit: `${t.admin} is coming, act like a grown-up about it. 💫`,
-  });
-}
+// Identical wording to organizerIsComing above (same moment, this app's
+// Telegram-toned/card-toned split is deliberate elsewhere, but there was
+// never actually a different card-register version of this one line) —
+// one function instead of two copies to keep in sync.
+export const cardOrganizerComing = organizerIsComing;
 
 export function cardChampion(baby: CopyBaby): string {
   return pick(baby, {
@@ -223,7 +220,7 @@ export function cardNotStarted(baby: CopyBaby): string {
     littlePlayful: `Hang tight, ${t.registration} is still getting ready.`,
     littleExplicit: `Hang tight, little one, ${t.registration} is still getting ready.`,
     grownupPlayful: `Hang tight, ${t.registration} is still getting ready.`,
-    grownupExplicit: `Hang tight, ${t.registration} isn't ready yet. Patience.`,
+    grownupExplicit: `Hang tight, ${t.registration} isn't ready yet. Try to act like a grown-up about it.`,
   });
 }
 
@@ -243,7 +240,7 @@ export function cardUpNext(baby: CopyBaby): string {
     littlePlayful: `You're up next! Head over to the console.`,
     littleExplicit: `You're up next, little one! Head over to the console.`,
     grownupPlayful: `You're up next, head over to the console.`,
-    grownupExplicit: `You're up next. Don't keep everyone waiting.`,
+    grownupExplicit: `You're up next. Don't keep the babies waiting.`,
   });
 }
 
@@ -252,7 +249,7 @@ export function cardStartMatchButtonLabel(baby: CopyBaby): string {
     littlePlayful: `We're playing`,
     littleExplicit: `We're playing, ${t.admin}!`,
     grownupPlayful: `We're playing`,
-    grownupExplicit: `Let's go already`,
+    grownupExplicit: `Fine, let's go already`,
   });
 }
 
@@ -261,7 +258,7 @@ export function cardPlaying(baby: CopyBaby): string {
     littlePlayful: `You're playing now, report your result when you're done.`,
     littleExplicit: `You're playing now, sweetie, report your result when you're done.`,
     grownupPlayful: `You're playing now, report your result when you're done.`,
-    grownupExplicit: `You're playing now. Report it honestly.`,
+    grownupExplicit: `You're playing now. Report it honestly, or answer to ${t.admin} later.`,
   });
 }
 
@@ -363,6 +360,6 @@ export function dragInstruction(baby: CopyBaby): string {
     littlePlayful: `Drag to put everyone in finishing order, 1st at the top.`,
     littleExplicit: `Drag everyone into order, little one, best baby at the top.`,
     grownupPlayful: `Drag to put everyone in finishing order, 1st at the top.`,
-    grownupExplicit: `Drag them into order. Try to be honest about where you landed.`,
+    grownupExplicit: `Drag them into order. Try to be honest about where you landed, big shot.`,
   });
 }
