@@ -82,11 +82,12 @@ export default async function PlayPage({
         </div>
       )}
 
-      {/* Settings sits in the same row as the welcome title (not its own
-          row above/below) so the two share a height — absolutely
-          positioned against this row rather than a real flex sibling, so
-          its width doesn't throw off the avatar+title group's own
-          centering. */}
+      {/* {avatar} {title} {settings icon} as one inline, centered group —
+          the notification-permission button is conditional/optional (see
+          PlayPagePoller — renders null once granted/denied/unsupported),
+          so it stays absolutely positioned off to the side instead of
+          being a real flex sibling, to avoid its presence/absence
+          shifting the avatar+title+settings group's centering. */}
       <div className="relative flex items-center justify-center gap-3">
         <h2 className="sr-only">
           {playtime.name}, {t.player} screen
@@ -95,15 +96,15 @@ export default async function PlayPage({
         <h1 className="font-display text-2xl font-bold">
           Welcome, {baby.selfRoleLabel ? `${baby.selfRoleLabel} ${baby.displayName}` : baby.displayName}
         </h1>
-        <div className="absolute right-0 flex items-center gap-3">
+        <Link
+          href={`/play/${slug}/settings`}
+          aria-label="Settings"
+          className={buttonVariants({ variant: "secondary", size: "icon" })}
+        >
+          <span aria-hidden>⚙️</span>
+        </Link>
+        <div className="absolute right-0">
           <PlayPagePoller slug={slug} championLabel={t.champion} />
-          <Link
-            href={`/play/${slug}/settings`}
-            aria-label="Settings"
-            className={buttonVariants({ variant: "secondary", size: "icon" })}
-          >
-            <span aria-hidden>⚙️</span>
-          </Link>
         </div>
       </div>
 

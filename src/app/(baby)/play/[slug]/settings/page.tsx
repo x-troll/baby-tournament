@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireBaby } from "@/lib/baby-auth";
 import { SettingsForm } from "@/components/baby/SettingsForm";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { updateBabyProfileAction } from "@/server-actions/baby-profile";
 import { babyLogoutAction } from "@/server-actions/baby-auth";
 
@@ -17,12 +17,10 @@ export default async function BabySettingsPage({ params }: { params: Promise<{ s
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-4 pb-32">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Your settings</h1>
-        <Link href={`/play/${slug}`} className="text-sm font-semibold text-foreground-muted underline">
-          ← Back
-        </Link>
-      </div>
+      <Link href={`/play/${slug}`} className={buttonVariants({ variant: "secondary", size: "sm", className: "self-start" })}>
+        ← Back
+      </Link>
+      <h1 className="text-2xl font-bold">Your settings</h1>
 
       <SettingsForm baby={baby} action={updateBabyProfileAction.bind(null, slug)} />
 

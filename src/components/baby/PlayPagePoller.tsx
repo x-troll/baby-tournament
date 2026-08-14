@@ -44,7 +44,13 @@ const NOTIFICATION_COPY: Record<string, { title: string; body: string }> = {
  */
 export function PlayPagePoller({ slug, championLabel }: { slug: string; championLabel: string }) {
   const router = useRouter();
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
+  // Starts genuinely unknown (not "default") — defaulting this to
+  // "default" before the effect below gets a chance to read the real
+  // value meant the "Enable notifications" button rendered for everyone
+  // on every load, including babies who'd already granted/denied it,
+  // for one visible frame until the effect corrected it. `null` renders
+  // nothing (see the early return) until the real value is in.
+  const [permission, setPermission] = useState<NotificationPermission | "unsupported" | null>(null);
   const lastKindRef = useRef<string | null>(null);
   const lastEventIdRef = useRef<number | null>(null);
 
@@ -102,7 +108,7 @@ export function PlayPagePoller({ slug, championLabel }: { slug: string; champion
     };
   }, [slug, permission, championLabel, router]);
 
-  if (permission === "unsupported" || permission === "granted" || permission === "denied") return null;
+  if (permission === null || permission === "unsupported" || permission === "granted" || permission === "denied") return null;
 
   return (
     <button
