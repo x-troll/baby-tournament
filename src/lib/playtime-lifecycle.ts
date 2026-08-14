@@ -17,6 +17,7 @@ import {
   notifyBabyUpNext,
   notifyBabyUpSoon,
   notifyMatchStarted,
+  clearReadyCheckKeyboards,
 } from "@/lib/telegram/notify";
 import type { Phase2MatchId, Phase2Result, Phase2Seeds, PenResult, EliminatedRoundEntry } from "@/lib/bracket-engine";
 import {
@@ -30,6 +31,7 @@ import {
   generateRoundRobinFixtures,
   getPlayablePhase2Matches,
   isPhase2Complete,
+  resolvePenAfterNoShows,
 } from "@/lib/bracket-engine";
 
 type Tx = Prisma.TransactionClient;
@@ -127,12 +129,30 @@ export async function startPlaytime(playtimeId: string): Promise<void> {
       throw new Error(`Cannot start a playtime from status ${playtime.status} (must be NURSERY_OPEN).`);
     }
 
-    const aliveCount = await tx.baby.count({ where: { playtimeId, status: "ACTIVE" } });
+    // Only babies who finished registration count — a nameless row (the
+    // Telegram link was tapped but /register was never completed) is
+    // still ACTIVE in the DB, but isn't a real participant. Counting it
+    // toward N would corrupt the round-layout math (a nameless baby can
+    // flip an even survivor count odd downstream) and would draw an
+    // "Unnamed baby" into a real pen. See baby-registration.ts.
+    const aliveCount = await tx.baby.count({
+      where: { playtimeId, status: "ACTIVE", displayName: { not: null } },
+    });
     if (aliveCount < 3) {
       throw new Error(`Need at least 3 babies to start a playtime, only ${aliveCount} checked in.`);
     }
 
-    await tx.playtime.update({ where: { id: playtimeId }, data: { status: "IN_PROGRESS" } });
+    // Same compare-and-swap reasoning as confirmMatchResult — two
+    // concurrent "Start playtime" clicks (double-click, or two admin
+    // tabs) would otherwise both pass the NURSERY_OPEN check above and
+    // both create a first round / Phase 2 for the same playtime.
+    const { count } = await tx.playtime.updateMany({
+      where: { id: playtimeId, status: "NURSERY_OPEN" },
+      data: { status: "IN_PROGRESS" },
+    });
+    if (count === 0) {
+      throw new Error(`Cannot start a playtime from status ${playtime.status} (must be NURSERY_OPEN).`);
+    }
 
     if (aliveCount === 4) {
       await startPhase2(tx, playtimeId);
@@ -170,48 +190,83 @@ export interface ConfirmMatchResultInput {
 export async function confirmMatchResult(input: ConfirmMatchResultInput): Promise<void> {
   const collector = newCollector();
   await prisma.$transaction(async (tx) => {
-    const match = await tx.match.findUniqueOrThrow({
-      where: { id: input.matchId },
-      include: { participants: true },
-    });
-
-    if (match.status === "CONFIRMED") {
-      throw new Error("This match has already been confirmed.");
-    }
-
-    setOrderedFinishPositions(match, input.orderedBabyIds);
-    for (let i = 0; i < input.orderedBabyIds.length; i++) {
-      await tx.matchParticipant.updateMany({
-        where: { matchId: match.id, babyId: input.orderedBabyIds[i] },
-        data: { finishPosition: i + 1 },
-      });
-    }
-
-    await tx.match.update({
-      where: { id: match.id },
-      data: {
-        status: "CONFIRMED",
-        disputed: false, // an admin override always resolves any outstanding dispute
-        reportedById: input.actor.type === "BABY" ? input.actor.babyId : match.reportedById,
-        deadlineAt: null,
-      },
-    });
-
-    await tx.matchEvent.create({
-      data: {
-        matchId: match.id,
-        type: input.actor.type === "ADMIN" ? "OVERRIDDEN" : "CONFIRMED",
-        payload: { orderedBabyIds: input.orderedBabyIds },
-        actorType: input.actor.type,
-        actorAdminId: input.actor.type === "ADMIN" ? input.actor.adminId : null,
-        actorBabyId: input.actor.type === "BABY" ? input.actor.babyId : null,
-      },
-    });
-
-    for (const babyId of input.orderedBabyIds) collector.confirmedParticipantBabyIds.add(babyId);
-    await runPostConfirmationCascade(tx, match.playtimeId, match.kind, match.round, match.id, collector);
+    await confirmMatchResultInTx(tx, input, collector);
   });
   await dispatchCollectedNotifications(collector);
+}
+
+/**
+ * The actual confirm logic, factored out so `forfeitBaby`'s Phase 2 (1v1)
+ * case can run it inside its own already-open transaction instead of
+ * nesting a second `prisma.$transaction` — Prisma's interactive
+ * transactions don't compose that way. `confirmMatchResult` above is the
+ * only other caller, and just wraps this in its own transaction.
+ */
+async function confirmMatchResultInTx(
+  tx: Tx,
+  input: ConfirmMatchResultInput,
+  collector: NotificationCollector,
+  opts: { forfeited?: boolean } = {},
+): Promise<void> {
+  const match = await tx.match.findUniqueOrThrow({
+    where: { id: input.matchId },
+    include: { participants: true },
+  });
+
+  if (match.status === "CONFIRMED") {
+    throw new Error("This match has already been confirmed.");
+  }
+
+  // A baby can only report their own match — unlike an admin override,
+  // which can act on any match. Without this, the unauthenticated
+  // spectator API (which publishes every live matchId/babyId) would let
+  // any signed-in baby confirm any match in the tournament, including
+  // ones they were never part of.
+  const actor = input.actor;
+  if (actor.type === "BABY" && !match.participants.some((p) => p.babyId === actor.babyId)) {
+    throw new Error("You're not a participant in this match.");
+  }
+
+  setOrderedFinishPositions(match, input.orderedBabyIds);
+  for (let i = 0; i < input.orderedBabyIds.length; i++) {
+    await tx.matchParticipant.updateMany({
+      where: { matchId: match.id, babyId: input.orderedBabyIds[i] },
+      data: { finishPosition: i + 1 },
+    });
+  }
+
+  // Compare-and-swap, not a plain update: two concurrent calls for the
+  // same match (e.g. both 1v1 participants tapping "gold star" at once)
+  // can both pass the CONFIRMED check above under READ COMMITTED — the
+  // second would otherwise still write and re-run the whole cascade
+  // below a second time (duplicate Phase 2 matches, doubled pushes).
+  // The `WHERE status: { not: "CONFIRMED" } }` guard means only the
+  // first writer's update actually matches any rows.
+  const { count } = await tx.match.updateMany({
+    where: { id: match.id, status: { not: "CONFIRMED" } },
+    data: {
+      status: "CONFIRMED",
+      reportedById: input.actor.type === "BABY" ? input.actor.babyId : match.reportedById,
+      forfeited: opts.forfeited ?? false,
+    },
+  });
+  if (count === 0) {
+    throw new Error("This match has already been confirmed.");
+  }
+
+  await tx.matchEvent.create({
+    data: {
+      matchId: match.id,
+      type: opts.forfeited ? "FORFEITED" : input.actor.type === "ADMIN" ? "OVERRIDDEN" : "CONFIRMED",
+      payload: { orderedBabyIds: input.orderedBabyIds },
+      actorType: input.actor.type,
+      actorAdminId: input.actor.type === "ADMIN" ? input.actor.adminId : null,
+      actorBabyId: input.actor.type === "BABY" ? input.actor.babyId : null,
+    },
+  });
+
+  for (const babyId of input.orderedBabyIds) collector.confirmedParticipantBabyIds.add(babyId);
+  await runPostConfirmationCascade(tx, match.playtimeId, match.kind, match.round, match.id, collector);
 }
 
 /**
@@ -246,7 +301,12 @@ export async function markMatchInProgress(matchId: string, babyId: string): Prom
   // Only on the real READY -> IN_PROGRESS transition — a double-tap (see
   // the idempotency note above) shouldn't re-send the "good job, go
   // play" push a second time.
-  if (justStarted) await notifyMatchStarted(matchId, babyId);
+  if (justStarted) {
+    await notifyMatchStarted(matchId, babyId);
+    // Every participant's "we're playing?" ready-check button is now
+    // stale — strip it instead of leaving it live and tappable forever.
+    await clearReadyCheckKeyboards(matchId);
+  }
 }
 
 function setOrderedFinishPositions(
@@ -315,7 +375,7 @@ export async function undoLastMatchResult(matchId: string, adminId: string): Pro
 
     const mostRecentEvent = await tx.matchEvent.findFirst({
       where: {
-        type: { in: ["CONFIRMED", "OVERRIDDEN", "AUTO_CONFIRMED"] },
+        type: { in: ["CONFIRMED", "OVERRIDDEN"] },
         match: { playtimeId: match.playtimeId },
       },
       orderBy: { id: "desc" },
@@ -356,6 +416,131 @@ export async function undoLastMatchResult(matchId: string, adminId: string): Pro
   });
 }
 
+/**
+ * A player who stops responding mid-event (falls asleep, wanders off) —
+ * the admin-facing counterpart to a normally-played result, for someone
+ * who never plays one at all.
+ *
+ * Phase 2 (1v1): routed through the exact same `confirmMatchResultInTx`
+ * cascade a real result would use — forfeiter placed last, opponent
+ * wins, `Match.forfeited = true` — so placements/next-match-creation/
+ * completion all Just Work, no special-casing needed downstream.
+ *
+ * Playpen: there's no single "opponent" to hand a win to, so this uses
+ * `resolvePenAfterNoShows` (bracket-engine/pens.ts, previously written
+ * and tested but never called from anywhere) — the pen keeps playing
+ * with one fewer participant (3+ remain), both survivors auto-advance
+ * with no need to finish the match (down to 2), or the sole survivor
+ * advances as a bye, same as a tournament-start bye gets no match row
+ * at all (down to 1).
+ *
+ * Round-robin (the N=3 tournament-start-only stage) is refused outright
+ * — removing one of the 3 players breaks the round-robin structure for
+ * the other two in a way that doesn't reduce to any of the above cases.
+ * A second forfeit from an already-shrunk 2-remaining pen is also
+ * refused — reviving a "lucky loser" from elsewhere in the standings
+ * is a competitive-rules decision, not one this function makes silently.
+ */
+export async function forfeitBaby(playtimeId: string, babyId: string, adminId: string): Promise<void> {
+  const collector = newCollector();
+  await prisma.$transaction(async (tx) => {
+    const baby = await tx.baby.findUniqueOrThrow({ where: { id: babyId } });
+    if (baby.playtimeId !== playtimeId) {
+      throw new Error("This baby isn't part of this playtime.");
+    }
+    if (baby.status !== "ACTIVE") {
+      throw new Error("Only a currently-active baby can be forfeited.");
+    }
+
+    const participation = await tx.matchParticipant.findFirst({
+      where: { babyId, match: { status: { not: "CONFIRMED" } } },
+      include: { match: { include: { participants: true } } },
+      orderBy: { match: { createdAt: "desc" } },
+    });
+    if (!participation) {
+      throw new Error("This baby has no active match to forfeit from right now — try again once their next match exists.");
+    }
+    const match = participation.match;
+
+    if (PHASE2_KINDS.includes(match.kind)) {
+      const opponent = match.participants.find((p) => p.babyId !== babyId);
+      if (!opponent) {
+        throw new Error("forfeitBaby: Phase 2 match has no opponent to award the win to.");
+      }
+      await confirmMatchResultInTx(
+        tx,
+        { matchId: match.id, orderedBabyIds: [opponent.babyId, babyId], actor: { type: "ADMIN", adminId } },
+        collector,
+        { forfeited: true },
+      );
+      return;
+    }
+
+    if (match.kind === MatchKind.ROUND_ROBIN) {
+      throw new Error(
+        "Forfeiting isn't supported during the 3-player round-robin stage — removing one player breaks it for the other two. Report a result manually via admin override instead.",
+      );
+    }
+
+    // PLAYPEN
+    const remainingBabyIds = match.participants.filter((p) => p.babyId !== babyId).map((p) => p.babyId);
+    const resolution = resolvePenAfterNoShows(remainingBabyIds);
+    if (resolution.kind === "EMPTY") {
+      throw new Error(
+        "Can't forfeit — this was the last remaining player in this pen. Promoting a replacement isn't supported; resolve this pen manually.",
+      );
+    }
+
+    await tx.matchParticipant.deleteMany({ where: { matchId: match.id, babyId } });
+    await tx.matchEvent.create({
+      data: { matchId: match.id, type: "FORFEITED", payload: {}, actorType: "ADMIN", actorAdminId: adminId },
+    });
+
+    // The forfeiter always drops to dead last among currently-active
+    // babies — same formula processCompletedPlaypenRound uses for a
+    // normal elimination cohort, just for a single baby instead of a
+    // whole round's worth at once.
+    const aliveCountBeforeForfeit = await tx.baby.count({
+      where: { playtimeId, status: "ACTIVE", displayName: { not: null } },
+    });
+    const eliminatedEntry: EliminatedRoundEntry = {
+      babyId,
+      penSize: match.participants.length,
+      penPosition: match.participants.length,
+      tiebreakOrder: baby.registrationOrder,
+    };
+    const place = assignEliminatedPlacements([eliminatedEntry], aliveCountBeforeForfeit).get(babyId)!;
+    await tx.baby.update({ where: { id: babyId }, data: { status: "NAPPED", finalPlacement: place } });
+    collector.nappedBabies.push({ babyId, placement: place });
+
+    if (resolution.kind === "PLAYS") {
+      // Pen keeps going with a smaller roster — nothing further to
+      // resolve, the match stays exactly as it was otherwise.
+      await tx.match.update({ where: { id: match.id }, data: { forfeited: true } });
+      return;
+    }
+
+    if (resolution.kind === "AUTO_ADVANCE") {
+      // Down to 2 — both advance, no need to actually play it out.
+      await confirmMatchResultInTx(
+        tx,
+        { matchId: match.id, orderedBabyIds: resolution.advancing, actor: { type: "ADMIN", adminId } },
+        collector,
+        { forfeited: true },
+      );
+      return;
+    }
+
+    // BYE — the 1 remaining baby advances with no match, same as a
+    // tournament-start bye (computeByeRoundAssignment) never gets a
+    // match row at all. Delete this now-unplayable one rather than
+    // leaving a 1-participant row nothing can ever confirm.
+    await tx.match.delete({ where: { id: match.id } });
+    await runPostConfirmationCascade(tx, playtimeId, match.kind, match.round, match.id, collector);
+  });
+  await dispatchCollectedNotifications(collector);
+}
+
 // ── Round creation ────────────────────────────────────────────────────
 
 async function createNextPlaypenRound(tx: Tx, playtimeId: string, isTournamentStart: boolean): Promise<void> {
@@ -393,8 +578,10 @@ async function createNextPlaypenRound(tx: Tx, playtimeId: string, isTournamentSt
 }
 
 async function startPhase2(tx: Tx, playtimeId: string): Promise<void> {
+  // Nameless (never finished /register) babies never count as real
+  // participants — see the aliveCount comment in startPlaytime above.
   const activeBabies = await tx.baby.findMany({
-    where: { playtimeId, status: "ACTIVE" },
+    where: { playtimeId, status: "ACTIVE", displayName: { not: null } },
     orderBy: { registrationOrder: "asc" },
   });
   if (activeBabies.length !== 4) {
@@ -447,7 +634,9 @@ async function processCompletedPlaypenRound(
     include: { participants: { include: { baby: true } } },
   });
 
-  const aliveCountBefore = await tx.baby.count({ where: { playtimeId, status: "ACTIVE" } });
+  const aliveCountBefore = await tx.baby.count({
+    where: { playtimeId, status: "ACTIVE", displayName: { not: null } },
+  });
   const eliminated: EliminatedRoundEntry[] = [];
 
   for (const match of matches) {
@@ -475,7 +664,9 @@ async function processCompletedPlaypenRound(
   // Babies who advanced (top 2 of their pen) and bye babies both simply
   // stay ACTIVE — nothing to update for them.
 
-  const newAliveCount = await tx.baby.count({ where: { playtimeId, status: "ACTIVE" } });
+  const newAliveCount = await tx.baby.count({
+    where: { playtimeId, status: "ACTIVE", displayName: { not: null } },
+  });
   if (newAliveCount === 4) {
     await startPhase2(tx, playtimeId);
   } else if (newAliveCount < 4) {
@@ -697,7 +888,7 @@ async function getConfirmedPlaypenResults(tx: Tx, playtimeId: string): Promise<P
 
 async function rankActiveBabyIds(tx: Tx, playtimeId: string, isTournamentStart: boolean): Promise<string[]> {
   const activeBabies = await tx.baby.findMany({
-    where: { playtimeId, status: "ACTIVE" },
+    where: { playtimeId, status: "ACTIVE", displayName: { not: null } },
     orderBy: { registrationOrder: "asc" },
   });
   if (isTournamentStart) {

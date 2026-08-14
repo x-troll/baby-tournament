@@ -8,7 +8,7 @@ export function CurrentMatches({ matches, onDeck }: { matches: SpectatorMatch[];
       ) : (
         matches.map((m) => {
           // READY (stationed, not yet tapped "we're playing") reads
-          // differently from IN_PROGRESS/REPORTED (actually underway) —
+          // differently from IN_PROGRESS (actually underway) —
           // previously both rendered identically under one shared label.
           const isReady = m.status === "READY";
           return (

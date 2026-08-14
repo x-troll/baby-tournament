@@ -9,10 +9,9 @@ import { resolveAvatarSrc } from "@/lib/avatars";
 import { loadRules } from "@/lib/rules-content";
 import * as playerCopy from "@/lib/player-copy";
 import { buttonVariants } from "@/components/ui/button";
-import { AutoRefresh } from "@/components/AutoRefresh";
 import { StatusCard, type StatusCardCopy } from "@/components/baby/StatusCard";
 import { RequestHelpButton } from "@/components/baby/RequestHelpButton";
-import { BrowserNotifications } from "@/components/baby/BrowserNotifications";
+import { PlayPagePoller } from "@/components/baby/PlayPagePoller";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import { computeSpectatorState } from "@/lib/spectator-state";
 import type { ReportableParticipant } from "@/components/baby/ResultReportForm";
@@ -72,8 +71,6 @@ export default async function PlayPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-4 pb-32">
-      <AutoRefresh />
-
       {token && (
         // Only babies who arrived via the website join flow ever land
         // here with ?token= — Telegram's magic link already strips it
@@ -99,7 +96,7 @@ export default async function PlayPage({
           Welcome, {baby.selfRoleLabel ? `${baby.selfRoleLabel} ${baby.displayName}` : baby.displayName}
         </h1>
         <div className="absolute right-0 flex items-center gap-3">
-          <BrowserNotifications slug={slug} />
+          <PlayPagePoller slug={slug} championLabel={t.champion} />
           <Link
             href={`/play/${slug}/settings`}
             aria-label="Settings"

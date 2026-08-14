@@ -171,7 +171,7 @@ async function main() {
     if (current.status === "COMPLETE") break;
 
     const playable = await prisma.match.findMany({
-      where: { playtimeId: playtime.id, status: { in: ["PENDING", "READY", "IN_PROGRESS", "REPORTED"] } },
+      where: { playtimeId: playtime.id, status: { in: ["PENDING", "READY", "IN_PROGRESS"] } },
       include: { participants: { include: { baby: true } } },
       orderBy: { createdAt: "asc" },
     });
@@ -180,7 +180,7 @@ async function main() {
     }
 
     // Only treat it as "your turn" once the match is actually READY/
-    // IN_PROGRESS/REPORTED — if it's still PENDING (not yet scheduled to
+    // IN_PROGRESS — if it's still PENDING (not yet scheduled to
     // a station), nobody has pushed you anything yet, so fall through to
     // auto-playing *other* matches and let the scheduler catch up
     // naturally, the same way it would for a real crowd of babies.
@@ -207,11 +207,10 @@ async function main() {
       continue;
     }
 
-    // Auto-play the next fake-babies-only match — never touch a match
-    // awaiting real confirmation (REPORTED), and never touch your own
+    // Auto-play the next fake-babies-only match — never touch your own
     // match even while it's still PENDING (leave it for the scheduler).
     const autoMatch = playable.find(
-      (m) => m.status !== "REPORTED" && !(realBabyId && m.participants.some((p) => p.babyId === realBabyId)),
+      (m) => !(realBabyId && m.participants.some((p) => p.babyId === realBabyId)),
     );
     if (!autoMatch) {
       await new Promise((r) => setTimeout(r, 1000));

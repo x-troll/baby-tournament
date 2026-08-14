@@ -5,7 +5,8 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { confirmMatchResult, undoLastMatchResult } from "@/lib/playtime-lifecycle";
 
-async function revalidatePlaytimePage(playtimeId: string): Promise<void> {
+/** Shared by every server action that mutates a playtime's matches/roster — kept here rather than duplicated (playtimes.ts used to inline this same 5-line pattern). */
+export async function revalidatePlaytimePage(playtimeId: string): Promise<void> {
   const playtime = await prisma.playtime.findUniqueOrThrow({
     where: { id: playtimeId },
     select: { slugNumber: true },
@@ -15,8 +16,8 @@ async function revalidatePlaytimePage(playtimeId: string): Promise<void> {
 
 /**
  * Admin override result entry — the same `confirmMatchResult` code path
- * Phase 5 will wire baby self-report + the 60s auto-confirm timer to.
- * Admin's version always goes straight to CONFIRMED (spec: "admin
+ * a baby's own self-report uses (see `babyReportResultAction`). Both go
+ * straight to CONFIRMED, no separate waiting window (spec: "admin
  * override always available. One code path for both cases.").
  */
 export async function adminReportMatchResultAction(
@@ -55,6 +56,15 @@ export async function reportMatchResultFormAction(
   if (withPositions.some((p) => !Number.isInteger(p.position) || p.position < 1)) {
     throw new Error("Every finisher needs a valid position.");
   }
+  // Every position 1..N must be used exactly once — otherwise a tie (two
+  // babies both set to "1") would silently resolve by DB iteration order
+  // instead of the admin's actual intent, deciding who advances with no
+  // indication a tie was ever entered.
+  const positions = withPositions.map((p) => p.position).sort((a, b) => a - b);
+  const isPermutation = positions.every((pos, i) => pos === i + 1);
+  if (!isPermutation) {
+    throw new Error("Each finisher needs a distinct position, 1 through the number of finishers — no ties or gaps.");
+  }
   const orderedBabyIds = withPositions.sort((a, b) => a.position - b.position).map((p) => p.babyId);
 
   await confirmMatchResult({
@@ -69,13 +79,4 @@ export async function undoMatchResultAction(playtimeId: string, matchId: string)
   const admin = await requireAdmin();
   await undoLastMatchResult(matchId, admin.id);
   await revalidatePlaytimePage(playtimeId);
-}
-
-export async function getMatchEventLog(matchId: string) {
-  await requireAdmin();
-  return prisma.matchEvent.findMany({
-    where: { matchId },
-    orderBy: { id: "asc" },
-    include: { actorAdmin: true, actorBaby: true },
-  });
 }

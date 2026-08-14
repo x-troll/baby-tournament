@@ -9,10 +9,13 @@
 // - `MatchEvent` is append-only: it powers admin undo (replay minus the
 //   last event) AND doubles as a cheap polling cursor for the spectator
 //   and baby screens (`?since=<lastEventId>`).
-// - Timers (auto-confirm, forfeit clock) are represented as a stored
-//   `deadlineAt` timestamp on `Match` / `HelpRequest`, not a scheduled
-//   job — there is no worker process. Anything that reads a row past its
-//   deadline lazily finalizes it first, in the same transaction.
+// - No auto-confirm timer: a reported result is always instantly
+//   CONFIRMED (see confirmMatchResult in playtime-lifecycle.ts). A
+//   REPORTED-and-wait window with a deadline/state machine was built and
+//   tested early on but never wired to anything real — removed rather
+//   than left as dead code implying a behavior that doesn't exist.
+// - Forfeit (a player who stops responding mid-event) is a manual admin
+//   action (`forfeitBaby`), not a timer — see `Match.forfeited`.
 
 generator client {
   provider = "prisma-client"
@@ -79,11 +82,13 @@ model Playtime {
   status     PlaytimeStatus @default(NURSERY_OPEN)
 
   // Concurrency + ETA configuration.
-  stationCount               Int  @default(1)
-  // Seeded default (ms) for ETA math; updated from a rolling average of
-  // real completed match durations for this playtime as the night goes on.
-  defaultMatchDurationSec    Int
-  rollingAvgMatchDurationSec Int?
+  stationCount            Int @default(1)
+  // Static per-playtime estimate used for ETA math (computeEtaMinutes,
+  // src/lib/baby-status.ts). Not self-tuning — a "rolling average of real
+  // completed match durations" field existed here but nothing ever wrote
+  // to it, so it was removed rather than left as a promise the code
+  // didn't keep.
+  defaultMatchDurationSec Int
 
   // Optional tonight-only free-text note rendered above the game's house
   // rules, clearly marked as a tonight-only change. Blank by default.
@@ -202,8 +207,7 @@ enum MatchStatus {
   PENDING // not yet playable (waiting on a station or a prior match's result)
   READY // assigned a station, players notified, not yet started
   IN_PROGRESS // underway
-  REPORTED // one participant has submitted a result, confirmation window open
-  CONFIRMED // final — either explicitly confirmed, admin-overridden, or auto-confirmed
+  CONFIRMED // final — reported (instantly) or admin-overridden
 }
 
 model Match {
@@ -223,21 +227,22 @@ model Match {
   status        MatchStatus @default(PENDING)
   stationNumber Int?
 
-  // Lazily-evaluated timers. See file header — nothing "fires" these,
-  // any read past `deadlineAt` finalizes the row first.
-  deadlineAt DateTime?
-
   reportedById String? // which Baby submitted the result
+  // Set by forfeitBaby (playtime-lifecycle.ts) — a player who stops
+  // responding mid-event, as opposed to a normally-played result.
   forfeited    Boolean @default(false)
   // Set once the "you're up soon" pre-notice fires for this (still-PENDING)
   // match, so scheduleReadyMatches's cascade-triggered re-check doesn't
   // re-send it every time some *other* match elsewhere resolves. Distinct
   // from the real "you're up" push, which fires once for real at READY.
   upSoonNotifiedAt DateTime?
-  // Set true by disputeMatch(); freezes the match — the lazy auto-confirm
-  // check in playtime-lifecycle.ts explicitly skips disputed matches.
-  // Cleared when an admin override resolves it.
-  disputed     Boolean @default(false)
+
+  // { chatId: string, messageId: number }[] — every "we're playing?"
+  // ready-check push sent for this match (one per participant with
+  // Telegram linked). Recorded so the inline keyboard can be stripped
+  // once the match actually starts, instead of staying live/tappable
+  // forever — see markMatchInProgress.
+  readyCheckMessages Json @default("[]")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -246,6 +251,9 @@ model Match {
   events       MatchEvent[]
   helpRequests HelpRequest[]
 
+  // Every hot-path query (scheduleReadyMatches, computeSpectatorState,
+  // the 3-5s spectator/baby polls) filters on playtimeId first.
+  @@index([playtimeId])
   @@map("matches")
 }
 
@@ -262,6 +270,10 @@ model MatchParticipant {
   // (loser) — same field, same code path as a playpen's finishing order.
   finishPosition Int?
 
+  // A babyId-only lookup (baby-status.ts, help-requests.ts, forfeitBaby)
+  // can't use @@unique([matchId, babyId]) — babyId is only the second
+  // column, not a usable leftmost prefix.
+  @@index([babyId])
   @@unique([matchId, babyId])
   @@map("match_participants")
 }
@@ -272,10 +284,7 @@ enum MatchEventType {
   CREATED
   READY
   STARTED
-  REPORTED
   CONFIRMED
-  AUTO_CONFIRMED
-  DISPUTED
   FORFEITED
   OVERRIDDEN
   UNDONE
@@ -336,7 +345,19 @@ model HelpRequest {
   resolvedById String?
   resolvedBy   Admin?  @relation("HelpRequestResolvedBy", fields: [resolvedById], references: [id])
 
+  // { chatId: string, messageId: number }[] — every admin's copy of the
+  // "🆘 needs help" alert (one per linked admin, notifyAdminsHelpRequest
+  // fans this out to all of them). Recorded so every copy's "On my
+  // way"/"Resolved" keyboard can be cleared as soon as any one admin
+  // acts, instead of staying live in everyone else's chat too.
+  telegramMessages Json @default("[]")
+
   createdAt DateTime @default(now())
 
+  // Covers both the per-playtime open-count queries (spectator-state.ts,
+  // the admin layouts' nav badge) and the global admin Requests inbox
+  // (status-only, now polled every 5s — see help-requests/page.tsx).
+  @@index([playtimeId, status])
+  @@index([status])
   @@map("help_requests")
 }

@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { adminLinkDeepLink } from "@/lib/qr";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RegisterWebhookButton } from "@/components/admin/RegisterWebhookButton";
+import { RegenerateAdminLinkButton } from "@/components/admin/RegenerateAdminLinkButton";
 import { StyledQrCode } from "@/components/ui/StyledQrCode";
 import { DeleteAllPlaytimesButton } from "@/components/admin/DeleteAllPlaytimesButton";
 import { NukeDatabaseButton } from "@/components/admin/NukeDatabaseButton";
@@ -38,6 +39,7 @@ export default async function AdminProfilePage() {
               </p>
               <StyledQrCode data={deepLink} size={440} />
               <code className="break-all text-xs text-foreground-muted">{deepLink}</code>
+              <RegenerateAdminLinkButton />
             </div>
           )}
         </CardContent>

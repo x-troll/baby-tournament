@@ -23,12 +23,21 @@ export async function createHelpRequestAction(
 ): Promise<{ error?: string }> {
   const baby = await requireBaby(slug);
 
-  if (baby.lastHelpRequestAt) {
-    const elapsedMs = Date.now() - baby.lastHelpRequestAt.getTime();
-    if (elapsedMs < HELP_REQUEST_COOLDOWN_SECONDS * 1000) {
-      const waitSeconds = Math.ceil((HELP_REQUEST_COOLDOWN_SECONDS * 1000 - elapsedMs) / 1000);
-      return { error: `Hang tight, you can ask again in ${waitSeconds}s.` };
-    }
+  // Check-and-set in one conditional update, not read-then-write — two
+  // rapid taps (a double-tap on the touchscreen this app is built for)
+  // could otherwise both read the same stale lastHelpRequestAt and both
+  // pass the cooldown gate before either write lands. Only the request
+  // that actually flips lastHelpRequestAt forward gets to proceed; a
+  // loser's `count` comes back 0.
+  const cutoff = new Date(Date.now() - HELP_REQUEST_COOLDOWN_SECONDS * 1000);
+  const { count } = await prisma.baby.updateMany({
+    where: { id: baby.id, OR: [{ lastHelpRequestAt: null }, { lastHelpRequestAt: { lt: cutoff } }] },
+    data: { lastHelpRequestAt: new Date() },
+  });
+  if (count === 0) {
+    const elapsedMs = baby.lastHelpRequestAt ? Date.now() - baby.lastHelpRequestAt.getTime() : 0;
+    const waitSeconds = Math.max(1, Math.ceil((HELP_REQUEST_COOLDOWN_SECONDS * 1000 - elapsedMs) / 1000));
+    return { error: `Hang tight, you can ask again in ${waitSeconds}s.` };
   }
 
   const activeParticipation = await prisma.matchParticipant.findFirst({
@@ -43,10 +52,9 @@ export async function createHelpRequestAction(
     where: { threadKey, status: { in: ["OPEN", "ACKNOWLEDGED"] } },
   });
   if (existingOpenThread) {
-    // Already have an open thread for this — don't flood the admin chat,
-    // but still count it against the cooldown so mashing the button
-    // doesn't bypass rate limiting.
-    await prisma.baby.update({ where: { id: baby.id }, data: { lastHelpRequestAt: new Date() } });
+    // Already have an open thread for this — don't flood the admin chat.
+    // lastHelpRequestAt is already bumped above (still counts against the
+    // cooldown so mashing the button doesn't bypass rate limiting).
     revalidatePath("/admin/help-requests");
     return {};
   }
@@ -61,7 +69,6 @@ export async function createHelpRequestAction(
       threadKey,
     },
   });
-  await prisma.baby.update({ where: { id: baby.id }, data: { lastHelpRequestAt: new Date() } });
   revalidatePath("/admin/help-requests");
   await notifyAdminsHelpRequest(created.id);
   return {};

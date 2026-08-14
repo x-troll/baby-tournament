@@ -1,7 +1,4 @@
-import { toDisplayStatus, type DisplayStatus } from "@/lib/match-status";
-
-export { toDisplayStatus };
-export type { DisplayStatus };
+import type { DisplayStatus } from "@/lib/match-status";
 
 // Colors only, not language — left as a plain client-side lookup.
 // Display text is *not* looked up here: this component renders inside a

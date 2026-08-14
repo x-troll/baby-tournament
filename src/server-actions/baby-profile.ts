@@ -75,6 +75,15 @@ export async function updateBabyProfileAction(
 export async function completeRegistrationAction(slug: string, formData: FormData): Promise<void> {
   const baby = await requireBabyForRegistration(slug);
 
+  // The baby row itself can predate the tournament starting (created the
+  // moment they tapped the Telegram link or hit /join), but finishing
+  // registration — the step that makes them a real, counted participant
+  // — shouldn't still be possible once the bracket's already running.
+  const playtime = await prisma.playtime.findUniqueOrThrow({ where: { id: baby.playtimeId } });
+  if (playtime.status !== "NURSERY_OPEN") {
+    throw new Error("This tournament has already started, registration's closed.");
+  }
+
   const displayName = String(formData.get("displayName") ?? "").trim();
   if (!displayName) throw new Error("Please tell us what to call you.");
 

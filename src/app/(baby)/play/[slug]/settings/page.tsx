@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireBaby } from "@/lib/baby-auth";
 import { SettingsForm } from "@/components/baby/SettingsForm";
+import { Button } from "@/components/ui/button";
 import { updateBabyProfileAction } from "@/server-actions/baby-profile";
+import { babyLogoutAction } from "@/server-actions/baby-auth";
 
 // Everything a baby set once at registration (src/app/(baby)/play/[slug]/
 // register/page.tsx, sharing the same BabyProfileForm fields via
@@ -23,6 +25,16 @@ export default async function BabySettingsPage({ params }: { params: Promise<{ s
       </div>
 
       <SettingsForm baby={baby} action={updateBabyProfileAction.bind(null, slug)} />
+
+      {/* No self-serve way to leave this playtime before this — the only
+          way to trigger baby-auth.ts's "valid session, different
+          playtime" path was physically scanning a different playtime's
+          QR/magic link first. */}
+      <form action={babyLogoutAction.bind(null, slug)} className="mt-2">
+        <Button type="submit" variant="ghost" size="sm">
+          Sign out of this playtime
+        </Button>
+      </form>
     </main>
   );
 }

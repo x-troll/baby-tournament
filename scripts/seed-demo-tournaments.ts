@@ -27,7 +27,13 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/lib/auth";
-import { startPlaytime, confirmMatchResult, markMatchInProgress, sortMatchesByPriority } from "../src/lib/playtime-lifecycle";
+import {
+  startPlaytime,
+  confirmMatchResult,
+  markMatchInProgress,
+  sortMatchesByPriority,
+  forfeitBaby,
+} from "../src/lib/playtime-lifecycle";
 import { Game } from "../src/generated/prisma/enums";
 import type { MatchKind } from "../src/generated/prisma/enums";
 import { AVATAR_OPTIONS } from "../src/lib/avatars";
@@ -265,6 +271,51 @@ async function main() {
     const pt = await createDemoPlaytime({ name: "Small round-robin, finished", game: Game.SUPER_SMASH, stationCount: 1, babyCount: 3 });
     await startPlaytime(pt.id);
     await playToCompletion(pt.id, admin.id);
+  }
+
+  // 9. N=4 — structurally distinct: skips playpens entirely and goes
+  // straight to Phase 2 off registration-order seeding (no bracket-view
+  // playpen columns at all, only Phase 2 ones) — never exercised
+  // end-to-end by any test/script/seed before this.
+  {
+    const pt = await createDemoPlaytime({ name: "Final four, straight to bracket", game: Game.MARIO_KART, stationCount: 2, babyCount: 4 });
+    await startPlaytime(pt.id);
+    await giveColumnSomeLife(pt.id, admin.id);
+  }
+
+  // 10. N=5 — the BYE_ROUND special case (one 3-pen, two direct byes).
+  // Worth seeing live: buildPlaypenSection builds purely from Match rows,
+  // so the two bye babies (no match created for them at all, same as
+  // computeByeRoundAssignment's design) are genuinely invisible in the
+  // bracket viewer for this entire round, reappearing once Phase 2 starts.
+  {
+    const pt = await createDemoPlaytime({ name: "Five babies, bye round", game: Game.SUPER_SMASH, stationCount: 1, babyCount: 5 });
+    await startPlaytime(pt.id);
+    await giveColumnSomeLife(pt.id, admin.id);
+  }
+
+  // 11. Forfeit — a player who stops responding mid-event (forfeitBaby,
+  // playtime-lifecycle.ts). Played partway into a normal-sized playpen
+  // round, then one still-ACTIVE baby is forfeited from whatever match
+  // they're currently in, so the Score tab shows a forfeited-last-place
+  // baby and (if their pen was still short of finishing) the shrunk pen
+  // continuing to play with one fewer participant.
+  {
+    const pt = await createDemoPlaytime({ name: "Forfeit mid-event", game: Game.MARIO_KART, stationCount: 2, babyCount: 10 });
+    await startPlaytime(pt.id);
+    await giveColumnSomeLife(pt.id, admin.id);
+    // Pick a baby from a still-unresolved match specifically (not just
+    // any ACTIVE baby) — an ACTIVE baby who already finished their part
+    // of this round has no active match until the round completes, which
+    // forfeitBaby correctly refuses.
+    const unresolvedMatch = await prisma.match.findFirst({
+      where: { playtimeId: pt.id, status: { not: "CONFIRMED" } },
+      include: { participants: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (unresolvedMatch?.participants[0]) {
+      await forfeitBaby(pt.id, unresolvedMatch.participants[0].babyId, admin.id);
+    }
   }
 
   console.log("\nDone — open /playtimes to see all of them.");

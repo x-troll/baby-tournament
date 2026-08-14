@@ -73,11 +73,20 @@ function HeadToHeadButtons({
   copy: ResultReportFormCopy;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   function report(winnerId: string) {
     const loserId = participants.find((p) => p.babyId !== winnerId)!.babyId;
-    startTransition(() => {
-      babyReportResultAction(slug, matchId, [winnerId, loserId]);
+    startTransition(async () => {
+      // Awaited + caught, not fire-and-forget — the realistic race here
+      // is both participants tapping their own "gold star" button within
+      // the same second; whoever loses the race gets a friendly message
+      // instead of an unhandled rejection / page crash.
+      try {
+        await babyReportResultAction(slug, matchId, [winnerId, loserId]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong.");
+      }
     });
   }
 
@@ -89,6 +98,7 @@ function HeadToHeadButtons({
           {p.goldStarLabel}
         </Button>
       ))}
+      {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   );
 }
@@ -106,6 +116,7 @@ function PenReorderForm({
 }) {
   const [order, setOrder] = useState(participants.map((p) => p.babyId));
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -123,8 +134,12 @@ function PenReorderForm({
   }
 
   function submit() {
-    startTransition(() => {
-      babyReportResultAction(slug, matchId, order);
+    startTransition(async () => {
+      try {
+        await babyReportResultAction(slug, matchId, order);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong.");
+      }
     });
   }
 
@@ -140,6 +155,7 @@ function PenReorderForm({
           </ol>
         </SortableContext>
       </DndContext>
+      {error && <p className="text-sm text-danger">{error}</p>}
       <Button onClick={submit} disabled={isPending} className="self-start">
         Report this order
       </Button>

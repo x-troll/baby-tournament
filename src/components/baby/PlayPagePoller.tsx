@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -15,22 +16,37 @@ const NOTIFIABLE_KINDS = new Set(["PLAYING", "NAPPED", "CHAMPION"]);
 const NOTIFICATION_COPY: Record<string, { title: string; body: string }> = {
   PLAYING: { title: "Your match is live! 🎮", body: "Head back to your screen, it's time to play." },
   NAPPED: { title: "Nap time 😴", body: "Your run's over for tonight, come see how you placed." },
-  CHAMPION: { title: "🌟 Best Baby! 🌟", body: "You won it all, congratulations!" },
 };
 
 /**
- * Foreground-only fallback for babies without Telegram (and a "just in
- * case" for babies with it too — see todos.md: "always browser, this
- * will help with testing without telegram connection for each user").
- * No service worker/push subscription — just Notification.requestPermission()
- * (must be a real click, browsers silently ignore it otherwise) plus the
- * same poll-and-diff pattern SpectatorPoller already uses. Only fires
- * while this tab is open; see future_improvements.md for the full Web
- * Push version.
+ * The one poll loop for everything /play/[slug] needs live — replaces
+ * two independent ones that used to run on overlapping schedules:
+ * AutoRefresh (unconditional `router.refresh()` every 5s, re-running the
+ * *entire* server component — requireBabyWithToken, computeBabyStatus,
+ * computeSpectatorState, loadRules, plus a conditional match query — for
+ * every connected baby regardless of whether anything changed) and this
+ * component's own separate notify-state poll. Both concerns now read off
+ * one `/api/play/[slug]/notify-state` response: `lastEventId` (the same
+ * append-only MatchEvent cursor computeSpectatorState/the spectator poll
+ * already use) gates `router.refresh()` to only when something actually
+ * happened, and `kind` still drives the desktop-notification diffing
+ * below, foreground-only fallback for babies without Telegram (and a
+ * "just in case" for babies with it too). No service worker/push
+ * subscription — just Notification.requestPermission() (must be a real
+ * click, browsers silently ignore it otherwise). Only fires while this
+ * tab is open; see future_improvements.md for the full Web Push version.
+ *
+ * `championLabel` — the one bit of copy here that varies by theme
+ * (terminology.ts's `champion`) — is resolved server-side by the parent
+ * page and passed in as a plain string, same reasoning as every other
+ * client component that can't call getTerminology() itself (see
+ * StatusBadge.tsx's comment on the client/server boundary).
  */
-export function BrowserNotifications({ slug }: { slug: string }) {
+export function PlayPagePoller({ slug, championLabel }: { slug: string; championLabel: string }) {
+  const router = useRouter();
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const lastKindRef = useRef<string | null>(null);
+  const lastEventIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Notification.permission is a browser-only global unavailable during
@@ -41,26 +57,38 @@ export function BrowserNotifications({ slug }: { slug: string }) {
     setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
   }, []);
 
+  // Deliberately unconditional (not gated on `permission`) — the
+  // refresh-on-change half of this loop has to run for every baby, with
+  // or without notifications enabled; only the actual Notification() call
+  // below is permission-gated.
   useEffect(() => {
-    if (permission !== "granted") return;
     let cancelled = false;
 
     async function poll() {
       try {
         const res = await fetch(`/api/play/${slug}/notify-state`, { cache: "no-store" });
         if (!res.ok || cancelled) return;
-        const { kind } = (await res.json()) as { kind: string };
+        const { kind, lastEventId } = (await res.json()) as { kind: string; lastEventId: number };
 
         if (
+          permission === "granted" &&
           lastKindRef.current !== null &&
           lastKindRef.current !== kind &&
           NOTIFIABLE_KINDS.has(kind) &&
           document.visibilityState !== "visible"
         ) {
-          const copy = NOTIFICATION_COPY[kind];
+          const copy =
+            kind === "CHAMPION"
+              ? { title: `🌟 ${championLabel}! 🌟`, body: "You won it all, congratulations!" }
+              : NOTIFICATION_COPY[kind];
           if (copy) new Notification(copy.title, { body: copy.body, icon: "/website-signup-badge.svg" });
         }
         lastKindRef.current = kind;
+
+        if (lastEventIdRef.current !== null && lastEventIdRef.current !== lastEventId) {
+          router.refresh();
+        }
+        lastEventIdRef.current = lastEventId;
       } catch {
         // Network hiccup — just try again next tick.
       }
@@ -72,7 +100,7 @@ export function BrowserNotifications({ slug }: { slug: string }) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [slug, permission]);
+  }, [slug, permission, championLabel, router]);
 
   if (permission === "unsupported" || permission === "granted" || permission === "denied") return null;
 

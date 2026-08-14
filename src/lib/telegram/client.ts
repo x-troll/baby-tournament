@@ -23,6 +23,54 @@ function isConfigured(): boolean {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN);
 }
 
+// No button text currently interpolates unbounded user content (baby
+// display names, etc. — see player-copy.ts's header comment on
+// readyCheckButtonLabel), but nothing enforced that invariant either.
+// These are a last-resort safety net, not the primary fix — the primary
+// fix is keeping every button's copy itself short.
+const MAX_BUTTON_LABEL_CHARS = 40;
+const MAX_CALLBACK_DATA_BYTES = 64; // Telegram's hard limit — it silently rejects anything longer.
+
+function truncateButtonLabel(text: string): string {
+  if (text.length <= MAX_BUTTON_LABEL_CHARS) return text;
+  return `${text.slice(0, MAX_BUTTON_LABEL_CHARS - 1).trimEnd()}…`;
+}
+
+function sanitizeKeyboard(keyboard: InlineKeyboard): InlineKeyboard {
+  return keyboard.map((row) =>
+    row.map((button) => {
+      if ("callback_data" in button) {
+        const bytes = new TextEncoder().encode(button.callback_data).length;
+        if (bytes > MAX_CALLBACK_DATA_BYTES) {
+          console.error(
+            `[telegram] callback_data exceeds Telegram's 64-byte limit (${bytes} bytes): ${button.callback_data}`,
+          );
+        }
+      }
+      return { ...button, text: truncateButtonLabel(button.text) };
+    }),
+  );
+}
+
+// Retry budget for a 429 (rate limit) — bounded well below any request
+// timeout, since this runs inline in a webhook handler / server action,
+// not a background worker that can afford to wait out Telegram's own
+// `retry_after` in full.
+const MAX_RATE_LIMIT_WAIT_MS = 5000;
+
+async function callTelegramApiOnce(
+  token: string,
+  method: string,
+  body: Record<string, unknown>,
+): Promise<{ ok: boolean; error_code?: number; description?: string; parameters?: { retry_after?: number }; result?: unknown }> {
+  const res = await fetch(`${API_BASE}/bot${token}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
 async function callTelegramApi(method: string, body: Record<string, unknown>): Promise<unknown> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
@@ -35,15 +83,35 @@ async function callTelegramApi(method: string, body: Record<string, unknown>): P
   // by construction always calls this *after* the DB transaction that
   // actually matters has already committed.
   try {
-    const res = await fetch(`${API_BASE}/bot${token}/${method}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const json = await res.json();
-    if (!json.ok) {
-      console.error(`[telegram] ${method} failed:`, json);
+    const json = await callTelegramApiOnce(token, method, body);
+
+    if (json.ok) return json;
+
+    if (json.error_code === 429) {
+      // Rate-limited — Telegram tells us exactly how long to back off.
+      // One retry, capped: worth one attempt (bursts like
+      // notifyAdminsHelpRequest's fan-out to every linked admin, or
+      // notifyMatchStarted's fan-out to every other participant, are the
+      // realistic trigger), but not worth blocking the caller
+      // indefinitely if Telegram wants longer than that.
+      const waitMs = Math.min((json.parameters?.retry_after ?? 1) * 1000, MAX_RATE_LIMIT_WAIT_MS);
+      console.error(`[telegram] ${method} rate-limited, retrying after ${waitMs}ms:`, json);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      const retried = await callTelegramApiOnce(token, method, body);
+      if (!retried.ok) console.error(`[telegram] ${method} still failing after rate-limit retry:`, retried);
+      return retried;
     }
+
+    if (json.error_code === 403) {
+      // Bot blocked by this user, or they never started a chat with it —
+      // permanent for this chat until they unblock it themselves. Not
+      // retryable; logged distinctly so it doesn't read like a transient
+      // failure when someone checks the notification log.
+      console.error(`[telegram] ${method} blocked (403), recipient has blocked the bot:`, json);
+      return json;
+    }
+
+    console.error(`[telegram] ${method} failed:`, json);
     return json;
   } catch (err) {
     console.error(`[telegram] ${method} threw:`, err);
@@ -60,7 +128,7 @@ export async function sendMessage(
     chat_id: chatId,
     text,
     parse_mode: opts.parseMode,
-    reply_markup: opts.replyMarkup ? { inline_keyboard: opts.replyMarkup } : undefined,
+    reply_markup: opts.replyMarkup ? { inline_keyboard: sanitizeKeyboard(opts.replyMarkup) } : undefined,
   })) as { ok: boolean; description?: string; result?: { message_id: number } } | null;
 
   // Logged here, not inside callTelegramApi — sendMessage is the one

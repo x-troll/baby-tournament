@@ -1,6 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { AdminNav } from "@/components/AdminNav";
+import { AdminShell } from "@/components/AdminShell";
 
 // Everything under admin/(protected)/** requires a session — the login
 // screen itself lives at /login, entirely outside this route group, so
@@ -10,16 +9,5 @@ import { AdminNav } from "@/components/AdminNav";
 // you.
 export default async function ProtectedAdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();
-
-  // Same OPEN/ACKNOWLEDGED filter as the Requests page itself uses.
-  const openRequestCount = await prisma.helpRequest.count({
-    where: { status: { in: ["OPEN", "ACKNOWLEDGED"] } },
-  });
-
-  return (
-    <div className="min-h-screen">
-      <AdminNav openRequestCount={openRequestCount} />
-      <main className="mx-auto max-w-5xl p-6">{children}</main>
-    </div>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }

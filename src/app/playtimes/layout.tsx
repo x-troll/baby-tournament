@@ -1,6 +1,5 @@
 import { getCurrentAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { AdminNav } from "@/components/AdminNav";
+import { AdminShell } from "@/components/AdminShell";
 
 // Public tree — unlike admin/(protected), no requireAdmin() here. An
 // admin who happens to be signed in gets the same nav + width as the
@@ -18,14 +17,5 @@ export default async function PlaytimesLayout({ children }: { children: React.Re
     return <div className="min-h-screen w-full">{children}</div>;
   }
 
-  const openRequestCount = await prisma.helpRequest.count({
-    where: { status: { in: ["OPEN", "ACKNOWLEDGED"] } },
-  });
-
-  return (
-    <div className="min-h-screen">
-      <AdminNav openRequestCount={openRequestCount} />
-      <main className="mx-auto max-w-5xl p-6">{children}</main>
-    </div>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }

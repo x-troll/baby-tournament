@@ -28,6 +28,10 @@ export function unknownJoinToken(): string {
   return `Hmm, I don't recognize that invite. Ask a ${t.admin} for a fresh QR code.`;
 }
 
+export function registrationClosed(playtimeName: string): string {
+  return `${playtimeName} has already started, registration's closed. Ask a ${t.admin} if you think that's wrong.`;
+}
+
 export function adminLinked(name: string): string {
   return `You're linked up, ${name}. You'll get pushes here for help requests, disputes, and round updates.`;
 }
@@ -53,7 +57,7 @@ export function adminHelpRequestAlert(babyName: string, matchLabel: string, reas
 }
 
 export function adminDisputeAlert(babyName: string, matchLabel: string): string {
-  return `⚠️ ${babyName} disputed a result (${matchLabel}). The match is frozen until you resolve it.`;
+  return `⚠️ ${babyName} flagged a score dispute (${matchLabel}). Check it and correct the result via admin override if needed.`;
 }
 
 export function adminOnMyWaySent(): string {

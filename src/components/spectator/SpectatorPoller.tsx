@@ -22,8 +22,10 @@ const POLL_INTERVAL_MS = 3000;
  *
  * No playtime title, no star chart/score board — deliberately trimmed to
  * just what's happening right now (help indicator, stage banner, current
- * matches, the bracket itself). The star chart is still real data
- * (`state.starChart`), just no longer rendered on this screen.
+ * matches, the bracket itself). The star-chart data this screen used to
+ * render was removed (SpectatorState no longer computes it) once nothing
+ * consumed it anymore — see the admin panel's own Score tab for the
+ * per-baby standings table instead.
  */
 export function SpectatorPoller({
   slug,

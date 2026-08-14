@@ -86,6 +86,6 @@ export interface Phase2PlayableMatch {
   babyB: BabyId;
 }
 
-// ── Match lifecycle (state-machine.ts) ────────────────────────────────
+// ── Match lifecycle ────────────────────────────────────────────────
 
-export type MatchStatus = "PENDING" | "READY" | "IN_PROGRESS" | "REPORTED" | "CONFIRMED";
+export type MatchStatus = "PENDING" | "READY" | "IN_PROGRESS" | "CONFIRMED";

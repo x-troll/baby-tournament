@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { startPlaytime as startPlaytimeLifecycle } from "@/lib/playtime-lifecycle";
+import { startPlaytime as startPlaytimeLifecycle, forfeitBaby } from "@/lib/playtime-lifecycle";
 import { shortId } from "@/lib/short-id";
+import { createBabyForPlaytime, RegistrationClosedError } from "@/lib/baby-registration";
+import { revalidatePlaytimePage } from "./matches";
 import { Game } from "@/generated/prisma/enums";
 
 const DEFAULT_MATCH_DURATION_SEC: Record<Game, number> = {
@@ -50,31 +52,35 @@ export async function deleteAllPlaytimesAction(): Promise<void> {
   revalidatePath("/playtimes");
 }
 
-export async function addBabyManuallyAction(playtimeId: string, formData: FormData): Promise<void> {
+/**
+ * Typed `{error?}` return rather than a thrown Error — consumed via
+ * useActionState (AddBabyManuallyButton.tsx), same pattern
+ * updateBabyProfileAction (baby-profile.ts) already established, so a
+ * routine race (an admin still has this dialog open in a second tab
+ * after the playtime already started elsewhere) shows an inline message
+ * instead of crashing the page.
+ */
+export async function addBabyManuallyAction(
+  playtimeId: string,
+  _prevState: { error?: string },
+  formData: FormData,
+): Promise<{ error?: string }> {
   await requireAdmin();
 
   const displayName = String(formData.get("displayName") ?? "").trim();
-  if (!displayName) throw new Error("Display name is required.");
+  if (!displayName) return { error: "Display name is required." };
 
-  const playtime = await prisma.playtime.findUniqueOrThrow({ where: { id: playtimeId } });
-  if (playtime.status !== "NURSERY_OPEN") {
-    throw new Error("Can't add babies once the playtime has started.");
+  try {
+    await createBabyForPlaytime(playtimeId, { displayName });
+  } catch (err) {
+    if (err instanceof RegistrationClosedError) {
+      return { error: "Can't add babies once the playtime has started." };
+    }
+    throw err;
   }
 
-  const lastBaby = await prisma.baby.findFirst({
-    where: { playtimeId },
-    orderBy: { registrationOrder: "desc" },
-  });
-
-  await prisma.baby.create({
-    data: {
-      playtimeId,
-      displayName,
-      registrationOrder: (lastBaby?.registrationOrder ?? 0) + 1,
-    },
-  });
-
-  revalidatePath(`/playtimes/${playtime.slugNumber}`);
+  await revalidatePlaytimePage(playtimeId);
+  return {};
 }
 
 export async function removeBabyAction(playtimeId: string, babyId: string): Promise<void> {
@@ -89,12 +95,15 @@ export async function removeBabyAction(playtimeId: string, babyId: string): Prom
   revalidatePath(`/playtimes/${playtime.slugNumber}`);
 }
 
+/** A player who stops responding mid-event — see forfeitBaby's own doc comment for exactly what happens in each stage. */
+export async function forfeitBabyAction(playtimeId: string, babyId: string): Promise<void> {
+  const admin = await requireAdmin();
+  await forfeitBaby(playtimeId, babyId, admin.id);
+  await revalidatePlaytimePage(playtimeId);
+}
+
 export async function startPlaytimeAction(playtimeId: string): Promise<void> {
   await requireAdmin();
   await startPlaytimeLifecycle(playtimeId);
-  const playtime = await prisma.playtime.findUniqueOrThrow({
-    where: { id: playtimeId },
-    select: { slugNumber: true },
-  });
-  revalidatePath(`/playtimes/${playtime.slugNumber}`);
+  await revalidatePlaytimePage(playtimeId);
 }

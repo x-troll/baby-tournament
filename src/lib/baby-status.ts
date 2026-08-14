@@ -16,14 +16,18 @@ export type BabyStatusState =
   | { kind: "PLAYING"; matchId: string };
 
 export async function computeBabyStatus(babyId: string, _depth = 0): Promise<BabyStatusState> {
-  const baby = await prisma.baby.findUniqueOrThrow({ where: { id: babyId }, include: { playtime: true } });
-
-  // "Daddy is coming" takes priority over everything else — it's the
-  // response to a request the baby just made.
-  const ackedHelp = await prisma.helpRequest.findFirst({
-    where: { babyId, status: "ACKNOWLEDGED" },
-    orderBy: { createdAt: "desc" },
-  });
+  // Neither query depends on the other's result — both only need
+  // babyId, already known before either runs — so there's no reason to
+  // serialize them into two round trips.
+  const [baby, ackedHelp] = await Promise.all([
+    prisma.baby.findUniqueOrThrow({ where: { id: babyId }, include: { playtime: true } }),
+    // "Daddy is coming" takes priority over everything else — it's the
+    // response to a request the baby just made.
+    prisma.helpRequest.findFirst({
+      where: { babyId, status: "ACKNOWLEDGED" },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
   if (ackedHelp) return { kind: "DADDY_COMING" };
 
   if (baby.status === "CHAMPION") return { kind: "CHAMPION" };
@@ -53,15 +57,11 @@ export async function computeBabyStatus(babyId: string, _depth = 0): Promise<Bab
   if (match.status === "READY") {
     return { kind: "UP_NEXT", matchId: match.id };
   }
-  if (match.status === "IN_PROGRESS") {
-    return { kind: "PLAYING", matchId: match.id };
-  }
-
-  // REPORTED is no longer reachable in practice — a baby's own report
-  // instantly confirms the match (see confirmMatchResult) — but the
-  // enum value still exists in the schema, so fall back to a generic
-  // waiting state rather than assuming this branch can't run.
-  return { kind: "QUIET_TIME", etaMinutes: null };
+  // IN_PROGRESS is the only status left once CONFIRMED/PENDING/READY are
+  // all handled above — MatchStatus has no separate "reported, awaiting
+  // confirmation" state; a baby's own report instantly confirms the
+  // match (see confirmMatchResult).
+  return { kind: "PLAYING", matchId: match.id };
 }
 
 // The buffer added on top of a match's normal expected duration before
@@ -86,7 +86,7 @@ const OVERTIME_BUFFER_SEC = 5 * 60;
  */
 async function computeEtaMinutes(playtimeId: string, matchId: string): Promise<number> {
   const playtime = await prisma.playtime.findUniqueOrThrow({ where: { id: playtimeId } });
-  const avgSec = playtime.rollingAvgMatchDurationSec ?? playtime.defaultMatchDurationSec;
+  const avgSec = playtime.defaultMatchDurationSec;
 
   const [pending, active] = await Promise.all([
     prisma.match.findMany({ where: { playtimeId, status: "PENDING" } }),

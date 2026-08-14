@@ -8,13 +8,31 @@
 // since the Telegram path resolves it from telegramChatId rather than a
 // cookie session.
 import { prisma } from "@/lib/prisma";
-import { notifyBabyDaddyIsComing } from "@/lib/telegram/notify";
+import { notifyBabyDaddyIsComing, clearHelpRequestKeyboards } from "@/lib/telegram/notify";
 import type { HelpRequest } from "@/generated/prisma/client";
 
-/** "On my way" — marks ACKNOWLEDGED and pushes "Daddy is coming 💫" to the baby's screen. */
+/** Shared by both admin layouts' nav badge and the Requests page itself — same OPEN/ACKNOWLEDGED filter, one place instead of three independent copies. */
+export async function getOpenHelpRequestCount(): Promise<number> {
+  return prisma.helpRequest.count({ where: { status: { in: ["OPEN", "ACKNOWLEDGED"] } } });
+}
+
+/**
+ * "On my way" — marks ACKNOWLEDGED and pushes "Daddy is coming 💫" to the
+ * baby's screen, exactly once. Guarded on `status: "OPEN"` (a conditional
+ * update, not read-then-write) so a second ack — another admin tapping
+ * their own copy of the same alert, or the same admin double-tapping
+ * before the keyboard visibly changes — doesn't re-push the baby a
+ * second time. Every admin's copy of the alert also gets its buttons
+ * cleared here, not just the tapper's own.
+ */
 export async function acknowledgeHelpRequest(id: string): Promise<HelpRequest> {
-  const req = await prisma.helpRequest.update({ where: { id }, data: { status: "ACKNOWLEDGED" } });
-  await notifyBabyDaddyIsComing(req.babyId);
+  const { count } = await prisma.helpRequest.updateMany({
+    where: { id, status: "OPEN" },
+    data: { status: "ACKNOWLEDGED" },
+  });
+  const req = await prisma.helpRequest.findUniqueOrThrow({ where: { id } });
+  if (count > 0) await notifyBabyDaddyIsComing(req.babyId);
+  await clearHelpRequestKeyboards(id);
   return req;
 }
 
@@ -24,15 +42,17 @@ export async function acknowledgeHelpRequest(id: string): Promise<HelpRequest> {
  * empty if that admin never linked Telegram; resolvedById is simply
  * left null rather than blocking the resolve.
  *
- * Deliberately does *not* touch Match.disputed — that only clears via a
- * real admin-panel override (confirmMatchResult) that enters a
- * corrected result. Silently clearing it here would let the original
- * (disputed!) report auto-confirm on its own the next time anything
- * reads it past its deadline.
+ * Doesn't touch the underlying match at all — a "score dispute" reason
+ * is a note to the admin to go check the result and correct it via a
+ * normal admin override (confirmMatchResult) if needed. Resolving the
+ * help-request thread and correcting a bad result are two independent
+ * actions.
  */
 export async function resolveHelpRequest(id: string, adminId: string | null): Promise<HelpRequest> {
-  return prisma.helpRequest.update({
+  const req = await prisma.helpRequest.update({
     where: { id },
     data: { status: "RESOLVED", resolvedById: adminId },
   });
+  await clearHelpRequestKeyboards(id);
+  return req;
 }

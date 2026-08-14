@@ -29,17 +29,7 @@ export interface SpectatorMatch {
   round: number;
   status: MatchStatus;
   stationNumber: number | null;
-  deadlineAt: string | null;
-  disputed: boolean;
   participants: SpectatorParticipant[];
-}
-
-export interface SpectatorStarChartRow {
-  babyId: string;
-  name: string;
-  status: "ACTIVE" | "NAPPED" | "CHAMPION";
-  finalPlacement: number | null;
-  goldStars: number;
 }
 
 export interface SpectatorState {
@@ -49,7 +39,6 @@ export interface SpectatorState {
   stageBanner: string;
   activeMatches: SpectatorMatch[];
   onDeck: SpectatorParticipant[];
-  starChart: SpectatorStarChartRow[];
   bestBaby: { babyId: string; name: string; avatarSrc: string | null } | null;
   openHelpRequestCount: number;
   /** Deployment-wide organizer term (see baby-terminology.ts) — this is an aggregate across every baby, so there's no single baby's /profile preference to read here. */
@@ -63,7 +52,7 @@ export interface SpectatorState {
   joinLink: string | null;
   /** Website counterpart to joinLink, shown side-by-side with it — see NurseryCheckIn. Null if NEXT_PUBLIC_APP_URL isn't set. */
   websiteJoinLink: string | null;
-  /** Who's checked in so far, in join order — shown as a Kahoot-style badge row next to the join QR while status is NURSERY_OPEN. Empty (not populated) once the playtime starts; use starChart for the in-progress roster instead. */
+  /** Who's checked in so far, in join order — shown as a Kahoot-style badge row next to the join QR while status is NURSERY_OPEN. Empty (not populated) once the playtime starts. */
   registeredBabies: SpectatorParticipant[];
 }
 
@@ -112,35 +101,18 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
   });
 
   const activeMatches = matches
-    .filter((m) => m.status === "READY" || m.status === "IN_PROGRESS" || m.status === "REPORTED")
+    .filter((m) => m.status === "READY" || m.status === "IN_PROGRESS")
     .map((m) => ({
       matchId: m.id,
       kind: m.kind,
       round: m.round,
       status: m.status,
       stationNumber: m.stationNumber,
-      deadlineAt: m.deadlineAt?.toISOString() ?? null,
-      disputed: m.disputed,
       participants: m.participants.map(toParticipant),
     }));
 
   const pending = sortMatchesByPriority(matches.filter((m) => m.status === "PENDING"));
   const onDeck = pending[0]?.participants.map(toParticipant) ?? [];
-
-  const goldStarCounts = new Map<string, number>();
-  for (const m of matches) {
-    for (const p of m.participants) {
-      if (p.finishPosition === 1) goldStarCounts.set(p.babyId, (goldStarCounts.get(p.babyId) ?? 0) + 1);
-    }
-  }
-
-  const starChart: SpectatorStarChartRow[] = babies.map((b) => ({
-    babyId: b.id,
-    name: b.displayName ?? "Unnamed baby",
-    status: b.status,
-    finalPlacement: b.finalPlacement,
-    goldStars: goldStarCounts.get(b.id) ?? 0,
-  }));
 
   const champion = babies.find((b) => b.status === "CHAMPION");
   const aliveCount = babies.filter((b) => b.status === "ACTIVE").length;
@@ -189,7 +161,6 @@ export async function computeSpectatorState(slug: string): Promise<SpectatorStat
     stageBanner,
     activeMatches,
     onDeck,
-    starChart,
     bestBaby: champion
       ? { babyId: champion.id, name: champion.displayName ?? "Unnamed baby", avatarSrc: resolveAvatarSrc(champion.avatarId) }
       : null,
@@ -220,7 +191,9 @@ function computeStageBanner(
   const current = sortMatchesByPriority(matches.filter((m) => m.status !== "CONFIRMED"))[0];
   if (!current) return "Between rounds…";
 
-  if (current.kind === MatchKind.ROUND_ROBIN) return "ROUND ROBIN, 3 babies";
-  if (current.kind === MatchKind.PLAYPEN) return `PLAYPEN ROUND ${current.round}, ${aliveCount} babies left`;
+  if (current.kind === MatchKind.ROUND_ROBIN) return `${t.roundRobinRoundLabel.toUpperCase()}, 3 ${t.playerPlural}`;
+  if (current.kind === MatchKind.PLAYPEN) {
+    return `${t.groupStageHeat.toUpperCase()} ROUND ${current.round}, ${aliveCount} ${t.playerPlural} left`;
+  }
   return (t.phase2BannerLabel as Partial<Record<MatchKind, string>>)[current.kind] ?? current.kind;
 }

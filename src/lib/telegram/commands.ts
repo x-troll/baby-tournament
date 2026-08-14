@@ -9,6 +9,7 @@ import { loadRules } from "@/lib/rules-content";
 import { computeBabyStatus } from "@/lib/baby-status";
 import { markMatchInProgress } from "@/lib/playtime-lifecycle";
 import { acknowledgeHelpRequest, resolveHelpRequest } from "@/lib/help-requests";
+import { createBabyForPlaytime, RegistrationClosedError } from "@/lib/baby-registration";
 import { GAME_DISPLAY } from "@/lib/enum-display";
 import * as playerCopy from "@/lib/player-copy";
 import { answerCallbackQuery, sendMessage } from "./client";
@@ -26,11 +27,36 @@ interface TelegramCallbackQuery {
 }
 
 export interface TelegramUpdate {
+  update_id?: number;
   message?: TelegramMessage;
   callback_query?: TelegramCallbackQuery;
 }
 
+// Telegram retries webhook delivery on anything but a fast 2xx — a slow
+// handler, a transient network blip, or a cold start can all trigger a
+// redelivery of the *same* update. Without this, that redelivery would
+// reprocess it from scratch (a second "/start" welcome, a second
+// help-request ack, ...). In-memory only, same tradeoff as
+// notification-log.ts — resets on redeploy, which is fine: a redeploy is
+// also the one moment Telegram can't have anything in flight to retry.
+const MAX_TRACKED_UPDATE_IDS = 500;
+const seenUpdateIdOrder: number[] = [];
+const seenUpdateIds = new Set<number>();
+
+function alreadyProcessed(updateId: number | undefined): boolean {
+  if (updateId === undefined) return false; // no id to dedupe on — process it, same as before this existed
+  if (seenUpdateIds.has(updateId)) return true;
+  seenUpdateIds.add(updateId);
+  seenUpdateIdOrder.push(updateId);
+  if (seenUpdateIdOrder.length > MAX_TRACKED_UPDATE_IDS) {
+    const oldest = seenUpdateIdOrder.shift();
+    if (oldest !== undefined) seenUpdateIds.delete(oldest);
+  }
+  return false;
+}
+
 export async function handleUpdate(update: TelegramUpdate): Promise<void> {
+  if (alreadyProcessed(update.update_id)) return;
   if (update.message) {
     await handleMessage(update.message);
   } else if (update.callback_query) {
@@ -113,17 +139,15 @@ async function handleBabyStart(chatId: string, joinToken: string): Promise<void>
   // collected via ambiguous free-text chat replies, which no longer
   // happens at all.
   if (!baby) {
-    const lastBaby = await prisma.baby.findFirst({
-      where: { playtimeId: playtime.id },
-      orderBy: { registrationOrder: "desc" },
-    });
-    baby = await prisma.baby.create({
-      data: {
-        playtimeId: playtime.id,
-        telegramChatId: chatId,
-        registrationOrder: (lastBaby?.registrationOrder ?? 0) + 1,
-      },
-    });
+    try {
+      baby = await createBabyForPlaytime(playtime.id, { telegramChatId: chatId });
+    } catch (err) {
+      if (err instanceof RegistrationClosedError) {
+        await sendMessage(chatId, copy.registrationClosed(playtime.name));
+        return;
+      }
+      throw err;
+    }
   }
 
   const gameLabel = GAME_DISPLAY[playtime.game].label;
@@ -131,8 +155,30 @@ async function handleBabyStart(chatId: string, joinToken: string): Promise<void>
   await sendMessage(chatId, copy.finishSignupOnWeb(playtime.name, gameLabel, link));
 }
 
+/**
+ * `Baby.telegramChatId` is only unique *per playtime*
+ * (`@@unique([playtimeId, telegramChatId])`), not globally — the same
+ * Telegram account linked to two playtimes (an admin's own account, or
+ * someone invited to two different events) used to always resolve to
+ * whichever one was joined most recently, regardless of which is
+ * actually live. Prefer whichever registration is IN_PROGRESS right now;
+ * only fall back to "most recently joined" when none are (e.g. between
+ * events, or both still in NURSERY_OPEN).
+ */
+async function resolveBabyForChat(chatId: string): Promise<
+  | { id: string; displayName: string | null; playtimeId: string; selfRoleLabel: string | null; allowExplicitMessages: boolean }
+  | null
+> {
+  const babies = await prisma.baby.findMany({
+    where: { telegramChatId: chatId },
+    include: { playtime: { select: { status: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  return babies.find((b) => b.playtime.status === "IN_PROGRESS") ?? babies[0] ?? null;
+}
+
 async function handleStatusCommand(chatId: string): Promise<void> {
-  const baby = await prisma.baby.findFirst({ where: { telegramChatId: chatId }, orderBy: { createdAt: "desc" } });
+  const baby = await resolveBabyForChat(chatId);
   if (!baby?.displayName) {
     await sendMessage(chatId, "I don't have you checked in yet, use your invite link to join first.");
     return;
@@ -142,17 +188,14 @@ async function handleStatusCommand(chatId: string): Promise<void> {
 }
 
 async function handleRulesCommand(chatId: string): Promise<void> {
-  const baby = await prisma.baby.findFirst({
-    where: { telegramChatId: chatId },
-    orderBy: { createdAt: "desc" },
-    include: { playtime: true },
-  });
+  const baby = await resolveBabyForChat(chatId);
   if (!baby) {
     await sendMessage(chatId, "Join a playtime first, then I can show you the house rules.");
     return;
   }
-  const rules = await loadRules(baby.playtime.game);
-  await sendMessage(chatId, copy.rulesReply(rules.summary, baby.playtime.rulesOverrideNote));
+  const playtime = await prisma.playtime.findUniqueOrThrow({ where: { id: baby.playtimeId } });
+  const rules = await loadRules(playtime.game);
+  await sendMessage(chatId, copy.rulesReply(rules.summary, playtime.rulesOverrideNote));
 }
 
 async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> {
@@ -204,5 +247,12 @@ async function handleCallbackQuery(query: TelegramCallbackQuery): Promise<void> 
       revalidatePath("/admin/help-requests");
       await answerCallbackQuery(query.id, "Marked resolved.");
     }
+    return;
   }
+
+  // An action prefix that matches nothing above — a forged callback_data,
+  // or a stale button from a since-renamed prefix still sitting in an old
+  // chat message. Without this, Telegram's tap-loading spinner just hangs
+  // with no server acknowledgement at all.
+  await answerCallbackQuery(query.id, "That button doesn't do anything anymore.");
 }

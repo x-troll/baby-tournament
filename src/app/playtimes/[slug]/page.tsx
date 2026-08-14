@@ -7,9 +7,8 @@ import { computeSpectatorState } from "@/lib/spectator-state";
 import { loadRules } from "@/lib/rules-content";
 import { babyJoinDeepLink, websiteJoinLink } from "@/lib/qr";
 import { getTerminology } from "@/lib/terminology";
-import { resolveAvatarSrc } from "@/lib/avatars";
-import { buildPlaypenSection } from "@/lib/playpen-view";
-import { buildPhase2Bracket } from "@/lib/bracket-view";
+import { describeMatchKind } from "@/lib/match-label";
+import { toDisplayStatus } from "@/lib/match-status";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +16,7 @@ import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import { AddBabyManuallyButton } from "@/components/admin/AddBabyManuallyButton";
 import { StartPlaytimeButton } from "@/components/admin/StartPlaytimeButton";
+import { ForfeitBabyButton } from "@/components/admin/ForfeitBabyButton";
 import { SpectatorPoller } from "@/components/spectator/SpectatorPoller";
 import { NurseryCheckIn } from "@/components/spectator/NurseryCheckIn";
 import { PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
@@ -57,66 +57,51 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
     );
   }
 
-  const playtime = await prisma.playtime.findUnique({
-    where: { slugNumber },
-    include: {
-      babies: { orderBy: { registrationOrder: "asc" } },
-      matches: {
-        include: { participants: { include: { baby: true } } },
-        orderBy: [{ round: "asc" }, { createdAt: "asc" }],
+  // The bracket/playpen diagram (playpens/phase2Bracket below) reuses
+  // computeSpectatorState — the same view-model the public spectator
+  // screen and the baby page already build their own copy of the same
+  // diagram from — instead of this page re-deriving it from a second,
+  // independently-written query. What's left in this page's own query is
+  // only the admin-specific extras computeSpectatorState's public-facing
+  // shape doesn't carry: seed/finalPlacement/telegramChatId per baby, and
+  // full match participant rows for the Matches tab's report/undo forms.
+  const [playtime, spectatorState] = await Promise.all([
+    prisma.playtime.findUnique({
+      where: { slugNumber },
+      include: {
+        babies: { orderBy: { registrationOrder: "asc" } },
+        matches: {
+          include: { participants: { include: { baby: true } } },
+          orderBy: [{ round: "asc" }, { createdAt: "asc" }],
+        },
       },
-    },
-  });
-  if (!playtime) notFound();
+    }),
+    computeSpectatorState(slug),
+  ]);
+  if (!playtime || !spectatorState) notFound();
 
   const hasBotUsername = Boolean(process.env.TELEGRAM_BOT_USERNAME);
   const joinLink = hasBotUsername ? babyJoinDeepLink(playtime.joinToken) : null;
   const websiteLink = websiteJoinLink(playtime.joinToken);
 
   const activeCount = playtime.babies.filter((b) => b.status === "ACTIVE").length;
+  // Matches the same "only a finished registration counts" filter
+  // startPlaytime itself applies (playtime-lifecycle.ts) — a nameless
+  // check-in (Telegram link tapped, /register never finished) shouldn't
+  // enable the Start button or be promised a spot in the bracket.
+  const registeredCount = playtime.babies.filter((b) => b.displayName != null).length;
   const t = getTerminology();
 
   // Once the playtime is finished every baby has a finalPlacement — show
-  // the star chart in that order (1st, 2nd, 3rd, ...) instead of
+  // the Score tab in that order (1st, 2nd, 3rd, ...) instead of
   // registration order. While still in progress most babies don't have
   // one yet, so registration order (the fetch's default) stays clearest.
-  const starChartBabies =
+  const scoreTableBabies =
     playtime.status === "COMPLETE"
       ? [...playtime.babies].sort((a, b) => (a.finalPlacement ?? 999) - (b.finalPlacement ?? 999))
       : playtime.babies;
 
-  const toParticipant = (p: {
-    babyId: string;
-    finishPosition: number | null;
-    seedInMatch: number | null;
-    baby: { displayName: string | null; avatarId: string | null };
-  }) => ({
-    babyId: p.babyId,
-    name: p.baby.displayName ?? "Unnamed baby",
-    finishPosition: p.finishPosition,
-    seedInMatch: p.seedInMatch,
-    avatarSrc: resolveAvatarSrc(p.baby.avatarId),
-  });
-
-  const playpens = buildPlaypenSection(
-    playtime.matches.map((m) => ({
-      id: m.id,
-      kind: m.kind,
-      round: m.round,
-      penIndex: m.penIndex,
-      status: m.status,
-      participants: m.participants.map(toParticipant),
-    })),
-    t,
-  );
-
-  const phase2Bracket = buildPhase2Bracket(
-    playtime.matches.map((m) => ({
-      kind: m.kind,
-      status: m.status,
-      participants: m.participants.map(toParticipant),
-    })),
-  );
+  const { playpens, phase2Bracket } = spectatorState;
 
   // Two tabs — the bracket/playpen view renders full-width above these,
   // not as a third tab, so it's always visible rather than switched away
@@ -146,25 +131,34 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
                   Placement
                 </th>
                 <th scope="col" className="py-1">
-                  <span className="sr-only">Preview</span>
+                  <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {starChartBabies.map((baby) => (
+              {scoreTableBabies.map((baby) => (
                 <tr key={baby.id} className="border-b border-border last:border-0">
                   <td className="py-1 pr-2">{baby.displayName ?? "(no name)"}</td>
                   <td className="py-1 pr-2">
-                    {baby.status === "CHAMPION" ? "🌟 Best Baby" : baby.status === "NAPPED" ? "Napping" : "Active"}
+                    {baby.status === "CHAMPION" ? `🌟 ${t.champion}` : baby.status === "NAPPED" ? "Napping" : "Active"}
                   </td>
                   <td className="py-1 pr-2">{baby.seed ?? "-"}</td>
                   <td className="py-1 pr-2">{baby.finalPlacement ?? "-"}</td>
                   <td className="py-1">
-                    <form action={previewAsBabyAction.bind(null, baby.id)}>
-                      <Button type="submit" variant="ghost" size="sm">
-                        Preview
-                      </Button>
-                    </form>
+                    <span className="flex justify-end gap-1">
+                      <form action={previewAsBabyAction.bind(null, baby.id)}>
+                        <Button type="submit" variant="ghost" size="sm">
+                          Preview
+                        </Button>
+                      </form>
+                      {playtime.status === "IN_PROGRESS" && baby.status === "ACTIVE" && (
+                        <ForfeitBabyButton
+                          playtimeId={playtime.id}
+                          babyId={baby.id}
+                          displayName={baby.displayName ?? "this baby"}
+                        />
+                      )}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -185,8 +179,9 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
             {playtime.matches.map((match) => (
               <div key={match.id} className="rounded-card border border-border bg-background p-3">
                 <p className="text-sm font-semibold">
-                  {match.kind} · round {match.round}
-                  {match.penIndex != null ? ` · pen ${match.penIndex + 1}` : ""} · {match.status}
+                  {describeMatchKind(t, match.kind, match.round)}
+                  {match.penIndex != null ? ` · pen ${match.penIndex + 1}` : ""} ·{" "}
+                  {t.matchStatusLabel[toDisplayStatus(match.status, false)]}
                   {match.stationNumber != null ? ` · station ${match.stationNumber}` : ""}
                 </p>
                 <ul className="mt-1 text-sm">
@@ -281,7 +276,7 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
         {playtime.status === "NURSERY_OPEN" && (
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             <AddBabyManuallyButton playtimeId={playtime.id} />
-            <StartPlaytimeButton playtimeId={playtime.id} babyCount={playtime.babies.length} />
+            <StartPlaytimeButton playtimeId={playtime.id} babyCount={registeredCount} />
           </div>
         )}
       </header>

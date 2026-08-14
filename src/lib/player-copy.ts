@@ -51,17 +51,6 @@ function etaText(etaMinutes: number | null): string {
   return n === null ? "a few minutes" : `about ${n} minute${n === 1 ? "" : "s"}`;
 }
 
-function ordinalSuffix(n: number): string {
-  const rem100 = n % 100;
-  if (rem100 >= 11 && rem100 <= 13) return "th";
-  switch (n % 10) {
-    case 1: return "st";
-    case 2: return "nd";
-    case 3: return "rd";
-    default: return "th";
-  }
-}
-
 // ── Telegram pushes/replies ──────────────────────────────────────────
 
 export function upNext(baby: CopyBaby, displayName: string, rulesSummary: string): string {
@@ -83,13 +72,20 @@ export function upSoon(baby: CopyBaby, displayName: string, etaMinutes: number):
   });
 }
 
-/** Button label for the ready-check callback. */
+/**
+ * Button label for the ready-check callback — kept short and free of any
+ * variable-length content (a baby's own display name never appears here,
+ * unlike goldStarButtonLabel below) since it renders as a single Telegram
+ * inline button, which has no server-side truncation of its own (see
+ * client.ts's truncateButtonLabel, applied as a last-resort safety net
+ * for the actual name-bearing labels).
+ */
 export function readyCheckButtonLabel(baby: CopyBaby): string {
   return pick(baby, {
-    littlePlayful: `Everyone's here, we're playing, ${t.admin}!`,
-    littleExplicit: `Everyone's here, ${t.admin}, start us before I start whining! 🍼`,
+    littlePlayful: `We're playing, ${t.admin}!`,
+    littleExplicit: `Start us, ${t.admin}, before I whine! 🍼`,
     grownupPlayful: `We're ready, ${t.admin}, let's go!`,
-    grownupExplicit: `We're ready, ${t.admin}. Don't keep us waiting.`,
+    grownupExplicit: `We're ready. Don't keep us waiting.`,
   });
 }
 
@@ -315,28 +311,5 @@ export function dragInstruction(baby: CopyBaby): string {
     littleExplicit: `Drag everyone into order, little one, best baby at the top.`,
     grownupPlayful: `Drag to put everyone in finishing order, 1st at the top.`,
     grownupExplicit: `Drag them into order. Try to be honest about where you landed.`,
-  });
-}
-
-// ── StarChart — resolved once from the *viewing* baby's own prefs, ──
-// ── applied to every row (the text is being read by them, not the ──
-// ── row's own baby) ─────────────────────────────────────────────
-
-export function starChartChampionLabel(baby: CopyBaby): string {
-  return pick(baby, {
-    littlePlayful: `🌟 ${t.champion}`,
-    littleExplicit: `🌟 ${t.admin}'s favorite`,
-    grownupPlayful: `🌟 ${t.champion}`,
-    grownupExplicit: `🌟 Beat a room of babies`,
-  });
-}
-
-export function starChartNappedLabel(baby: CopyBaby, placement: number | null): string {
-  const place = placement == null ? "?" : `${placement}${ordinalSuffix(placement)}`;
-  return pick(baby, {
-    littlePlayful: `Napped: ${place}`,
-    littleExplicit: `Naptime: ${place}, little one`,
-    grownupPlayful: `Napped: ${place}`,
-    grownupExplicit: `Out: ${place}. Tough loss.`,
   });
 }
