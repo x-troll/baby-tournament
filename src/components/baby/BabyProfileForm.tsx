@@ -8,9 +8,9 @@ import type { Baby } from "@/generated/prisma/client";
 
 /**
  * The name/avatar/role/explicit-messages fields — shared by
- * /play/[slug]/register (first-time, name/avatar/role all required, no
+ * /playtimes/[slug]/register (first-time, name/avatar/role all required, no
  * defaults, plus the no-show waiver for babies with no Telegram) and
- * /play/[slug]/settings (editable anytime after, avatar/role stay
+ * /playtimes/[slug]/settings (editable anytime after, avatar/role stay
  * optional, pre-filled from the baby's current values, no waiver —
  * that's a one-time acknowledgment, not an ongoing setting).
  */

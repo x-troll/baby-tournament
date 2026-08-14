@@ -109,12 +109,12 @@ export async function getCurrentBaby(): Promise<Baby | null> {
 async function requireBabySessionOnly(playtimeSlug: string): Promise<Baby> {
   const baby = await getCurrentBaby();
   if (!baby) {
-    redirect(`/play/${playtimeSlug}/not-signed-in`);
+    redirect(`/playtimes/${playtimeSlug}/not-signed-in`);
   }
   const slugNumber = parseSlugNumber(playtimeSlug);
   const playtime = slugNumber === null ? null : await prisma.playtime.findUnique({ where: { slugNumber } });
   if (!playtime) {
-    redirect(`/play/${playtimeSlug}/not-signed-in`);
+    redirect(`/playtimes/${playtimeSlug}/not-signed-in`);
   }
   if (baby.playtimeId !== playtime.id) {
     // A *valid* session exists, just for a different playtime — there's
@@ -124,7 +124,7 @@ async function requireBabySessionOnly(playtimeSlug: string): Promise<Baby> {
     // all" below: this person already has an account here, they're just
     // not currently logged into it — worth telling them that directly
     // instead of the generic "scan the QR" copy.
-    redirect(`/play/${playtimeSlug}/not-signed-in?otherPlaytime=1`);
+    redirect(`/playtimes/${playtimeSlug}/not-signed-in?otherPlaytime=1`);
   }
   return baby;
 }
@@ -135,18 +135,18 @@ async function requireBabySessionOnly(playtimeSlug: string): Promise<Baby> {
  * if the session's baby hasn't picked a display name yet (arrived via a
  * fresh Telegram magic link, or a website /join that hasn't finished
  * registering — see requireBabyForRegistration and
- * src/app/(baby)/play/[slug]/register/page.tsx).
+ * src/app/playtimes/[slug]/register/page.tsx).
  */
 export async function requireBaby(playtimeSlug: string): Promise<Baby> {
   const baby = await requireBabySessionOnly(playtimeSlug);
   if (!baby.displayName) {
-    redirect(`/play/${playtimeSlug}/register`);
+    redirect(`/playtimes/${playtimeSlug}/register`);
   }
   return baby;
 }
 
 /**
- * Used only by /play/[slug]/register itself — same session validation
+ * Used only by /playtimes/[slug]/register itself — same session validation
  * as requireBaby, but deliberately doesn't redirect away for a null
  * displayName, since fixing that is the whole point of this page.
  */
@@ -165,7 +165,7 @@ export async function requireBabyForRegistration(playtimeSlug: string): Promise<
  * device is back on the plain cookie fast-path below.
  *
  * Used only by the one page a website-signup baby is told to bookmark
- * (`/play/[slug]`) — every other baby-facing page keeps using plain
+ * (`/playtimes/[slug]`) — every other baby-facing page keeps using plain
  * requireBaby, since by the time a baby reaches them a session cookie
  * already exists either way.
  */
@@ -173,13 +173,13 @@ export async function requireBabyWithToken(playtimeSlug: string, token: string |
   const slugNumber = parseSlugNumber(playtimeSlug);
   const playtime = slugNumber === null ? null : await prisma.playtime.findUnique({ where: { slugNumber } });
   if (!playtime) {
-    redirect(`/play/${playtimeSlug}/not-signed-in`);
+    redirect(`/playtimes/${playtimeSlug}/not-signed-in`);
   }
 
   const existing = await getCurrentBaby();
   if (existing && existing.playtimeId === playtime.id) {
     if (!existing.displayName) {
-      redirect(`/play/${playtimeSlug}/register`);
+      redirect(`/playtimes/${playtimeSlug}/register`);
     }
     return existing;
   }
@@ -191,7 +191,7 @@ export async function requireBabyWithToken(playtimeSlug: string, token: string |
     // token-for-session exchange for Telegram's magic links, so
     // redirecting there reuses that one code path instead of a second
     // one. It strips the token from the URL on its way back to
-    // /play/<slug>, which is fine: the token only needs to survive in
+    // /playtimes/<slug>, which is fine: the token only needs to survive in
     // whatever URL got *bookmarked*, not in every subsequent address bar.
     redirect(`/nursery/verify?token=${encodeURIComponent(token)}`);
   }
@@ -199,7 +199,7 @@ export async function requireBabyWithToken(playtimeSlug: string, token: string |
   if (existing) {
     // A valid session exists, just for a different playtime — same
     // distinction requireBaby draws above.
-    redirect(`/play/${playtimeSlug}/not-signed-in?otherPlaytime=1`);
+    redirect(`/playtimes/${playtimeSlug}/not-signed-in?otherPlaytime=1`);
   }
-  redirect(`/play/${playtimeSlug}/not-signed-in`);
+  redirect(`/playtimes/${playtimeSlug}/not-signed-in`);
 }

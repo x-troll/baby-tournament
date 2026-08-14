@@ -50,6 +50,8 @@ export interface Terminology {
   waitingForMatch: string;
   /** Overall champion. */
   champion: string;
+  /** Button on /playtimes that opens the "join another still-open one" modal, for a baby already signed up for at least one. */
+  morePlaytimesButtonLabel: string;
 
   // ── Phase 2 (bracket) stage names ──────────────────────────────────
   // Three distinct wordings for the same six stages, kept separate
@@ -98,6 +100,7 @@ const NURSERY: Terminology = {
   registration: "the nursery",
   waitingForMatch: "quiet time",
   champion: "Best Baby",
+  morePlaytimesButtonLabel: "More playtime! 🍼",
 
   phase2StageLabel: {
     QF1: "Playpen 1",
@@ -160,6 +163,7 @@ const PLAIN: Terminology = {
   registration: "check-in",
   waitingForMatch: "waiting",
   champion: "Champion",
+  morePlaytimesButtonLabel: "More tournaments",
 
   // Identical to NURSERY for every field below — none of these were
   // actually theme-varying before this migration (they were hardcoded

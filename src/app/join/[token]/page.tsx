@@ -12,7 +12,7 @@ import { joinViaWebsiteAction } from "@/server-actions/baby-join";
 //
 // Deliberately a thin "confirm & join" step, not a registration form —
 // name/avatar/role collection lives on the one shared
-// /play/[slug]/register page both this and Telegram's magic link funnel
+// /playtimes/[slug]/register page both this and Telegram's magic link funnel
 // into (via requireBaby's gate in baby-auth.ts), so there's exactly one
 // registration form to maintain instead of two.
 export default async function JoinPage({ params }: { params: Promise<{ token: string }> }) {

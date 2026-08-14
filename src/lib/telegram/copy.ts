@@ -14,7 +14,7 @@ const t = getTerminology();
 // payload-specific, so it's where that context actually needs to live.
 //
 // Registration itself (name/avatar/role) happens on the web now, not in
-// this chat — see src/app/(baby)/play/[slug]/register/page.tsx — so
+// this chat — see src/app/playtimes/[slug]/register/page.tsx — so
 // this just hands over a magic link instead of asking a question here.
 export function finishSignupOnWeb(playtimeName: string, gameLabel: string, magicLink: string): string {
   return `Welcome to ${playtimeName} (${gameLabel})! 🍼 Tap below to finish signing up, pick your name and a picture:\n${magicLink}\n\nKeep this chat open, I'll ping you here when it's your turn.`;

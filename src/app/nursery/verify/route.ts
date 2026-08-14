@@ -28,5 +28,5 @@ export async function GET(request: NextRequest) {
   }
 
   await createBabySession(baby.id);
-  return NextResponse.redirect(new URL(`/play/${baby.playtime.slugNumber}`, redirectBase(request)));
+  return NextResponse.redirect(new URL(`/playtimes/${baby.playtime.slugNumber}`, redirectBase(request)));
 }

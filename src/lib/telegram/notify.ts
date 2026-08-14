@@ -57,7 +57,7 @@ export async function notifyBabyUpNext(babyId: string, matchId: string): Promise
   if (!baby?.telegramChatId) return;
   const summary = await rulesSummaryFor(baby.playtimeId);
   const keyboard: InlineKeyboard = [
-    [{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/play/${baby.playtime.slugNumber}`) }],
+    [{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/playtimes/${baby.playtime.slugNumber}`) }],
     [{ text: playerCopy.readyCheckButtonLabel(baby), callback_data: `start:${matchId}` }],
   ];
   const sent = await sendMessage(baby.telegramChatId, playerCopy.upNext(baby, baby.displayName ?? "baby", summary), {
@@ -108,7 +108,7 @@ export async function notifyBabyUpSoon(babyId: string): Promise<void> {
   const baby = await prisma.baby.findUnique({ where: { id: babyId }, include: { playtime: true } });
   if (!baby?.telegramChatId) return;
   const etaMinutes = Math.max(1, Math.round(baby.playtime.defaultMatchDurationSec / 60));
-  const keyboard: InlineKeyboard = [[{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/play/${baby.playtime.slugNumber}`) }]];
+  const keyboard: InlineKeyboard = [[{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/playtimes/${baby.playtime.slugNumber}`) }]];
   await sendMessage(baby.telegramChatId, playerCopy.upSoon(baby, baby.displayName ?? "baby", etaMinutes), {
     replyMarkup: keyboard,
   });
@@ -134,7 +134,7 @@ export async function notifyMatchStarted(matchId: string, actingBabyId: string):
     include: { participants: { include: { baby: true } }, playtime: true },
   });
   if (!match) return;
-  const keyboard: InlineKeyboard = [[{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/play/${match.playtime.slugNumber}`) }]];
+  const keyboard: InlineKeyboard = [[{ text: DASHBOARD_BUTTON_LABEL, url: appUrl(`/playtimes/${match.playtime.slugNumber}`) }]];
 
   for (const p of match.participants) {
     if (p.babyId === actingBabyId) continue;

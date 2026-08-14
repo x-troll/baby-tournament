@@ -56,8 +56,8 @@ export async function updateBabyProfileAction(
     data: { displayName, avatarId, selfRoleLabel, allowExplicitMessages },
   });
 
-  revalidatePath(`/play/${slug}`);
-  revalidatePath(`/play/${slug}/settings`);
+  revalidatePath(`/playtimes/${slug}`);
+  revalidatePath(`/playtimes/${slug}/settings`);
 
   return { savedAt: Date.now(), saved: { displayName, avatarId, selfRoleLabel, allowExplicitMessages } };
 }
@@ -72,7 +72,11 @@ export async function updateBabyProfileAction(
  * checkbox only applies — and is only validated — for babies with no
  * telegramChatId, who get no turn notifications.
  */
-export async function completeRegistrationAction(slug: string, formData: FormData): Promise<void> {
+export async function completeRegistrationAction(
+  slug: string,
+  playerPreview: boolean,
+  formData: FormData,
+): Promise<void> {
   const baby = await requireBabyForRegistration(slug);
 
   // The baby row itself can predate the tournament starting (created the
@@ -104,6 +108,6 @@ export async function completeRegistrationAction(slug: string, formData: FormDat
     data: { displayName, avatarId, selfRoleLabel, allowExplicitMessages },
   });
 
-  revalidatePath(`/play/${slug}`);
-  redirect(`/play/${slug}`);
+  revalidatePath(`/playtimes/${slug}`);
+  redirect(`/playtimes/${slug}${playerPreview ? "?playerPreview=true" : ""}`);
 }

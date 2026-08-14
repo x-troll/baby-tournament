@@ -2,14 +2,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
+import { getCurrentBaby, requireBabyWithToken } from "@/lib/baby-auth";
 import { parseSlugNumber } from "@/lib/slug-number";
 import { computeSpectatorState } from "@/lib/spectator-state";
+import { computeBabyStatus } from "@/lib/baby-status";
 import { loadRules } from "@/lib/rules-content";
+import { resolveAvatarSrc } from "@/lib/avatars";
+import * as playerCopy from "@/lib/player-copy";
 import { babyJoinDeepLink, websiteJoinLink } from "@/lib/qr";
 import { getTerminology } from "@/lib/terminology";
 import { describeMatchKind } from "@/lib/match-label";
 import { toDisplayStatus } from "@/lib/match-status";
-import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/Avatar";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
@@ -19,47 +24,224 @@ import { StartPlaytimeButton } from "@/components/admin/StartPlaytimeButton";
 import { ForfeitBabyButton } from "@/components/admin/ForfeitBabyButton";
 import { SpectatorPoller } from "@/components/spectator/SpectatorPoller";
 import { NurseryCheckIn } from "@/components/spectator/NurseryCheckIn";
+import { StatusCard, type StatusCardCopy } from "@/components/baby/StatusCard";
+import { RequestHelpButton } from "@/components/baby/RequestHelpButton";
+import { PlayPagePoller } from "@/components/baby/PlayPagePoller";
+import type { ReportableParticipant } from "@/components/baby/ResultReportForm";
 import { PLAYTIME_STATUS_DISPLAY } from "@/lib/enum-display";
 import { removeBabyAction } from "@/server-actions/playtimes";
 import { reportMatchResultFormAction, undoMatchResultAction } from "@/server-actions/matches";
 import { previewAsBabyAction } from "@/server-actions/baby-auth";
+import type { Baby } from "@/generated/prisma/client";
 
 /**
- * Replaces both the old /live/[slug] (public spectator screen) and
- * /admin/playtimes/[id] (admin control panel) — one URL, keyed on the
- * public-facing slugNumber (not the cuid the admin route used to use),
- * branching on whether the visitor is a signed-in admin.
+ * Replaces /live/[slug] (public spectator screen), /admin/playtimes/[id]
+ * (admin control panel), AND the old /play/[slug] tree (a signed-in
+ * baby's own screen + register/settings) — one URL, keyed on the
+ * public-facing slugNumber, branching three ways on who's looking:
+ * admin -> control panel, a baby with real intent for *this* playtime ->
+ * their play screen, everyone else -> the public spectator view.
+ *
+ * `?playerPreview=true` (set by previewAsBabyAction) makes an admin skip
+ * their own admin branch and see the baby branch instead, for "Preview
+ * as baby" — see the baby-intent check below.
  */
-export default async function PlaytimeDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PlaytimeDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ token?: string; playerPreview?: string }>;
+}) {
   const { slug } = await params;
+  const { token, playerPreview: playerPreviewRaw } = await searchParams;
+  const playerPreview = playerPreviewRaw === "true";
   const slugNumber = parseSlugNumber(slug);
   if (slugNumber === null) notFound();
 
+  // Existence + id only, shared by the baby-intent check below — the
+  // admin/public branches each still run their own richer query for
+  // their own data, same as before this page had a third branch.
+  const playtimeRef = await prisma.playtime.findUnique({ where: { slugNumber }, select: { id: true } });
+  if (!playtimeRef) notFound();
+
   const admin = await getCurrentAdmin();
 
-  if (!admin) {
-    const playtime = await prisma.playtime.findUnique({ where: { slugNumber } });
-    if (!playtime) notFound();
-
-    const [state, rules] = await Promise.all([computeSpectatorState(slug), loadRules(playtime.game)]);
-    if (!state) notFound();
-
-    return (
-      <main className="min-h-screen pb-8">
-        <SpectatorPoller
-          slug={slug}
-          initial={state}
-          backHref="/playtimes"
-          rulesSummary={rules.summary}
-          rulesOverrideNote={playtime.rulesOverrideNote}
-        />
-      </main>
-    );
+  if (admin && !playerPreview) {
+    return <AdminBranch slug={slug} slugNumber={slugNumber} />;
   }
 
+  // Entered whenever there's real baby intent for *this* playtime — a
+  // normal player, an admin previewing (?playerPreview=true), or a fresh
+  // magic-link/bookmark `?token=` visit — so a random visitor (or an
+  // admin not previewing anyone) still falls through to the public
+  // spectator view below instead of a dead-end auth screen.
+  const currentBaby = await getCurrentBaby();
+  if (token || currentBaby?.playtimeId === playtimeRef.id) {
+    const baby = await requireBabyWithToken(slug, token);
+    return <BabyBranch slug={slug} baby={baby} token={token} playerPreview={playerPreview} />;
+  }
+
+  return <PublicSpectatorBranch slug={slug} slugNumber={slugNumber} />;
+}
+
+async function PublicSpectatorBranch({ slug, slugNumber }: { slug: string; slugNumber: number }) {
+  const playtime = await prisma.playtime.findUnique({ where: { slugNumber } });
+  if (!playtime) notFound();
+
+  const [state, rules] = await Promise.all([computeSpectatorState(slug), loadRules(playtime.game)]);
+  if (!state) notFound();
+
+  return (
+    <main className="min-h-screen pb-8">
+      <SpectatorPoller
+        slug={slug}
+        initial={state}
+        backHref="/playtimes"
+        rulesSummary={rules.summary}
+        rulesOverrideNote={playtime.rulesOverrideNote}
+      />
+    </main>
+  );
+}
+
+async function BabyBranch({
+  slug,
+  baby,
+  token,
+  playerPreview,
+}: {
+  slug: string;
+  baby: Baby;
+  token: string | undefined;
+  playerPreview: boolean;
+}) {
+  // requireBabyWithToken already redirected away if `slug` weren't a
+  // valid, existing playtime — safe to assert non-null here.
+  const playtime = await prisma.playtime.findUniqueOrThrow({ where: { slugNumber: parseSlugNumber(slug)! } });
+  const t = getTerminology();
+
+  const state = await computeBabyStatus(baby.id);
+
+  let currentMatchParticipants: ReportableParticipant[] | undefined;
+  if (state.kind === "PLAYING") {
+    const match = await prisma.match.findUniqueOrThrow({
+      where: { id: state.matchId },
+      include: { participants: { include: { baby: true } } },
+    });
+    currentMatchParticipants = match.participants.map((p) => ({
+      babyId: p.babyId,
+      displayName: p.baby.displayName,
+      goldStarLabel: playerCopy.goldStarButtonLabel(baby, p.baby.displayName ?? "Unnamed baby"),
+    }));
+  }
+
+  // Reuses the same view-model the spectator screen/admin panel build
+  // their bracket diagram from (src/lib/spectator-state.ts) — same data,
+  // same PlaytimeBracketsView component, instead of this page keeping
+  // its own standings table in sync separately.
+  const spectatorState = await computeSpectatorState(slug);
+
+  const rules = await loadRules(playtime.game);
+
+  // Every line resolved server-side, from this baby's own /profile
+  // choices (src/lib/player-copy.ts) — StatusCard/RequestHelpButton/
+  // ResultReportForm are client components and can't call these
+  // themselves (functions can't cross the server/client boundary).
+  const statusCardCopy: StatusCardCopy = {
+    organizerComing: playerCopy.cardOrganizerComing(baby),
+    championLine: playerCopy.cardChampion(baby),
+    nappedLine: state.kind === "NAPPED" ? playerCopy.cardNapped(baby, state.placement ?? 0) : undefined,
+    notStartedLine: playerCopy.cardNotStarted(baby),
+    waitingEtaLine: playerCopy.cardWaitingEta(baby, state.kind === "QUIET_TIME" ? state.etaMinutes : null),
+    upNextLine: playerCopy.cardUpNext(baby),
+    startMatchButtonLabel: playerCopy.cardStartMatchButtonLabel(baby),
+    playingLine: playerCopy.cardPlaying(baby),
+  };
+
+  // Carried through the settings-gear link so an admin previewing this
+  // baby (see previewAsBabyAction) stays in preview after clicking in —
+  // settings.tsx carries it back out the same way on its own Back link.
+  const previewQuery = playerPreview ? "?playerPreview=true" : "";
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-4 pb-32">
+      {token && (
+        // Only babies who arrived via the website join flow ever land
+        // here with ?token= — Telegram's magic link already strips it
+        // via /nursery/verify's redirect. This is exactly the URL to
+        // bookmark: it still logs them back in even with no cookie
+        // (cleared, or a different device) — see requireBabyWithToken.
+        <div className="rounded-card border-2 border-border bg-background-sunken p-3 text-center text-sm font-semibold">
+          📌 This is your personal link, bookmark this page now so you can get back in later.
+        </div>
+      )}
+
+      {/* {avatar} {title} {settings icon} as one inline, centered group —
+          the notification-permission button is conditional/optional (see
+          PlayPagePoller — renders null once granted/denied/unsupported),
+          so it stays absolutely positioned off to the side instead of
+          being a real flex sibling, to avoid its presence/absence
+          shifting the avatar+title+settings group's centering. */}
+      <div className="relative flex items-center justify-center gap-3">
+        <h2 className="sr-only">
+          {playtime.name}, {t.player} screen
+        </h2>
+        {resolveAvatarSrc(baby.avatarId) && <Avatar src={resolveAvatarSrc(baby.avatarId)} size={70} />}
+        <h1 className="font-display text-2xl font-bold">
+          Welcome, {baby.selfRoleLabel ? `${baby.selfRoleLabel} ${baby.displayName}` : baby.displayName}
+        </h1>
+        <Link
+          href={`/playtimes/${slug}/settings${previewQuery}`}
+          aria-label="Settings"
+          className={buttonVariants({ variant: "secondary", size: "icon" })}
+        >
+          <span aria-hidden>⚙️</span>
+        </Link>
+        <div className="absolute right-0">
+          <PlayPagePoller slug={slug} championLabel={t.champion} />
+        </div>
+      </div>
+
+      <StatusCard
+        slug={slug}
+        state={state}
+        copy={statusCardCopy}
+        currentMatchParticipants={currentMatchParticipants}
+        reportFormCopy={{
+          goldStarPrompt: playerCopy.goldStarPrompt(baby),
+          dragInstruction: playerCopy.dragInstruction(baby),
+        }}
+        rules={
+          state.kind === "UP_NEXT"
+            ? {
+                game: playtime.game,
+                summary: rules.summary,
+                bodyHtml: rules.bodyHtml,
+                screenshots: rules.screenshots,
+                overrideNote: playtime.rulesOverrideNote,
+              }
+            : undefined
+        }
+      />
+
+      <PlaytimeBracketsView playpens={spectatorState?.playpens ?? null} phase2Bracket={spectatorState?.phase2Bracket ?? null} />
+
+      <RequestHelpButton
+        slug={slug}
+        copy={{
+          notifiedAck: playerCopy.helpNotifiedAck(baby),
+          requestButtonLabel: playerCopy.helpRequestButtonLabel(baby),
+        }}
+      />
+    </main>
+  );
+}
+
+async function AdminBranch({ slug, slugNumber }: { slug: string; slugNumber: number }) {
   // The bracket/playpen diagram (playpens/phase2Bracket below) reuses
   // computeSpectatorState — the same view-model the public spectator
-  // screen and the baby page already build their own copy of the same
+  // screen and the baby screen already build their own copy of the same
   // diagram from — instead of this page re-deriving it from a second,
   // independently-written query. What's left in this page's own query is
   // only the admin-specific extras computeSpectatorState's public-facing
@@ -250,10 +432,7 @@ export default async function PlaytimeDetailPage({ params }: { params: Promise<{
           gets blockified + stretched to the full row width (a flex
           item's display is blockified per spec), so without this the
           link's own clickable area is the whole row, not just its text. */}
-      <Link
-        href="/playtimes"
-        className="self-start text-sm font-semibold text-foreground-muted hover:opacity-80"
-      >
+      <Link href="/playtimes" className="self-start text-sm font-semibold text-foreground-muted hover:opacity-80">
         ← All playtimes
       </Link>
 

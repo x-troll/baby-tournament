@@ -20,7 +20,7 @@ const SWATCHES = [
 
 // Living style-guide from Phase 2 — kept as a reference for the token
 // system (colors, fonts, motifs, focus states), not part of the app's
-// real navigation. See /playtimes, /play/[slug] for that.
+// real navigation. See /playtimes, /playtimes/[slug] for that.
 export default function StyleGuidePage() {
   const t = getTerminology();
   const skin = getThemeSkin();

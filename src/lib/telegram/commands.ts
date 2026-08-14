@@ -100,7 +100,7 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
 
   // Anything else (including a bare "/profile" — registration and
   // profile edits both happen on the web now, see
-  // src/app/(baby)/play/[slug]/register/page.tsx and .../settings) is
+  // src/app/playtimes/[slug]/register/page.tsx and .../settings) is
   // silently ignored — there's nothing left for free-text chat to do.
 }
 

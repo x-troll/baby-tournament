@@ -19,14 +19,15 @@ const NOTIFICATION_COPY: Record<string, { title: string; body: string }> = {
 };
 
 /**
- * The one poll loop for everything /play/[slug] needs live — replaces
- * two independent ones that used to run on overlapping schedules:
- * AutoRefresh (unconditional `router.refresh()` every 5s, re-running the
- * *entire* server component — requireBabyWithToken, computeBabyStatus,
- * computeSpectatorState, loadRules, plus a conditional match query — for
- * every connected baby regardless of whether anything changed) and this
- * component's own separate notify-state poll. Both concerns now read off
- * one `/api/play/[slug]/notify-state` response: `lastEventId` (the same
+ * The one poll loop for everything /playtimes/[slug]'s baby screen needs
+ * live — replaces two independent ones that used to run on overlapping
+ * schedules: AutoRefresh (unconditional `router.refresh()` every 5s,
+ * re-running the *entire* server component — requireBabyWithToken,
+ * computeBabyStatus, computeSpectatorState, loadRules, plus a conditional
+ * match query — for every connected baby regardless of whether anything
+ * changed) and this component's own separate notify-state poll. Both
+ * concerns now read off one `/api/playtimes/[slug]/notify-state`
+ * response: `lastEventId` (the same
  * append-only MatchEvent cursor computeSpectatorState/the spectator poll
  * already use) gates `router.refresh()` to only when something actually
  * happened, and `kind` still drives the desktop-notification diffing
@@ -72,7 +73,7 @@ export function PlayPagePoller({ slug, championLabel }: { slug: string; champion
 
     async function poll() {
       try {
-        const res = await fetch(`/api/play/${slug}/notify-state`, { cache: "no-store" });
+        const res = await fetch(`/api/playtimes/${slug}/notify-state`, { cache: "no-store" });
         if (!res.ok || cancelled) return;
         const { kind, lastEventId } = (await res.json()) as { kind: string; lastEventId: number };
 

@@ -7,7 +7,7 @@ import { confirmMatchResult, markMatchInProgress } from "@/lib/playtime-lifecycl
 export async function babyStartMatchAction(slug: string, matchId: string): Promise<void> {
   const baby = await requireBaby(slug);
   await markMatchInProgress(matchId, baby.id);
-  revalidatePath(`/play/${slug}`);
+  revalidatePath(`/playtimes/${slug}`);
 }
 
 /**
@@ -19,5 +19,5 @@ export async function babyStartMatchAction(slug: string, matchId: string): Promi
 export async function babyReportResultAction(slug: string, matchId: string, orderedBabyIds: string[]): Promise<void> {
   const baby = await requireBaby(slug);
   await confirmMatchResult({ matchId, orderedBabyIds, actor: { type: "BABY", babyId: baby.id } });
-  revalidatePath(`/play/${slug}`);
+  revalidatePath(`/playtimes/${slug}`);
 }
