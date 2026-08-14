@@ -93,11 +93,7 @@ async function PublicSpectatorBranch({ slug, slugNumber }: { slug: string; slugN
   if (!state) notFound();
 
   return (
-    // No sizing classes here — SpectatorPoller's own FitToViewportStage
-    // owns h-dvh itself; anything added here (the old min-h-screen pb-8)
-    // would push the page taller than the viewport again, reintroducing
-    // exactly the vertical scroll that's meant to never happen.
-    <main>
+    <main className="min-h-screen pb-8">
       <SpectatorPoller
         slug={slug}
         initial={state}

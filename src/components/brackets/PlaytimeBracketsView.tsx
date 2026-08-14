@@ -6,7 +6,6 @@ import { Avatar } from "@/components/ui/Avatar";
 import { buildTournamentFlow, type FlowBox, type FlowParticipant } from "@/lib/tournament-flow";
 import type { PlaypenSection } from "@/lib/playpen-view";
 import type { Phase2BracketData } from "@/lib/bracket-view";
-import { useFitScale } from "@/components/ui/fit-scale-context";
 
 // Matches the `gap-3` (0.75rem) Tailwind class used between boxes within
 // a column below — kept as a constant since the offset math needs the
@@ -212,40 +211,14 @@ export function PlaytimeBracketsView({
   // untransformed height) and its own wrapper's bottom padding (`pb-6`
   // below, in the column render below).
   const [colHeights, setColHeights] = useState<Map<string, number>>(new Map());
-  // Set by an enclosing FitToViewportStage (the unauthenticated spectator
-  // screen), `1` (no-op) everywhere else this renders (AdminBranch,
-  // BabyBranch — neither wraps this in one).
-  const fitScale = useFitScale();
 
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container || !flow) return;
 
-    // getBoundingClientRect() always reports POST-transform ("as
-    // painted") coordinates — so under an ancestor `transform: scale()`,
-    // every measurement below already comes back shrunk by `fitScale`.
-    // This component then writes some of those numbers straight onto its
-    // own <svg width/height> and line coordinates (below) — and since
-    // that <svg> is *itself* inside the same scaled ancestor, the browser
-    // would apply the ancestor's shrink to it a second time at paint,
-    // detaching the connector-line overlay from the boxes it's meant to
-    // connect. Dividing every measurement by fitScale here cancels that
-    // out: everything downstream ends up back in natural (pre-ancestor-
-    // scale) units, which is exactly what the <svg> needs — it'll get the
-    // ancestor's scale applied once, same as its sibling boxes do via
-    // ordinary CSS layout. Every use below is a *difference* of two such
-    // measurements (e.g. `r.left - containerRect.left`), and dividing
-    // both operands of a subtraction by the same constant distributes
-    // correctly, so this doesn't change any of the relative-offset math,
-    // only the units the final numbers land in.
-    function rect(el: Element) {
-      const r = el.getBoundingClientRect();
-      return { left: r.left / fitScale, top: r.top / fitScale, width: r.width / fitScale, height: r.height / fitScale };
-    }
-
     function recompute() {
       if (!container || !flow) return;
-      const containerRect = rect(container);
+      const containerRect = container.getBoundingClientRect();
 
       // Height and left are stable regardless of any Y-only transform
       // already applied from a previous pass — safe to re-measure every
@@ -258,7 +231,7 @@ export function PlaytimeBracketsView({
       const left = new Map<string, number>();
       const width = new Map<string, number>();
       for (const [key, el] of boxEls.current) {
-        const r = rect(el);
+        const r = el.getBoundingClientRect();
         height.set(key, r.height);
         left.set(key, r.left - containerRect.left);
         width.set(key, r.width);
@@ -275,7 +248,7 @@ export function PlaytimeBracketsView({
       // and exit boxes off-center instead of at their true middle.
       const colStartY = new Map<string, number>();
       for (const [id, el] of colBoxWrapperEls.current) {
-        colStartY.set(id, rect(el).top - containerRect.top);
+        colStartY.set(id, el.getBoundingClientRect().top - containerRect.top);
       }
 
       const naturalCenter = new Map<string, number>();
@@ -459,7 +432,7 @@ export function PlaytimeBracketsView({
     const ro = new ResizeObserver(recompute);
     ro.observe(container);
     return () => ro.disconnect();
-  }, [flow, fitScale]);
+  }, [flow]);
 
   if (!flow) return null;
 

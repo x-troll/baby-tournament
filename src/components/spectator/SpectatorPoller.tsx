@@ -5,7 +5,6 @@ import { StageBanner } from "./StageBanner";
 import { HelpIndicator } from "./HelpIndicator";
 import { RegisteredBabies } from "./RegisteredBabies";
 import { NurseryCheckIn } from "./NurseryCheckIn";
-import { FitToViewportStage } from "./FitToViewportStage";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import { GAME_LOGO_SRC } from "@/lib/game-assets";
 import type { SpectatorMatch, SpectatorState } from "@/lib/spectator-state";
@@ -34,15 +33,9 @@ function playingNowLine(matches: SpectatorMatch[]): string {
  * consumed it anymore — see the admin panel's own Score tab for the
  * per-baby standings table instead.
  *
- * Wrapped in FitToViewportStage — this is a projector/TV screen nobody's
- * meant to scroll (see playtimes/layout.tsx's own comment) — so while
- * IN_PROGRESS there are exactly two cards in flow: this banner (round
+ * While IN_PROGRESS there are just two cards in flow: this banner (round
  * context, who's playing, on-deck, rules — all folded into one card
- * instead of a separate pill/card each) and the bracket. HelpIndicator
- * stays a sibling *outside* the scaled subtree: it's `fixed`-positioned,
- * and a `transform` on an ancestor would make it FitToViewportStage's own
- * containing block instead of the real viewport (CSS spec), both
- * mis-positioning and shrinking it.
+ * instead of a separate pill/card each) and the bracket.
  */
 export function SpectatorPoller({
   slug,
@@ -114,40 +107,36 @@ export function SpectatorPoller({
   const anyReady = inProgress && state.activeMatches.some((m) => m.status === "READY");
 
   return (
-    <>
+    <div className="mx-auto flex max-w-[1920px] flex-col gap-6 p-8">
       <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
 
-      <FitToViewportStage>
-        <div className="mx-auto flex max-w-[1920px] flex-col gap-6 p-8">
-          <StageBanner
-            text={inProgress ? playingNowLine(state.activeMatches) : state.stageBanner}
-            kicker={inProgress ? state.stageBanner : undefined}
-            logoSrc={GAME_LOGO_SRC[state.game]}
-            trailingAvatarSrc={state.status === "COMPLETE" ? (state.bestBaby?.avatarSrc ?? null) : undefined}
-            backHref={backHref}
-            backLabel="← All playtimes"
-          >
-            <p className="text-sm text-foreground-muted sm:text-base">
-              📋 {rulesSummary}
-              {rulesOverrideNote && <span className="ml-2 font-semibold text-active">Tonight only: {rulesOverrideNote}</span>}
-            </p>
-            {inProgress && state.onDeck.length > 0 && (
-              <p className="text-sm text-foreground-muted">Up next: {state.onDeck.map((p) => p.name).join(", ")}</p>
-            )}
-            {anyReady && (
-              <p className="text-sm text-foreground-muted">Remember to click &ldquo;Start playing&rdquo; inside Telegram.</p>
-            )}
-          </StageBanner>
+      <StageBanner
+        text={inProgress ? playingNowLine(state.activeMatches) : state.stageBanner}
+        kicker={inProgress ? state.stageBanner : undefined}
+        logoSrc={GAME_LOGO_SRC[state.game]}
+        trailingAvatarSrc={state.status === "COMPLETE" ? (state.bestBaby?.avatarSrc ?? null) : undefined}
+        backHref={backHref}
+        backLabel="← All playtimes"
+      >
+        <p className="text-sm text-foreground-muted sm:text-base">
+          📋 {rulesSummary}
+          {rulesOverrideNote && <span className="ml-2 font-semibold text-active">Tonight only: {rulesOverrideNote}</span>}
+        </p>
+        {inProgress && state.onDeck.length > 0 && (
+          <p className="text-sm text-foreground-muted">Up next: {state.onDeck.map((p) => p.name).join(", ")}</p>
+        )}
+        {anyReady && (
+          <p className="text-sm text-foreground-muted">Remember to click &ldquo;Start playing&rdquo; inside Telegram.</p>
+        )}
+      </StageBanner>
 
-          {state.status === "NURSERY_OPEN" && (
-            <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} playersTitle="Littles and bigs">
-              <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
-            </NurseryCheckIn>
-          )}
+      {state.status === "NURSERY_OPEN" && (
+        <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} playersTitle="Littles and bigs">
+          <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
+        </NurseryCheckIn>
+      )}
 
-          <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
-        </div>
-      </FitToViewportStage>
-    </>
+      <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
+    </div>
   );
 }
