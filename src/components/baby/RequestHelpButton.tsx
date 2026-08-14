@@ -4,12 +4,16 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createHelpRequestAction } from "@/server-actions/help-requests";
-
-const REASONS = ["Controller trouble", "Can't find my opponent", "Score dispute", "Something else"] as const;
+import type { HelpReasonKey } from "@/lib/terminology";
+import type { HelpReasonOption } from "@/lib/player-copy";
 
 export interface RequestHelpButtonCopy {
   notifiedAck: string;
   requestButtonLabel: string;
+  /** "What's up?" sheet heading — src/lib/player-copy.ts's helpWhatsUpPrompt (4-variant, per-baby). */
+  whatsUpHeading: string;
+  /** The 4 reason chips — src/lib/player-copy.ts's helpReasonOptions (4-variant, per-baby). `key` is what's actually submitted, never the label. */
+  reasonOptions: HelpReasonOption[];
 }
 
 /**
@@ -27,7 +31,7 @@ export interface RequestHelpButtonCopy {
  */
 export function RequestHelpButton({ slug, copy }: { slug: string; copy: RequestHelpButtonCopy }) {
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState<(typeof REASONS)[number] | null>(null);
+  const [reason, setReason] = useState<HelpReasonKey | null>(null);
   const [note, setNote] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -51,25 +55,25 @@ export function RequestHelpButton({ slug, copy }: { slug: string; copy: RequestH
     <div className="fixed inset-x-0 bottom-0 z-40 flex flex-col items-center gap-2 p-4">
       {open && (
         <div className="w-full max-w-sm rounded-card border border-border bg-background-elevated p-4 shadow-soft">
-          <p className="mb-2 text-sm font-semibold">What&apos;s up?</p>
+          <p className="mb-2 text-sm font-semibold">{copy.whatsUpHeading}</p>
           <div className="flex flex-wrap gap-2">
             {/* text-on-accent when selected — bg-accent-pink is pastel in
                 dark mode too, and the inherited --fg fails on it there. */}
-            {REASONS.map((r) => (
+            {copy.reasonOptions.map((r) => (
               <button
-                key={r}
+                key={r.key}
                 type="button"
-                onClick={() => setReason(r)}
-                aria-pressed={reason === r}
+                onClick={() => setReason(r.key)}
+                aria-pressed={reason === r.key}
                 className={`min-h-11 rounded-pill border px-3 py-1.5 text-sm ${
-                  reason === r ? "border-focus-ring bg-accent-pink text-on-accent" : "border-border bg-background"
+                  reason === r.key ? "border-focus-ring bg-accent-pink text-on-accent" : "border-border bg-background"
                 }`}
               >
-                {r}
+                {r.label}
               </button>
             ))}
           </div>
-          {reason === "Something else" && (
+          {reason === "other" && (
             <Input
               value={note}
               onChange={(e) => setNote(e.target.value)}

@@ -225,13 +225,19 @@ async function BabyBranch({
         }
       />
 
-      <PlaytimeBracketsView playpens={spectatorState?.playpens ?? null} phase2Bracket={spectatorState?.phase2Bracket ?? null} />
+      <PlaytimeBracketsView
+        playpens={spectatorState?.playpens ?? null}
+        phase2Bracket={spectatorState?.phase2Bracket ?? null}
+        mobileFullBleed
+      />
 
       <RequestHelpButton
         slug={slug}
         copy={{
           notifiedAck: playerCopy.helpNotifiedAck(baby),
           requestButtonLabel: playerCopy.helpRequestButtonLabel(baby),
+          whatsUpHeading: playerCopy.helpWhatsUpPrompt(baby),
+          reasonOptions: playerCopy.helpReasonOptions(baby),
         }}
       />
     </main>

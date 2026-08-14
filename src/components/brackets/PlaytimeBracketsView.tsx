@@ -175,13 +175,28 @@ function BoxCard({
 export function PlaytimeBracketsView({
   playpens,
   phase2Bracket,
+  mobileFullBleed = false,
 }: {
   playpens: PlaypenSection | null;
   phase2Bracket: Phase2BracketData | null;
+  /**
+   * Break out of the parent's own padding/max-width below the `sm:`
+   * breakpoint (viewport-relative `left-1/2 w-screen -translate-x-1/2`
+   * trick, same one already used for this exact purpose in
+   * playtimes/[slug]/page.tsx's AdminBranch/NurseryCheckIn — doesn't
+   * need to know or match the parent's exact padding value) and drop
+   * the rounded "card" look, so the panel spans the full phone width
+   * edge-to-edge instead of sitting inset inside the baby page's own
+   * `max-w-2xl p-4` column. Undone at `sm:` and up. Off by default —
+   * the admin/spectator call sites render this inside their own wider
+   * layouts and shouldn't change.
+   */
+  mobileFullBleed?: boolean;
 }) {
   const flow = useMemo(() => buildTournamentFlow(playpens, phase2Bracket), [playpens, phase2Bracket]);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const boxEls = useRef(new Map<string, HTMLDivElement>());
   const colBoxWrapperEls = useRef(new Map<string, HTMLDivElement>());
   const [lines, setLines] = useState<Line[]>([]);
@@ -397,6 +412,20 @@ export function PlaytimeBracketsView({
 
       const maxLeft = Math.max(0, ...[...left.entries()].map(([k, v]) => v + (width.get(k) ?? 0)));
       setCanvas({ width: maxLeft, height: Number.isFinite(maxY - minY) ? maxY - minY : 0 });
+
+      // Always scrolled to the newest activity — the rightmost columns
+      // are the current/latest round, which is what matters most in a
+      // live view. Safe to read/set scrollWidth/scrollLeft synchronously
+      // right here: column widths are static (fixed box width + static
+      // padding classes), so the scrollable container's horizontal
+      // extent is already correct as soon as the DOM exists, unlike the
+      // box translateY offsets above (which do wait for the `offsets`
+      // state to flow through a re-render). Runs on every recompute —
+      // mount, ResizeObserver firing, and every `flow` change (a live
+      // poll update from either SpectatorPoller's client-state swap or
+      // PlayPagePoller's router.refresh()) — not just once on mount.
+      const scrollEl = scrollRef.current;
+      if (scrollEl) scrollEl.scrollLeft = scrollEl.scrollWidth;
     }
 
     recompute();
@@ -437,7 +466,14 @@ export function PlaytimeBracketsView({
   });
 
   return (
-    <div className="w-full overflow-x-auto rounded-card border-2 border-border bg-background">
+    <div
+      ref={scrollRef}
+      className={
+        mobileFullBleed
+          ? "relative left-1/2 w-screen -translate-x-1/2 overflow-x-auto rounded-none border-y-2 border-border bg-background sm:static sm:left-auto sm:w-full sm:translate-x-0 sm:rounded-card sm:border-2"
+          : "w-full overflow-x-auto rounded-card border-2 border-border bg-background"
+      }
+    >
       <div ref={containerRef} className="relative flex w-full items-stretch">
         <svg
           className="pointer-events-none absolute left-0 top-0 overflow-visible"
@@ -464,7 +500,15 @@ export function PlaytimeBracketsView({
             // has a far-away x2, and a midpoint elbow would land deep
             // inside the skipped column instead of staying a short nub
             // right at the box.
-            const elbowX = l.x1 + OUT_NUB_PX;
+            // Never past the segment's own midpoint — a plain `l.x1 +
+            // OUT_NUB_PX` could land at or past x2 when two columns sit
+            // close together (the merged-"Semifinals"-seam columns used
+            // to be exactly this close, see paddingClass below), which
+            // degenerates the path's final horizontal run to zero/
+            // negative length and makes the arrowhead marker (whose
+            // `orient="auto"` follows the path's direction at that
+            // point) point vertically instead of rightward.
+            const elbowX = Math.min(l.x1 + OUT_NUB_PX, l.x1 + Math.max(4, (l.x2 - l.x1) / 2));
             return (
               <path
                 key={i}
@@ -494,18 +538,24 @@ export function PlaytimeBracketsView({
           // it reads as one heading spanning both columns.
           const showLabel = col.label !== flow.columns[i - 1]?.label;
           const continuesToNext = col.label === flow.columns[i + 1]?.label;
-          // Tighten the padding at a shared seam (a continuing column's
-          // own left edge, or the trailing edge of the column right
-          // before one) so the two read as flush/continuous instead of
-          // leaving the usual full column-gap between them.
-          const paddingClass = `${showLabel ? "pl-6" : "pl-2"} ${continuesToNext ? "pr-2" : "pr-6"}`;
+          // Tighten (not eliminate) the padding at a shared seam (a
+          // continuing column's own left edge, or the trailing edge of
+          // the column right before one) so the two read as flush/
+          // continuous instead of leaving the usual full column-gap
+          // between them — pl-4/pr-4 (16px each, 32px total), not
+          // pl-2/pr-2: that used to be exactly OUT_NUB_PX (16px) wide,
+          // leaving no room for a connector's elbow nub to land before
+          // the target column and breaking the arrowhead (see the elbow
+          // comment above). Still visibly tighter than the full pl-6/
+          // pr-6 non-merged gap, so the "merged band" feel survives.
+          const paddingClass = `${showLabel ? "pl-6" : "pl-4"} ${continuesToNext ? "pr-4" : "pr-6"}`;
           // The header band's own negative margins exactly cancel the
           // column's horizontal padding above, so its dark background
           // bleeds to the true edge of this column's slot — adjacent
           // columns' bands then abut with no gap, reading as one
           // continuous strip across the whole panel instead of per-
           // column tinted rectangles.
-          const headerBleedClass = `${showLabel ? "-ml-6" : "-ml-2"} ${continuesToNext ? "-mr-2" : "-mr-6"}`;
+          const headerBleedClass = `${showLabel ? "-ml-6" : "-ml-4"} ${continuesToNext ? "-mr-4" : "-mr-6"}`;
           return (
             <div key={col.id} className={`flex shrink-0 flex-col gap-3 ${paddingClass} ${columnTintClass(columnTintGroups[i]!)}`}>
               {/* `relative` only on the label-owning sub-column, not every

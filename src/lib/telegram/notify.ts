@@ -190,13 +190,22 @@ export async function notifyAdminsHelpRequest(helpRequestId: string): Promise<vo
 
   const label = await matchLabel(req.matchId);
   const deepLink = appUrl(`/playtimes/${req.baby.playtime.slugNumber}`);
-  // Case-insensitive — RequestHelpButton.tsx's REASONS sends "Score
-  // dispute" (title case), not "score dispute"; a strict-case match here
-  // meant this branch never actually fired.
-  const isDispute = req.reason.toLowerCase() === "score dispute";
+  // A stable key comparison, not a text match — req.reason is
+  // terminology.ts's HelpReasonKey ("controller"/"opponent"/"dispute"/
+  // "other"), the same value regardless of which skin/role variant
+  // (player-copy.ts's helpReasonOptions) actually produced the request.
+  // A previous version of this matched on the raw display text
+  // ("score dispute"), which broke the moment that text varied by skin
+  // or role — see player-copy.ts's helpReasonOptions.
+  const isDispute = req.reason === "dispute";
+  // Raw fallback (`?? req.reason`) covers any pre-existing local/demo
+  // HelpRequest rows created before this change, whose `reason` column
+  // still holds old-style raw English text instead of a key — cosmetic
+  // only, no migration needed (reason was always a plain String column).
+  const reasonLabel = t.helpReasonLabel[req.reason as keyof typeof t.helpReasonLabel] ?? req.reason;
   const text = isDispute
     ? copy.adminDisputeAlert(req.baby.displayName ?? "A baby", label)
-    : copy.adminHelpRequestAlert(req.baby.displayName ?? "A baby", label, req.reason, req.note);
+    : copy.adminHelpRequestAlert(req.baby.displayName ?? "A baby", label, reasonLabel, req.note);
 
   const keyboard: InlineKeyboard = [
     [

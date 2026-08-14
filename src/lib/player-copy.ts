@@ -22,7 +22,7 @@
 // parent (play/[slug]/page.tsx) resolves the final strings here and
 // passes plain strings down, same pattern the file already used for
 // copy.champion/copy.matchWin before this change.
-import { getTerminology } from "@/lib/terminology";
+import { getTerminology, type HelpReasonKey } from "@/lib/terminology";
 import { isLittleRole } from "@/lib/baby-terminology";
 import type { BabyStatusState } from "@/lib/baby-status";
 
@@ -33,14 +33,14 @@ export interface CopyBaby {
   allowExplicitMessages: boolean;
 }
 
-interface Variants {
-  littlePlayful: string;
-  littleExplicit: string;
-  grownupPlayful: string;
-  grownupExplicit: string;
+interface Variants<T = string> {
+  littlePlayful: T;
+  littleExplicit: T;
+  grownupPlayful: T;
+  grownupExplicit: T;
 }
 
-function pick(baby: CopyBaby, v: Variants): string {
+function pick<T>(baby: CopyBaby, v: Variants<T>): T {
   const little = isLittleRole(baby.selfRoleLabel);
   return little ? (baby.allowExplicitMessages ? v.littleExplicit : v.littlePlayful)
                 : (baby.allowExplicitMessages ? v.grownupExplicit : v.grownupPlayful);
@@ -282,6 +282,59 @@ export function helpRequestButtonLabel(baby: CopyBaby): string {
     littleExplicit: `🆘 Cry for ${t.admin}`,
     grownupPlayful: `🆘 Ask ${t.admin} for help`,
     grownupExplicit: `🆘 Fine, ask ${t.admin} for help`,
+  });
+}
+
+/** Heading on the open "Request help" sheet — the baby-facing counterpart to terminology.ts's deployment-wide helpWhatsUpHeading (read by the admin inbox/Telegram side instead). */
+export function helpWhatsUpPrompt(baby: CopyBaby): string {
+  return pick(baby, {
+    littlePlayful: `What's up, little one?`,
+    littleExplicit: `What's wrong, baby? Tell ${t.admin} everything.`,
+    grownupPlayful: `What's up?`,
+    grownupExplicit: `Okay, what's the problem?`,
+  });
+}
+
+export interface HelpReasonOption {
+  key: HelpReasonKey;
+  label: string;
+}
+
+/**
+ * All 4 reason chips together, not 4 separate functions — keeps the
+ * reason set and its per-baby copy from drifting out of sync (adding a
+ * 5th reason only ever means touching one array literal in each variant
+ * below, not scattering a new function). `key` is what's actually
+ * submitted/stored (see terminology.ts's HelpReasonKey) — never the
+ * label text, which varies by both skin (terminology.ts's
+ * helpReasonLabel) and, here, by the requesting baby's own role/tone.
+ */
+export function helpReasonOptions(baby: CopyBaby): HelpReasonOption[] {
+  return pick<HelpReasonOption[]>(baby, {
+    littlePlayful: [
+      { key: "controller", label: "My controller's acting up" },
+      { key: "opponent", label: "Can't find my playmate" },
+      { key: "dispute", label: "I think the score's wrong" },
+      { key: "other", label: "Something else" },
+    ],
+    littleExplicit: [
+      { key: "controller", label: "This controller's broken, fix it" },
+      { key: "opponent", label: "Where'd my playmate go?" },
+      { key: "dispute", label: "That score's not right!" },
+      { key: "other", label: "Something else, come here" },
+    ],
+    grownupPlayful: [
+      { key: "controller", label: "Controller trouble" },
+      { key: "opponent", label: "Can't find my opponent" },
+      { key: "dispute", label: "Score dispute" },
+      { key: "other", label: "Something else" },
+    ],
+    grownupExplicit: [
+      { key: "controller", label: "This controller's junk" },
+      { key: "opponent", label: "My opponent's a no-show" },
+      { key: "dispute", label: "That score's wrong, fix it" },
+      { key: "other", label: "Something else, hurry up" },
+    ],
   });
 }
 

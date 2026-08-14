@@ -6,6 +6,7 @@ import { requireBaby } from "@/lib/baby-auth";
 import { prisma } from "@/lib/prisma";
 import { notifyAdminsHelpRequest } from "@/lib/telegram/notify";
 import { acknowledgeHelpRequest, resolveHelpRequest } from "@/lib/help-requests";
+import { HELP_REASON_KEYS, type HelpReasonKey } from "@/lib/terminology";
 
 const HELP_REQUEST_COOLDOWN_SECONDS = 60;
 
@@ -18,10 +19,19 @@ const HELP_REQUEST_COOLDOWN_SECONDS = 60;
  */
 export async function createHelpRequestAction(
   slug: string,
-  reason: string,
+  reason: HelpReasonKey,
   note: string | null,
 ): Promise<{ error?: string }> {
   const baby = await requireBaby(slug);
+
+  // Client-submitted data crossing the server boundary — same posture as
+  // this app's other validated form fields (avatarId/selfRoleLabel in
+  // baby-profile.ts). `reason` is a stable key (terminology.ts's
+  // HelpReasonKey), not display text, so this stays correct regardless
+  // of which skin/role variant actually produced the request.
+  if (!HELP_REASON_KEYS.includes(reason)) {
+    return { error: "Please pick one of the listed reasons." };
+  }
 
   // Check-and-set in one conditional update, not read-then-write — two
   // rapid taps (a double-tap on the touchscreen this app is built for)

@@ -38,7 +38,13 @@ export default async function HelpRequestsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">
-                    {req.baby.displayName ?? "Unnamed baby"}: {req.reason}
+                    {/* req.reason is a stable key (terminology.ts's
+                        HelpReasonKey) — raw fallback covers any
+                        pre-existing rows created before that change,
+                        whose reason column still holds old-style raw
+                        text instead of a key. */}
+                    {req.baby.displayName ?? "Unnamed baby"}:{" "}
+                    {t.helpReasonLabel[req.reason as keyof typeof t.helpReasonLabel] ?? req.reason}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-2">

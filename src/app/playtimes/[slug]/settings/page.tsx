@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { requireBaby } from "@/lib/baby-auth";
+import { getTerminology } from "@/lib/terminology";
 import { SettingsForm } from "@/components/baby/SettingsForm";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { SignOutCard } from "@/components/baby/SignOutCard";
+import { buttonVariants } from "@/components/ui/button";
 import { updateBabyProfileAction } from "@/server-actions/baby-profile";
-import { babyLogoutAction } from "@/server-actions/baby-auth";
 
 // Everything a baby set once at registration (src/app/playtimes/[slug]/
 // register/page.tsx, sharing the same BabyProfileForm fields via
@@ -21,6 +22,7 @@ export default async function BabySettingsPage({
   const { slug } = await params;
   const { playerPreview } = await searchParams;
   const baby = await requireBaby(slug);
+  const t = getTerminology();
   // Carried through so an admin previewing a baby's screen (see
   // previewAsBabyAction) stays in preview after clicking Back — this
   // page itself doesn't branch on admin status at all (requireBaby
@@ -30,13 +32,15 @@ export default async function BabySettingsPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-4 pb-32">
-      <Link
-        href={`/playtimes/${slug}${previewQuery}`}
-        className={buttonVariants({ variant: "secondary", size: "sm", className: "self-start" })}
-      >
-        ← Back
-      </Link>
-      <h1 className="text-2xl font-bold">Your settings</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold">Your settings</h1>
+        <Link
+          href={`/playtimes/${slug}${previewQuery}`}
+          className={buttonVariants({ variant: "secondary", size: "sm" })}
+        >
+          ← Back
+        </Link>
+      </div>
 
       <SettingsForm baby={baby} action={updateBabyProfileAction.bind(null, slug)} />
 
@@ -44,13 +48,16 @@ export default async function BabySettingsPage({
           way to trigger baby-auth.ts's "valid session, different
           playtime" path was physically scanning a different playtime's
           QR/magic link first. Deliberately doesn't carry playerPreview
-          forward — signing out of a previewed baby should land the admin
-          on a plain view, not loop back into another preview. */}
-      <form action={babyLogoutAction.bind(null, slug)} className="mt-2">
-        <Button type="submit" variant="ghost" size="sm">
-          Sign out of this playtime
-        </Button>
-      </form>
+          forward (see babyLogoutAction) — signing out of a previewed
+          baby should land the admin on a plain view, not loop back into
+          another preview. */}
+      <SignOutCard
+        slug={slug}
+        warning={t.signOutWarning}
+        confirmTitle={t.signOutConfirmTitle}
+        confirmBody={t.signOutConfirmBody}
+        confirmButtonLabel={t.signOutConfirmButtonLabel}
+      />
     </main>
   );
 }

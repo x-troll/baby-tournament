@@ -22,6 +22,18 @@ export function getThemeSkin(): ThemeSkin {
 /** The six fixed Phase 2 match kinds that get their own stage wording — see Phase2*Label below. Not the full MatchKind enum (PLAYPEN/ROUND_ROBIN don't apply here), kept as a local union so every skin object is statically checked to cover exactly these six, no Partial<>/non-null-assertions needed at the call sites. */
 export type Phase2StageKind = "QF1" | "QF2" | "WINNERS_FINAL" | "LOSERS_R1" | "LOSERS_FINAL" | "GRAND_FINAL";
 
+/**
+ * Stable identifiers for the "Request help" reason chips — what actually
+ * gets submitted/stored (HelpRequest.reason), never the display text.
+ * Display text varies by skin (helpReasonLabel below, admin/Telegram-
+ * facing) and by the requesting baby's own role (player-copy.ts's
+ * helpReasonOptions, baby-facing) — a stable key is what lets
+ * notify.ts's dispute detection and the admin inbox's display stay
+ * correct regardless of which wording produced the request.
+ */
+export type HelpReasonKey = "controller" | "opponent" | "dispute" | "other";
+export const HELP_REASON_KEYS: HelpReasonKey[] = ["controller", "opponent", "dispute", "other"];
+
 export interface Terminology {
   /** Player, singular / plural. */
   player: string;
@@ -52,6 +64,19 @@ export interface Terminology {
   champion: string;
   /** Button on /playtimes that opens the "join another still-open one" modal, for a baby already signed up for at least one. */
   morePlaytimesButtonLabel: string;
+
+  // ── Sign-out warning + confirm modal (settings page) ─────────────────
+  /** Warning shown above the sign-out button — a baby should only use this if the organizer told them to. */
+  signOutWarning: string;
+  signOutConfirmTitle: string;
+  signOutConfirmBody: string;
+  signOutConfirmButtonLabel: string;
+
+  // ── "Request help" sheet — admin/Telegram-facing base wording; the
+  // baby's own sheet reads player-copy.ts's per-role 4-variant versions
+  // instead (helpWhatsUpPrompt/helpReasonOptions). ────────────────────
+  helpWhatsUpHeading: string;
+  helpReasonLabel: Record<HelpReasonKey, string>;
 
   // ── Phase 2 (bracket) stage names ──────────────────────────────────
   // Three distinct wordings for the same six stages, kept separate
@@ -101,6 +126,20 @@ const NURSERY: Terminology = {
   waitingForMatch: "quiet time",
   champion: "Best Baby",
   morePlaytimesButtonLabel: "More playtime! 🍼",
+
+  signOutWarning: "Only sign out if Daddy told you to — you'll need their help to get back in.",
+  signOutConfirmTitle: "Sign out?",
+  signOutConfirmBody:
+    "Make sure Daddy actually asked for this. Once you're out, you'll need your check-in link or Daddy's help to get back to your screen.",
+  signOutConfirmButtonLabel: "Yes, sign me out",
+
+  helpWhatsUpHeading: "What's up?",
+  helpReasonLabel: {
+    controller: "Controller trouble",
+    opponent: "Can't find my playmate",
+    dispute: "Score dispute",
+    other: "Something else",
+  },
 
   phase2StageLabel: {
     QF1: "Playpen 1",
@@ -164,6 +203,20 @@ const PLAIN: Terminology = {
   waitingForMatch: "waiting",
   champion: "Champion",
   morePlaytimesButtonLabel: "More tournaments",
+
+  signOutWarning: "Only sign out if the organizer told you to — you'll need their help to sign back in.",
+  signOutConfirmTitle: "Sign out?",
+  signOutConfirmBody:
+    "Make sure the organizer actually asked for this. Once you're out, you'll need your check-in link or the organizer's help to get back in.",
+  signOutConfirmButtonLabel: "Yes, sign me out",
+
+  helpWhatsUpHeading: "What's up?",
+  helpReasonLabel: {
+    controller: "Controller trouble",
+    opponent: "Can't find my opponent",
+    dispute: "Score dispute",
+    other: "Something else",
+  },
 
   // Identical to NURSERY for every field below — none of these were
   // actually theme-varying before this migration (they were hardcoded
