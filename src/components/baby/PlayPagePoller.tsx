@@ -74,7 +74,17 @@ export function PlayPagePoller({ slug, championLabel }: { slug: string; champion
     async function poll() {
       try {
         const res = await fetch(`/api/playtimes/${slug}/notify-state`, { cache: "no-store" });
-        if (!res.ok || cancelled) return;
+        if (cancelled) return;
+        // A 401 means the PIN/session gate (src/proxy.ts) rejected this
+        // request and won't fix itself on its own — silently retrying
+        // forever (the old behavior here) would poll dead until someone
+        // manually reloads. A real reload re-navigates through the gate
+        // properly instead.
+        if (res.status === 401) {
+          window.location.reload();
+          return;
+        }
+        if (!res.ok) return;
         const { kind, lastEventId } = (await res.json()) as { kind: string; lastEventId: number };
 
         if (

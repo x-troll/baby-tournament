@@ -75,6 +75,17 @@ export async function proxy(request: NextRequest) {
   if (await hasValidSessionCookie(request, BABY_SESSION_COOKIE_NAME)) return NextResponse.next();
   if (await verifySitePinToken(request.cookies.get(SITE_PIN_COOKIE_NAME)?.value)) return NextResponse.next();
 
+  // A JSON API consumer (the spectator/baby-page poll loops) was never
+  // going to do anything useful with an HTML redirect target — `fetch()`
+  // follows it by default, so the caller would get back a 200 HTML page
+  // where JSON was expected and fail confusingly (or, worse, silently, if
+  // it treats a parse error the same as a network hiccup and just retries
+  // forever). A real 401 lets those callers actually detect and react to
+  // "the gate rejected this" instead.
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "PIN or session required" }, { status: 401 });
+  }
+
   const url = request.nextUrl.clone();
   url.pathname = "/enter-pin";
   url.search = "";

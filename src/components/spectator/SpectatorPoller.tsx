@@ -2,16 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import { StageBanner } from "./StageBanner";
-import { CurrentMatches } from "./CurrentMatches";
 import { HelpIndicator } from "./HelpIndicator";
 import { RegisteredBabies } from "./RegisteredBabies";
-import { RulesFooter } from "./RulesFooter";
 import { NurseryCheckIn } from "./NurseryCheckIn";
+import { FitToViewportStage } from "./FitToViewportStage";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
 import { GAME_LOGO_SRC } from "@/lib/game-assets";
-import type { SpectatorState } from "@/lib/spectator-state";
+import type { SpectatorMatch, SpectatorState } from "@/lib/spectator-state";
 
 const POLL_INTERVAL_MS = 3000;
+
+/** One line, in priority-station order — ▶ for a match actually underway, ⏳ for one stationed but not yet tapped into. Multi-station events read as e.g. "▶ Alice vs Bob   ·   ⏳ Carol vs Dave". */
+function playingNowLine(matches: SpectatorMatch[]): string {
+  if (matches.length === 0) return "Between matches…";
+  return matches
+    .map((m) => `${m.status === "READY" ? "⏳" : "▶"} ${m.participants.map((p) => p.name).join(" vs ")}`)
+    .join("   ·   ");
+}
 
 /**
  * Polling, not SSE (see PLAN.md Phase 1: Heroku's router kills idle
@@ -26,6 +33,16 @@ const POLL_INTERVAL_MS = 3000;
  * render was removed (SpectatorState no longer computes it) once nothing
  * consumed it anymore — see the admin panel's own Score tab for the
  * per-baby standings table instead.
+ *
+ * Wrapped in FitToViewportStage — this is a projector/TV screen nobody's
+ * meant to scroll (see playtimes/layout.tsx's own comment) — so while
+ * IN_PROGRESS there are exactly two cards in flow: this banner (round
+ * context, who's playing, on-deck, rules — all folded into one card
+ * instead of a separate pill/card each) and the bracket. HelpIndicator
+ * stays a sibling *outside* the scaled subtree: it's `fixed`-positioned,
+ * and a `transform` on an ancestor would make it FitToViewportStage's own
+ * containing block instead of the real viewport (CSS spec), both
+ * mis-positioning and shrinking it.
  */
 export function SpectatorPoller({
   slug,
@@ -56,7 +73,17 @@ export function SpectatorPoller({
     async function poll() {
       try {
         const res = await fetch(`/api/playtime/${slug}/state?since=${state.lastEventId}`, { cache: "no-store" });
-        if (!res.ok || cancelled) return;
+        if (cancelled) return;
+        // A 401 means the PIN/session gate (src/proxy.ts) rejected this
+        // request — the cookie situation that caused that doesn't fix
+        // itself on its own, so silently retrying forever (the old
+        // behavior here) would poll dead until someone manually reloads.
+        // A real reload re-navigates through the gate properly instead.
+        if (res.status === 401) {
+          window.location.reload();
+          return;
+        }
+        if (!res.ok) return;
         const json = await res.json();
         if (json.unchanged || cancelled) return;
 
@@ -83,29 +110,44 @@ export function SpectatorPoller({
     };
   }, [slug, state.lastEventId]);
 
+  const inProgress = state.status === "IN_PROGRESS";
+  const anyReady = inProgress && state.activeMatches.some((m) => m.status === "READY");
+
   return (
-    <div className="mx-auto flex max-w-[1920px] flex-col gap-6 p-8">
+    <>
       <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
 
-      <StageBanner
-        text={state.stageBanner}
-        logoSrc={GAME_LOGO_SRC[state.game]}
-        trailingAvatarSrc={state.status === "COMPLETE" ? (state.bestBaby?.avatarSrc ?? null) : undefined}
-        backHref={backHref}
-        backLabel="← All playtimes"
-      />
+      <FitToViewportStage>
+        <div className="mx-auto flex max-w-[1920px] flex-col gap-6 p-8">
+          <StageBanner
+            text={inProgress ? playingNowLine(state.activeMatches) : state.stageBanner}
+            kicker={inProgress ? state.stageBanner : undefined}
+            logoSrc={GAME_LOGO_SRC[state.game]}
+            trailingAvatarSrc={state.status === "COMPLETE" ? (state.bestBaby?.avatarSrc ?? null) : undefined}
+            backHref={backHref}
+            backLabel="← All playtimes"
+          >
+            <p className="text-sm text-foreground-muted sm:text-base">
+              📋 {rulesSummary}
+              {rulesOverrideNote && <span className="ml-2 font-semibold text-active">Tonight only: {rulesOverrideNote}</span>}
+            </p>
+            {inProgress && state.onDeck.length > 0 && (
+              <p className="text-sm text-foreground-muted">Up next: {state.onDeck.map((p) => p.name).join(", ")}</p>
+            )}
+            {anyReady && (
+              <p className="text-sm text-foreground-muted">Remember to click &ldquo;Start playing&rdquo; inside Telegram.</p>
+            )}
+          </StageBanner>
 
-      <RulesFooter summary={rulesSummary} overrideNote={rulesOverrideNote} />
+          {state.status === "NURSERY_OPEN" && (
+            <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} playersTitle="Littles and bigs">
+              <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
+            </NurseryCheckIn>
+          )}
 
-      {state.status === "NURSERY_OPEN" && (
-        <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} playersTitle="Littles and bigs">
-          <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
-        </NurseryCheckIn>
-      )}
-
-      {state.status === "IN_PROGRESS" && <CurrentMatches matches={state.activeMatches} onDeck={state.onDeck} />}
-
-      <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
-    </div>
+          <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
+        </div>
+      </FitToViewportStage>
+    </>
   );
 }
