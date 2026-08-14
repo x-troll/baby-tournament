@@ -24,7 +24,7 @@ import { Card } from "@/components/ui/card";
 export function NurseryCheckIn({
   telegramLink,
   websiteLink,
-  size = 360,
+  size = 288, // 80% of the original 360px
   playersTitle,
   children,
 }: {
