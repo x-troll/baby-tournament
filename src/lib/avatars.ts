@@ -10,13 +10,43 @@ export interface AvatarOption {
   src: string;
 }
 
-export const AVATAR_OPTIONS: AvatarOption[] = [
-  { id: "giraffe", label: "Giraffe", src: "/avatars/peekabu_giraffe.png" },
-  { id: "panda", label: "Trash Panda", src: "/avatars/peekabu_panda.png" },
-  { id: "dragon", label: "Dragon", src: "/avatars/peekabu_dragon.png" },
-  { id: "husky", label: "Husky", src: "/avatars/peekabu_husky.png" },
-  { id: "little_king", label: "Little King", src: "/avatars/little_kings.png" },
+// Three separate named groups (one per art pack) rather than one flat
+// list — the picker renders each group as its own row, so grouping lives
+// here instead of being re-derived from `src`'s path in the UI.
+export const PEEKABU_AVATARS: AvatarOption[] = [
+  { id: "giraffe", label: "Giraffe", src: "/avatars/peekabu/giraffe.jpg" },
+  { id: "racoon", label: "Racoon", src: "/avatars/peekabu/racoon.jpg" },
+  { id: "dragon", label: "Dragon", src: "/avatars/peekabu/dragon.jpg" },
+  { id: "husky", label: "Husky", src: "/avatars/peekabu/husky.jpg" },
 ];
+
+export const CRINKLZ_AVATARS: AvatarOption[] = [
+  { id: "crinklz", label: "Crinklz", src: "/avatars/crinklz/crinklz.jpg" },
+  { id: "felix", label: "Felix", src: "/avatars/crinklz/felix.jpg" },
+  { id: "leah", label: "Leah", src: "/avatars/crinklz/leah.jpg" },
+  { id: "max", label: "Max", src: "/avatars/crinklz/max.jpg" },
+  { id: "theo", label: "Theo", src: "/avatars/crinklz/theo.jpg" },
+  { id: "alma", label: "Alma", src: "/avatars/crinklz/alma.jpg" },
+];
+
+export const TINYTAILS_AVATARS: AvatarOption[] = [
+  { id: "deer", label: "Deer", src: "/avatars/tinytails/deer.jpg" },
+  { id: "lion", label: "Lion", src: "/avatars/tinytails/lion.jpg" },
+  // Was also "husky" — collided with peekabu's id above, so `id` no
+  // longer uniquely identified a src: resolveAvatarSrc's `find` always
+  // won for peekabu's husky, and picking this one in the form silently
+  // saved the other pack's picture.
+  { id: "tinytails-husky", label: "Husky", src: "/avatars/tinytails/husky.jpg" },
+  { id: "fox", label: "Fox", src: "/avatars/tinytails/fox.jpg" },
+];
+
+export const AVATAR_GROUPS: { name: string; options: AvatarOption[] }[] = [
+  { name: "Peekabu", options: PEEKABU_AVATARS },
+  { name: "Crinklz", options: CRINKLZ_AVATARS },
+  { name: "Tinytails", options: TINYTAILS_AVATARS },
+];
+
+export const AVATAR_OPTIONS: AvatarOption[] = AVATAR_GROUPS.flatMap((g) => g.options);
 
 export function resolveAvatarSrc(avatarId: string | null | undefined): string | null {
   if (!avatarId) return null;
