@@ -33,9 +33,11 @@ function playingNowLine(matches: SpectatorMatch[]): string {
  * consumed it anymore — see the admin panel's own Score tab for the
  * per-baby standings table instead.
  *
- * While IN_PROGRESS there are just two cards in flow: this banner (round
- * context, who's playing, on-deck, rules — all folded into one card
- * instead of a separate pill/card each) and the bracket.
+ * While IN_PROGRESS there are just two cards in flow: this banner (back
+ * link, logo, and round-context/who's-playing text all in one row, with
+ * on-deck arrow-joined onto the same title line and the "Start playing"
+ * reminder tucked in the corner instead of a separate pill/card each)
+ * and the bracket.
  */
 export function SpectatorPoller({
   slug,
@@ -113,6 +115,8 @@ export function SpectatorPoller({
       <StageBanner
         text={inProgress ? playingNowLine(state.activeMatches) : state.stageBanner}
         kicker={inProgress ? state.stageBanner : undefined}
+        upNext={inProgress && state.onDeck.length > 0 ? state.onDeck.map((p) => p.name).join(", ") : undefined}
+        cornerHint={anyReady ? 'Remember to click "Start playing" inside Telegram.' : undefined}
         logoSrc={GAME_LOGO_SRC[state.game]}
         trailingAvatarSrc={state.status === "COMPLETE" ? (state.bestBaby?.avatarSrc ?? null) : undefined}
         backHref={backHref}
@@ -122,12 +126,6 @@ export function SpectatorPoller({
           📋 {rulesSummary}
           {rulesOverrideNote && <span className="ml-2 font-semibold text-active">Tonight only: {rulesOverrideNote}</span>}
         </p>
-        {inProgress && state.onDeck.length > 0 && (
-          <p className="text-sm text-foreground-muted">Up next: {state.onDeck.map((p) => p.name).join(", ")}</p>
-        )}
-        {anyReady && (
-          <p className="text-sm text-foreground-muted">Remember to click &ldquo;Start playing&rdquo; inside Telegram.</p>
-        )}
       </StageBanner>
 
       {state.status === "NURSERY_OPEN" && (
