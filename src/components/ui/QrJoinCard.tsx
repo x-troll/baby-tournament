@@ -36,7 +36,7 @@ export function QrJoinCard({
   className?: string;
 }) {
   return (
-    <div className={`relative flex flex-col items-center ${className ?? ""}`}>
+    <div className={`relative flex w-full flex-col ${className ?? ""}`}>
       {recommended && (
         <Badge
           variant="yellow"
@@ -45,7 +45,17 @@ export function QrJoinCard({
           RECOMMENDED
         </Badge>
       )}
-      <Card className="flex h-full flex-col items-center gap-2">
+      {/* w-full — this wrapper's own default (a plain block div) already
+          fills its grid column, but it used to be a `items-center` flex
+          container that shrink-wrapped the Card to its content's natural
+          width and centered it, leaving variable slack between the
+          visible card border and the actual column edge — the gap
+          between cards then looked bigger or smaller depending on how
+          much slack that resolution happened to have, on top of the
+          real (fixed) grid gap. Stretching the Card to the full column
+          instead makes the visible border-to-border gap always exactly
+          the grid's own gap-8, regardless of viewport width. */}
+      <Card className="flex h-full w-full flex-col items-center gap-2">
         <h3 className="text-xl font-semibold text-foreground-muted">{title}</h3>
         <div className="relative">
           <StyledQrCode data={data} size={size} logoSrc={logoSrc} />
