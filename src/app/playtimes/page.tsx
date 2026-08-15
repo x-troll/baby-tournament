@@ -113,13 +113,26 @@ export default async function PlaytimesListPage() {
                   <li key={p.id}>
                     <Link
                       href={`/playtimes/${p.slugNumber}`}
-                      className="flex items-center justify-between gap-3 rounded-card border border-border bg-background px-4 py-3 hover:opacity-90"
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-card border border-border bg-background px-4 py-3 hover:opacity-90"
                     >
-                      <span className="flex items-center gap-2">
-                        <span className="font-semibold">{p.name}</span>
-                        <Badge variant={game.variant}>{game.label}</Badge>
+                      {/* flex-wrap on the row — the name+game group and
+                          the count+status group each stay on one line,
+                          but drop onto their own row once both together
+                          don't fit, instead of everything fighting a flex
+                          item's default `min-width: auto` (its content's
+                          own intrinsic, unwrapped width) and forcing the
+                          whole row wider than its container, which pushed
+                          the entire page into unwanted horizontal scroll.
+                          min-w-0 + truncate on the name is still a
+                          backstop for a name so long even its own solo
+                          line couldn't fit it. */}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-semibold">{p.name}</span>
+                        <Badge variant={game.variant} className="shrink-0">
+                          {game.label}
+                        </Badge>
                       </span>
-                      <span className="flex items-center gap-2">
+                      <span className="flex shrink-0 items-center gap-2">
                         <span className="text-sm text-foreground-muted">{p._count.babies} babies</span>
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </span>
