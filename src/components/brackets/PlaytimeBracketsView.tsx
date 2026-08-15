@@ -176,6 +176,7 @@ export function PlaytimeBracketsView({
   playpens,
   phase2Bracket,
   mobileFullBleed = false,
+  edgeToEdge = false,
 }: {
   playpens: PlaypenSection | null;
   phase2Bracket: Phase2BracketData | null;
@@ -192,6 +193,17 @@ export function PlaytimeBracketsView({
    * layouts and shouldn't change.
    */
   mobileFullBleed?: boolean;
+  /**
+   * No border, no rounded corners, no card at all — at every width, not
+   * just below `sm:` like `mobileFullBleed`. For the unauthenticated
+   * spectator screen, whose own root already has zero padding around
+   * this component in both axes (see SpectatorPoller.tsx) — this just
+   * drops the panel's own border/rounding so it visually touches the
+   * real screen edge instead of sitting inset inside its own frame.
+   * Mutually exclusive with `mobileFullBleed` in practice (no call site
+   * passes both); takes priority if it somehow were.
+   */
+  edgeToEdge?: boolean;
 }) {
   const flow = useMemo(() => buildTournamentFlow(playpens, phase2Bracket), [playpens, phase2Bracket]);
 
@@ -469,9 +481,11 @@ export function PlaytimeBracketsView({
     <div
       ref={scrollRef}
       className={
-        mobileFullBleed
-          ? "relative left-1/2 w-screen -translate-x-1/2 overflow-x-auto rounded-none border-y-2 border-border bg-background sm:static sm:left-auto sm:w-full sm:translate-x-0 sm:rounded-card sm:border-2"
-          : "w-full overflow-x-auto rounded-card border-2 border-border bg-background"
+        edgeToEdge
+          ? "w-full overflow-x-auto bg-background"
+          : mobileFullBleed
+            ? "relative left-1/2 w-screen -translate-x-1/2 overflow-x-auto rounded-none border-y-2 border-border bg-background sm:static sm:left-auto sm:w-full sm:translate-x-0 sm:rounded-card sm:border-2"
+            : "w-full overflow-x-auto rounded-card border-2 border-border bg-background"
       }
     >
       <div ref={containerRef} className="relative flex w-full items-stretch">

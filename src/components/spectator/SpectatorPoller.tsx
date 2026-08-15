@@ -109,15 +109,20 @@ export function SpectatorPoller({
         backLabel="← All playtimes"
       />
 
-      <div className="min-h-0 flex-1 overflow-auto p-4">
-        {state.status === "NURSERY_OPEN" ? (
+      {state.status === "NURSERY_OPEN" ? (
+        <div className="min-h-0 flex-1 overflow-auto p-4">
           <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} playersTitle="Littles and bigs">
             <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
           </NurseryCheckIn>
-        ) : (
-          <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
-        )}
-      </div>
+        </div>
+      ) : (
+        // No padding here — edgeToEdge means the bracket panel itself has
+        // no border/rounding of its own either, so this wrapper staying
+        // padded would just relocate the gap instead of removing it.
+        <div className="min-h-0 flex-1 overflow-auto">
+          <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} edgeToEdge />
+        </div>
+      )}
     </div>
   );
 }
