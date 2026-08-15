@@ -64,6 +64,14 @@ async function hasValidSessionCookie(request: NextRequest, cookieName: string): 
 }
 
 export async function proxy(request: NextRequest) {
+  // TEMPORARILY DISABLED — the PIN gate was causing bugs in production.
+  // This flag forces the bypass unconditionally (not just "unset
+  // SITE_PIN", which would need a prod config change this makes
+  // unnecessary) until it's debugged — flip it back to re-enable, rest
+  // of the gate is untouched.
+  const PIN_GATE_ENABLED = false;
+  if (!PIN_GATE_ENABLED) return NextResponse.next();
+
   // Feature is opt-in — deployments that never set SITE_PIN keep today's
   // fully-open behavior.
   if (!process.env.SITE_PIN) return NextResponse.next();
