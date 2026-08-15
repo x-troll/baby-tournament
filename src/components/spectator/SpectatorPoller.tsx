@@ -116,7 +116,7 @@ export function SpectatorPoller({
         text={inProgress ? playingNowLine(state.activeMatches) : state.stageBanner}
         kicker={inProgress ? state.stageBanner : undefined}
         upNext={inProgress && state.onDeck.length > 0 ? state.onDeck.map((p) => p.name).join(", ") : undefined}
-        cornerHint={anyReady ? 'Remember to click "Start playing" inside Telegram.' : undefined}
+        cornerHint={anyReady ? ['Remember to click "We\'re playing"', "on Telegram or the website."] : undefined}
         logoSrc={GAME_LOGO_SRC[state.game]}
         trailingAvatarSrc={state.status === "COMPLETE" ? (state.bestBaby?.avatarSrc ?? null) : undefined}
         backHref={backHref}
