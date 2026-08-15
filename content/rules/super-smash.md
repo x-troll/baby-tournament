@@ -1,6 +1,6 @@
 ---
 game: SUPER_SMASH
-summary: "1v1 · Stock · Final Destination"
+summary: "All items · Random map · Final Destination"
 screenshots:
   - src: /games/super-smash/rules.png
     caption: "PLACEHOLDER — replace with a real photo/capture of your match settings screen"
@@ -11,8 +11,9 @@ screenshots:
 _Placeholder body — fill this in with your real rules before the event._
 
 - **Stocks:** 3
-- **Stage:** Final Destination (or your house stage list — list them here)
-- **Items:** Off
+- **Stage:** Random each match — every stage set to its Final Destination
+  (Ω) form, no stage hazards
+- **Items:** On (all items allowed)
 - **Time limit:** 6 minutes
 - **Format:** 1v1 only, no doubles
 

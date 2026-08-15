@@ -19,14 +19,14 @@ describe("validateRulesFileSync — the committed content/rules/*.md files", () 
 describe("loadRules — parse + sanitize + render", () => {
   it("loads Mario Kart rules with the expected summary and no client-visible raw markdown", async () => {
     const rules = await loadRules(Game.MARIO_KART);
-    expect(rules.summary).toBe("No items · Random map · 150cc");
+    expect(rules.summary).toBe("Items on · Random maps · 100cc");
     expect(rules.bodyHtml).toContain("<h1>"); // rendered, not raw "# Mario Kart..."
     expect(rules.bodyHtml).not.toContain("# Mario Kart");
   });
 
   it("loads Super Smash rules with the expected summary", async () => {
     const rules = await loadRules(Game.SUPER_SMASH);
-    expect(rules.summary).toBe("1v1 · Stock · Final Destination");
+    expect(rules.summary).toBe("All items · Random map · Final Destination");
   });
 
   it("includes the committed placeholder screenshot with its caption", async () => {

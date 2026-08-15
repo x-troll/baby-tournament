@@ -1,6 +1,6 @@
 ---
 game: MARIO_KART
-summary: "No items · Random map · 150cc"
+summary: "Items on · Random maps · 100cc"
 screenshots:
   - src: /games/mario-kart/rules.png
     caption: "PLACEHOLDER — replace with a real photo/capture of your race settings screen"
@@ -10,11 +10,11 @@ screenshots:
 
 _Placeholder body — fill this in with your real rules before the event._
 
-- **Items:** None
-- **CC:** 150cc
-- **Map selection:** Random per race
-- **Race count per match:** 1 race decides it (override per-playtime via the
-  optional tonight-only note if you want best-of-3, etc.)
+- **Items:** On (all items allowed)
+- **CC:** 100cc
+- **Map selection:** Random, 3 maps per match
+- **Race count per match:** Best of 3 races (override per-playtime via the
+  optional tonight-only note if you want a different count)
 - **Teams:** Free-for-all, no teams
 
 ## Settings to match
