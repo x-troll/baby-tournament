@@ -19,7 +19,9 @@ import { Card } from "@/components/ui/card";
  * codes present, the row is a fixed 3/12 + 3/12 + 6/12 (25% / 25% / 50%)
  * split rather than sizing each QR column to its image's own width —
  * each Card centers its (fixed-size) content within whatever share of
- * the row it's given.
+ * the row it's given. That split kicks in at `sm:` and up (this only
+ * needs to stack into one over/under column on an actual phone-width
+ * screen — any resized-but-still-desktop window gets the real split).
  */
 export function NurseryCheckIn({
   telegramLink,
@@ -41,9 +43,9 @@ export function NurseryCheckIn({
     <div
       className={`grid w-full grid-cols-1 items-stretch gap-8 ${
         qrCards.length === 2
-          ? "lg:grid-cols-[3fr_3fr_6fr]"
+          ? "sm:grid-cols-[3fr_3fr_6fr]"
           : qrCards.length === 1
-            ? "lg:grid-cols-[auto_1fr]"
+            ? "sm:grid-cols-[auto_1fr]"
             : ""
       }`}
     >
