@@ -15,11 +15,11 @@ import { Card } from "@/components/ui/card";
  * Every column shares the same Card component, and CSS grid's default
  * row stretch (`items-stretch`) equalizes all three to the tallest
  * one's height for free, no manual min-height bookkeeping needed the
- * way the two QR captions already do for each other. The QR cards are
- * only ever as wide as their fixed-size QR image needs (`auto` grid
- * tracks); the third column grows to soak up whatever's left (`1fr`) so
- * the row still reaches the container's full width instead of leaving
- * a gap past the last QR card.
+ * way the two QR captions already do for each other. With both QR
+ * codes present, the row is a fixed 3/12 + 3/12 + 6/12 (25% / 25% / 50%)
+ * split rather than sizing each QR column to its image's own width —
+ * each Card centers its (fixed-size) content within whatever share of
+ * the row it's given.
  */
 export function NurseryCheckIn({
   telegramLink,
@@ -41,7 +41,7 @@ export function NurseryCheckIn({
     <div
       className={`grid w-full grid-cols-1 items-stretch gap-8 ${
         qrCards.length === 2
-          ? "lg:grid-cols-[auto_auto_1fr]"
+          ? "lg:grid-cols-[3fr_3fr_6fr]"
           : qrCards.length === 1
             ? "lg:grid-cols-[auto_1fr]"
             : ""
