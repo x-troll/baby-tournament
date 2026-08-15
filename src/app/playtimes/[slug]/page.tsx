@@ -82,25 +82,24 @@ export default async function PlaytimeDetailPage({
     return <BabyBranch slug={slug} baby={baby} token={token} playerPreview={playerPreview} />;
   }
 
-  return <PublicSpectatorBranch slug={slug} slugNumber={slugNumber} />;
+  return <PublicSpectatorBranch slug={slug} />;
 }
 
-async function PublicSpectatorBranch({ slug, slugNumber }: { slug: string; slugNumber: number }) {
-  const playtime = await prisma.playtime.findUnique({ where: { slugNumber } });
-  if (!playtime) notFound();
-
-  const [state, rules] = await Promise.all([computeSpectatorState(slug), loadRules(playtime.game)]);
+async function PublicSpectatorBranch({ slug }: { slug: string }) {
+  // computeSpectatorState does its own playtime lookup and returns null
+  // if it doesn't exist — no separate existence query needed here now
+  // that this branch no longer reads any other playtime field directly
+  // (rules/game were the last uses, both dropped from this screen).
+  const state = await computeSpectatorState(slug);
   if (!state) notFound();
 
+  // No sizing/padding here — SpectatorPoller's own root owns the full
+  // h-dvh layout (a thin header row + the check-in grid/bracket filling
+  // whatever's left), so nothing here should add height or padding on
+  // top of it.
   return (
-    <main className="min-h-screen pb-8">
-      <SpectatorPoller
-        slug={slug}
-        initial={state}
-        backHref="/playtimes"
-        rulesSummary={rules.summary}
-        rulesOverrideNote={playtime.rulesOverrideNote}
-      />
+    <main>
+      <SpectatorPoller slug={slug} initial={state} backHref="/playtimes" />
     </main>
   );
 }

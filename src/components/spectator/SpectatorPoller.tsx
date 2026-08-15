@@ -6,7 +6,6 @@ import { HelpIndicator } from "./HelpIndicator";
 import { RegisteredBabies } from "./RegisteredBabies";
 import { NurseryCheckIn } from "./NurseryCheckIn";
 import { PlaytimeBracketsView } from "@/components/brackets/PlaytimeBracketsView";
-import { GAME_LOGO_SRC } from "@/lib/game-assets";
 import type { SpectatorMatch, SpectatorState } from "@/lib/spectator-state";
 
 const POLL_INTERVAL_MS = 3000;
@@ -26,32 +25,22 @@ function playingNowLine(matches: SpectatorMatch[]): string {
  * `{ unchanged: true }` instead of re-shipping the full state when
  * nothing happened, reusing the append-only MatchEvent log as the cursor.
  *
- * No playtime title, no star chart/score board — deliberately trimmed to
- * just what's happening right now (help indicator, stage banner, current
- * matches, the bracket itself). The star-chart data this screen used to
- * render was removed (SpectatorState no longer computes it) once nothing
- * consumed it anymore — see the admin panel's own Score tab for the
- * per-baby standings table instead.
- *
- * While IN_PROGRESS there are just two cards in flow: this banner (back
- * link, logo, and round-context/who's-playing text all in one row, with
- * on-deck arrow-joined onto the same title line and the "Start playing"
- * reminder tucked in the corner instead of a separate pill/card each)
- * and the bracket.
+ * Fills the whole screen: a thin one-row header (StageBanner — no card,
+ * no logo, no rules text) plus whichever single piece of content
+ * actually matters for the current stage, stretched to fill the rest of
+ * the viewport height. No playtime title, no star chart/score board —
+ * see the admin panel's own Score tab for the per-baby standings table
+ * instead.
  */
 export function SpectatorPoller({
   slug,
   initial,
   backHref,
-  rulesSummary,
-  rulesOverrideNote,
 }: {
   slug: string;
   initial: SpectatorState;
-  /** "← All playtimes", rendered inside the header card itself rather than as a separate element above it. */
+  /** "← All playtimes", rendered inside the header row itself rather than as a separate element above it. */
   backHref: string;
-  rulesSummary: string;
-  rulesOverrideNote: string | null;
 }) {
   const [state, setState] = useState(initial);
   const [newlyJoinedIds, setNewlyJoinedIds] = useState<Set<string>>(new Set());
@@ -109,32 +98,26 @@ export function SpectatorPoller({
   const anyReady = inProgress && state.activeMatches.some((m) => m.status === "READY");
 
   return (
-    <div className="mx-auto flex max-w-[1920px] flex-col gap-6 p-8">
+    <div className="flex h-dvh w-full flex-col overflow-hidden">
       <HelpIndicator count={state.openHelpRequestCount} adminTerm={state.adminTerm} />
 
       <StageBanner
-        text={inProgress ? playingNowLine(state.activeMatches) : state.stageBanner}
-        kicker={inProgress ? state.stageBanner : undefined}
+        centerText={inProgress ? playingNowLine(state.activeMatches) : state.stageBanner}
         upNext={inProgress && state.onDeck.length > 0 ? state.onDeck.map((p) => p.name).join(", ") : undefined}
-        cornerHint={anyReady ? ['Remember to click "We\'re playing"', "on Telegram or the website."] : undefined}
-        logoSrc={GAME_LOGO_SRC[state.game]}
-        trailingAvatarSrc={state.status === "COMPLETE" ? (state.bestBaby?.avatarSrc ?? null) : undefined}
+        reminder={anyReady ? 'Remember to click "Start playing" in Telegram/website.' : undefined}
         backHref={backHref}
         backLabel="← All playtimes"
-      >
-        <p className="text-sm text-foreground-muted sm:text-base">
-          📋 {rulesSummary}
-          {rulesOverrideNote && <span className="ml-2 font-semibold text-active">Tonight only: {rulesOverrideNote}</span>}
-        </p>
-      </StageBanner>
+      />
 
-      {state.status === "NURSERY_OPEN" && (
-        <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} playersTitle="Littles and bigs">
-          <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
-        </NurseryCheckIn>
-      )}
-
-      <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
+      <div className="min-h-0 flex-1 overflow-auto p-4">
+        {state.status === "NURSERY_OPEN" ? (
+          <NurseryCheckIn telegramLink={state.joinLink} websiteLink={state.websiteJoinLink} playersTitle="Littles and bigs">
+            <RegisteredBabies babies={state.registeredBabies} newlyJoinedIds={newlyJoinedIds} />
+          </NurseryCheckIn>
+        ) : (
+          <PlaytimeBracketsView playpens={state.playpens} phase2Bracket={state.phase2Bracket} />
+        )}
+      </div>
     </div>
   );
 }
