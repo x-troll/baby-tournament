@@ -426,26 +426,6 @@ export function PlaytimeBracketsView({
       // PlayPagePoller's router.refresh()) — not just once on mount.
       const scrollEl = scrollRef.current;
       if (scrollEl) scrollEl.scrollLeft = scrollEl.scrollWidth;
-
-      // Same "always keep the live edge in view" policy, vertically: a
-      // long pyramid (many playpens/rounds) can push the box someone
-      // actually cares about — whoever's playing right now — well below
-      // the fold, needing a real page scroll to find. Scrolls the page
-      // itself (this component doesn't own its own vertical scroll
-      // container, unlike the horizontal one above), centering whichever
-      // box is PLAYING; falls back to READY (stationed, about to start)
-      // if nothing's actually underway yet — same "the live edge" this
-      // banner's own arrow/corner-hint copy already prioritizes.
-      // Unconditional on every recompute, not just mount, matching the
-      // horizontal logic above.
-      const allBoxes = flow.columns.flatMap((col) => col.boxes);
-      const liveBox = allBoxes.find((b) => b.status === "PLAYING") ?? allBoxes.find((b) => b.status === "READY");
-      const liveEl = liveBox ? boxEls.current.get(liveBox.key) : undefined;
-      if (liveEl) {
-        const r = liveEl.getBoundingClientRect();
-        const targetTop = r.top + window.scrollY - window.innerHeight / 2 + r.height / 2;
-        window.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
-      }
     }
 
     recompute();
